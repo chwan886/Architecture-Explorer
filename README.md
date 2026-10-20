@@ -69,6 +69,8 @@ GameDemo02 的只读 HP 验收脚本为 `node node_modules/tsx/dist/cli.mjs Tool
 
 `-Task Audit` 对已有索引及授权源码生成 `.cache/evidence-audit/<项目>-<Worktree>.json`，分别统计静态调用、推断调用、参数绑定、未知回调目标、候选归属和解释；不会批量勾选人工确认。查看[证据审计指南](docs/EVIDENCE-AUDIT.md)和[本轮源码复核记录](docs/GAME-EVIDENCE-REVIEW.md)。
 
+本轮完整回归、真实索引、浏览器和 Codex App 结果见[复核验收记录](docs/EVIDENCE-REVIEW-VALIDATION.md)。
+
 前端开发可另运行 `-Task Web`，地址 http://127.0.0.1:5173，API 代理到 4310。`Dev` 提供构建后的本地网站和 API；不接触游戏进程。
 
 ## 可信度与边界
