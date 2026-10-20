@@ -99,6 +99,27 @@ test('registered directed call paths preserve every raw hop and cannot be forged
   } finally { await f.close(); }
 });
 
+test('presentation preview follows the focused node without discarding the complete analysis proofs', async () => {
+  const f = await fixture(); try {
+    const snapshot = await f.begin(), value = f.presentation(snapshot);
+    const entryCall = f.index.edges.find(edge => edge.kind === 'calls' && edge.source === f.node('entry').id && edge.target === f.node('middle').id)!;
+    value.evidenceIds = [entryCall.evidenceIds[0], f.node('finish').evidenceIds[0]];
+    const initial = await f.query.resolve(value);
+    assert.equal(initial.evidence?.evidence.id, entryCall.evidenceIds[0], 'a call site belonging to the focus remains a useful preview');
+    const moved = { ...clone(value), focusNodeId: { layer: 'code' as const, id: f.node('finish').id } };
+    const resolved = await f.query.resolve(moved);
+    assert.equal(resolved.evidence?.evidence.id, f.node('finish').evidenceIds[0], 'moving to a different node must not show the earlier caller source');
+    assert.deepEqual(resolved.presentation.evidenceIds, value.evidenceIds, 'all original path proofs remain available');
+    moved.evidenceIds = [entryCall.evidenceIds[0]];
+    assert.equal((await f.query.resolve(moved)).evidence?.evidence.id, f.node('finish').evidenceIds[0], 'use the new declaration even when only old path evidence was requested');
+    const root = f.index.nodes.find(node => node.kind === 'project')!;
+    assert.equal((await f.query.resolve({ ...clone(value), focusNodeId: { layer: 'code', id: root.id } })).evidence, undefined, 'an entity without its own source must not inherit another node preview');
+    const noFocus = clone(value); delete noFocus.focusNodeId; noFocus.highlightedNodeIds = [{ layer: 'code', id: f.node('entry').id }];
+    assert.equal((await f.query.resolve(noFocus)).evidence?.evidence.id, entryCall.evidenceIds[0], 'an analysis without a focus retains its explicit preview');
+    assert.equal((await f.query.resolve(f.presentation(snapshot))).evidence, undefined, 'no evidence request does not force open source');
+  } finally { await f.close(); }
+});
+
 test('an unchanged scan invalidates old handles but new analysis rebuilds projections against the newly published index object', async () => {
   const f = await fixture(); try {
     const first = await f.begin(), previous = f.primary.index!;

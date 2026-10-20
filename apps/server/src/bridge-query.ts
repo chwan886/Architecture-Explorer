@@ -326,7 +326,15 @@ export class BridgeQueryService implements QueryService {
     if (selectedEdges.some(edge => edge.confidence === 'inferred')) warnings.push('当前选择包含推断关系，未升级为静态确认或运行时证明。');
     if (selectedEdges.some(edge => edge.dispatch && !['direct', 'static'].includes(edge.dispatch))) warnings.push('部分调用存在动态或虚分发；图中保留静态声明目标，实际运行时接收者仍有限制。');
     warnings.push(...selectedEdges.flatMap(edge => edge.limitations ?? [])); result.warnings = unique(warnings);
-    const preview = [...proofIds][0]; if (preview) { this.check(snapshot); result.evidence = await this.evidence(snapshot, preview); this.check(snapshot); }
+    // Evidence IDs describe the whole analysis, not a pinned preview. A changed
+    // focus must not keep an unrelated earlier step's source under its details.
+    let preview = [...proofIds][0];
+    if (preview && presentation.focusNodeId) {
+      const focus = presentation.focusNodeId, own = this.nodeRef(snapshot, focus).evidenceIds;
+      const related = new Set([...own, ...(focus.layer === 'code' ? (snapshot.outgoing.get(focus.id) || []).filter(edge => edge.kind !== 'contains').flatMap(edge => edge.evidenceIds) : [])]);
+      preview = [...proofIds].find(id => related.has(id)) ?? own[0];
+    }
+    if (preview) { this.check(snapshot); result.evidence = await this.evidence(snapshot, preview); this.check(snapshot); }
     await this.live(snapshot); this.check(snapshot); return result;
   }
 }
