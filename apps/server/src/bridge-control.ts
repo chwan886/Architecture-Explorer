@@ -4,12 +4,14 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { IndexManager } from '../../../packages/indexer/src/indexer.ts';
 import { contentHash } from '../../../packages/schema/src/index.ts';
 import { validateEntityRef, validatePresentation } from '../../../packages/control-protocol/src/index.ts';
-import type { AnalysisPresentation, BrowserCurrent, BrowserState, ControlCommand, ControlSubmit, PresentationReceipt, QueryService, ResolvedPresentation, ViewSession } from '../../../packages/control-protocol/src/types.ts';
+import type { AnalysisPresentation, BridgeActivity, BrowserCurrent, BrowserState, ControlCommand, ControlSubmit, PresentationReceipt, QueryService, ResolvedPresentation, ViewSession } from '../../../packages/control-protocol/src/types.ts';
 import { BridgeFiles, BridgeIdentity, bridgeFailure as fail, secureEqual } from './bridge-auth.ts';
+import { QUERY_ACTIVITY_LIMIT, queryActivityCompleted, queryActivityFailed, queryActivityTitle } from './bridge-activity.ts';
 
 const TTL = 5 * 60_000, SESSION_TTL = 90_000, LEASE_TTL = 120_000;
 const active = new Set(['pending', 'received', 'presented']);
-interface Session { owner: string; csrf: string; view: ViewSession; lastCommand?: string; optOutRevision?: number }
+interface Session { owner: string; csrf: string; view: ViewSession; lastCommand?: string; optOutRevision?: number; activities?: BridgeActivity[] }
+interface ActivityTarget { sessionId: string; bindingId: string; snapshotId: string; scopeId: string; activityId: string }
 interface Binding { id: string; sessionId: string; expires: number; userRevision: number; controlRevision: number; consumed: boolean }
 interface RecordEntry { commandId: string; payloadHash: string; presentation?: AnalysisPresentation; receipt: PresentationReceipt; expires: number;
   sessionId?: string; bindingId?: string; sequence: number; expectedUserRevision?: number; expectedControlRevision?: number; serverEpoch: string }
@@ -36,6 +38,7 @@ export class BridgeBroker {
   private queue: Promise<unknown> = Promise.resolve();
   private sequence = 0;
   private eventSequence = 0;
+  private activitySequence = 0;
   constructor(readonly app: FastifyInstance, readonly manager: IndexManager, readonly query: QueryService) {
     this.files = new BridgeFiles(manager.config); this.identity = new BridgeIdentity(this.files);
   }
@@ -108,13 +111,14 @@ export class BridgeBroker {
     session.optOutRevision = session.view.userRevision;
     if (session.view.bindingId) this.bindings.delete(session.view.bindingId);
     session.view.bindingId = undefined;
+    session.activities = undefined;
     for (const record of this.records.values()) if (record.sessionId === session.view.sessionId && active.has(record.receipt.status)) this.update(record, 'conflict', message);
     this.notify(session.view.sessionId);
   }
   private expire() {
     for (const session of this.sessions.values()) if (now() - Date.parse(session.view.lastSeenAt) > SESSION_TTL && session.view.allowControl) this.revoke(session, '页面心跳已失联，已停止联动。');
     for (const binding of this.bindings.values()) if (binding.expires <= now()) {
-      this.bindings.delete(binding.id); const session = this.sessions.get(binding.sessionId); if (session?.view.bindingId === binding.id) session.view.bindingId = undefined;
+      this.bindings.delete(binding.id); const session = this.sessions.get(binding.sessionId); if (session?.view.bindingId === binding.id) { session.view.bindingId = undefined; session.activities = undefined; }
       for (const record of this.records.values()) if (record.bindingId === binding.id && ['pending', 'received'].includes(record.receipt.status)) this.update(record, 'conflict', '配对租约已过期，未重放延迟命令。');
     }
     for (const record of this.records.values()) if (record.expires <= now() && active.has(record.receipt.status)) this.update(record, 'expired', '联动命令已过期，未使用新快照替代。');
@@ -124,6 +128,58 @@ export class BridgeBroker {
     const session = binding && this.sessions.get(binding.sessionId);
     if (!binding || !session || !session.view.allowControl) throw fail('BINDING_EXPIRED', '配对已失效，请重新选择允许联动的页面', 409);
     return { binding, session };
+  }
+  /** A query has no browser target. Only the single already-bound page for this exact snapshot may observe it. */
+  private activityContext(session: Session, snapshotId?: string) {
+    const binding = session.view.bindingId ? this.bindings.get(session.view.bindingId) : undefined;
+    const record = session.lastCommand ? this.records.get(session.lastCommand) : undefined;
+    const presentation = record?.presentation;
+    if (!session.view.allowControl || now() - Date.parse(session.view.lastSeenAt) > SESSION_TTL
+      || !binding || binding.expires <= now() || binding.sessionId !== session.view.sessionId
+      || !record || !presentation || !active.has(record.receipt.status) || record.expires <= now()
+      || record.sessionId !== session.view.sessionId || record.bindingId !== binding.id
+      || session.view.scopeId !== `${presentation.projectId}:${presentation.worktreeId}`
+      || snapshotId !== undefined && presentation.snapshotId !== snapshotId) return undefined;
+    return { binding, record, presentation };
+  }
+  private async startActivity(operation: string, args: Record<string, unknown>): Promise<ActivityTarget | undefined> {
+    const title = queryActivityTitle(operation), snapshotId = args.snapshotId;
+    if (!title || typeof snapshotId !== 'string') return undefined;
+    return this.serial(() => {
+      this.expire();
+      const eligible = [...this.sessions.values()].flatMap(session => {
+        const context = this.activityContext(session, snapshotId); return context ? [{ session, ...context }] : [];
+      });
+      // Even an identical snapshot in several bound tabs is not an explicit query target.
+      if (eligible.length !== 1) return undefined;
+      const { session, binding, record, presentation } = eligible[0], timestamp = new Date().toISOString();
+      const activity: BridgeActivity = { id: randomUUID(), sequence: ++this.activitySequence, kind: 'query', operation, title,
+        message: '正在查询当前快照；结果不会自动改变画布。', status: 'running', startedAt: timestamp, updatedAt: timestamp,
+        scopeId: session.view.scopeId!, snapshotId, indexSnapshotId: presentation.indexSnapshotId, commandId: record.commandId };
+      session.activities = [...(session.activities ?? []), activity].slice(-QUERY_ACTIVITY_LIMIT);
+      this.notify(session.view.sessionId);
+      return { sessionId: session.view.sessionId, bindingId: binding.id, snapshotId, scopeId: session.view.scopeId!, activityId: activity.id };
+    });
+  }
+  private async finishActivity(target: ActivityTarget | undefined, operation: string, outcome: { result: unknown } | { error: unknown }) {
+    if (!target) return;
+    await this.serial(() => {
+      this.expire(); const session = this.sessions.get(target.sessionId), context = session && this.activityContext(session, target.snapshotId);
+      if (!session || !context || context.binding.id !== target.bindingId || session.view.scopeId !== target.scopeId) return;
+      const activity = session.activities?.find(item => item.id === target.activityId);
+      if (!activity) return;
+      activity.status = 'error' in outcome ? 'failed' : 'completed'; activity.updatedAt = new Date().toISOString();
+      activity.message = 'error' in outcome ? queryActivityFailed(outcome.error) : queryActivityCompleted(operation, outcome.result);
+      this.notify(target.sessionId);
+    });
+  }
+  async executeQuery(operation: string, args: Record<string, unknown>): Promise<unknown> {
+    // Observability must never change the query result or substitute a presentation receipt.
+    const target = await this.startActivity(operation, args).catch(() => undefined);
+    let result: unknown;
+    try { result = await this.query.dispatch(operation, args); }
+    catch (error) { await this.finishActivity(target, operation, { error }).catch(() => {}); throw error; }
+    await this.finishActivity(target, operation, { result }).catch(() => {}); return result;
   }
   private bind(sessionId: unknown): { binding: Binding; session: Session } {
     this.expire(); const session = this.sessions.get(text(sessionId, 'sessionId'));
@@ -263,7 +319,9 @@ export class BridgeBroker {
             expiresAt: new Date(record.expires).toISOString(), expectedUserRevision: record.expectedUserRevision!, expectedControlRevision: record.expectedControlRevision!, resolved };
         } catch (error) { this.update(record, 'expired', `查询快照已失效：${(error as Error).message}`); await this.persist(); }
       }
-      return { session: session.view, command, pending: record?.receipt };
+      const context = this.activityContext(session);
+      const activities = context ? (session.activities ?? []).filter(item => item.scopeId === session.view.scopeId && item.snapshotId === context.presentation.snapshotId).map(item => ({ ...item })) : [];
+      return { session: session.view, command, pending: record?.receipt, activities };
     });
   }
   async ack(request: FastifyRequest, input: Record<string, unknown>) {
@@ -342,7 +400,7 @@ export async function registerBridgeRoutes(app: FastifyInstance, manager: IndexM
   app.post('/api/bridge/private/query', privateOptions, async request => {
     const body = object(request.body, ['operation', 'arguments']);
     const args = body.arguments; if (!args || typeof args !== 'object' || Array.isArray(args)) throw fail('INVALID_ARGUMENT', 'arguments 必须为对象');
-    return query.dispatch(text(body.operation, 'operation', 80), object(args, Object.keys(args), []));
+    return broker.executeQuery(text(body.operation, 'operation', 80), object(args, Object.keys(args), []));
   });
   app.post('/api/bridge/private/control', privateOptions, async request => {
     const body = object(request.body, ['operation', 'arguments']);

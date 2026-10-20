@@ -43,11 +43,35 @@ async function mount(holdTarget = false) {
   const dispose = async () => { await act(async () => root.unmount()); await browser.happyDOM.close(); for (const [key, descriptor] of descriptors) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); } };
   await waitFor(() => { assert.equal((container.querySelector('[aria-label="选择 Worktree"]') as unknown as HTMLSelectElement).value, 'main'); assert.equal((Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('允许 Codex 联动')) as unknown as HTMLButtonElement).disabled, false); }, 'App initialized');
   await click('允许 Codex 联动'); await waitFor(() => assert.equal(state.allowControl, true), 'opted in');
-  return { browser, container, requests, acks, click, send, waitFor, dispose, targetRequested: () => targetRequested, release: async () => { await act(async () => resolveTarget(json({ worktrees: worktrees.two }))); } };
+  return { browser, container, requests, acks, click, send, waitFor, dispose, userRevision: () => state.userRevision, targetRequested: () => targetRequested, release: async () => { await act(async () => resolveTarget(json({ worktrees: worktrees.two }))); } };
 }
 test('real App switches the requested project/worktree atomically without visiting its default first worktree', async () => {
   const app = await mount(); try { await app.send(); await app.waitFor(() => assert.equal((app.container.querySelector('[aria-label="选择 Worktree"]') as unknown as HTMLSelectElement).value, 'selected'), 'target worktree'); assert.equal((app.container.querySelector('[aria-label="选择项目"]') as unknown as HTMLSelectElement).value, 'two'); assert.equal(app.requests.some(url => url.searchParams.get('scope') === 'two:first'), false); assert.ok(app.requests.some(url => url.searchParams.get('scope') === 'two:selected')); } finally { await app.dispose(); }
 });
 test('real App refuses a late project preparation after manual navigation changes the user revision', async () => {
   const app = await mount(true); try { await app.send(); await app.waitFor(() => assert.equal(app.targetRequested(), true), 'target preparation'); await app.click('技术架构'); await app.release(); await app.waitFor(() => assert.ok(app.acks.some(ack => ack.status === 'conflict')), 'manual navigation conflict'); assert.equal((app.container.querySelector('[aria-label="选择项目"]') as unknown as HTMLSelectElement).value, 'one'); assert.equal(app.container.querySelector('.control-workspace'), null); assert.equal(app.acks.some(ack => ack.status === 'presented'), false); } finally { await app.dispose(); }
+});
+
+test('opening, moving and hiding the progress bubble does not interrupt a pending MCP navigation', async () => {
+  const app = await mount(true);
+  try {
+    await app.send(); await app.waitFor(() => assert.equal(app.targetRequested(), true), 'target preparation');
+    const before = app.userRevision();
+    await app.click('演示进度');
+    const bubble = app.container.querySelector('[aria-label="Codex 演示进度"]'); assert.ok(bubble);
+    const handle = bubble.querySelector('[aria-label="移动演示气泡"]'); assert.ok(handle);
+    await act(async () => {
+      handle.dispatchEvent(new app.browser.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      handle.dispatchEvent(new app.browser.WheelEvent('wheel', { deltaY: 50, bubbles: true }));
+      handle.dispatchEvent(new app.browser.MouseEvent('pointerdown', { buttons: 1, bubbles: true }));
+      handle.dispatchEvent(new app.browser.MouseEvent('pointermove', { buttons: 1, clientX: 20, clientY: 20, bubbles: true }));
+      handle.dispatchEvent(new app.browser.MouseEvent('pointerup', { bubbles: true }));
+    });
+    const hide = bubble.querySelector('[aria-label="隐藏演示气泡"]'); assert.ok(hide);
+    await act(async () => hide.dispatchEvent(new app.browser.MouseEvent('click', { bubbles: true })));
+    assert.equal(app.userRevision(), before, 'bubble gestures are UI preferences, not architecture navigation');
+    await app.release();
+    await app.waitFor(() => assert.equal((app.container.querySelector('[aria-label="选择 Worktree"]') as unknown as HTMLSelectElement).value, 'selected'), 'target navigation preserved');
+    assert.equal(app.acks.some(ack => ack.status === 'conflict'), false);
+  } finally { await app.dispose(); }
 });

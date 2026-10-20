@@ -51,7 +51,14 @@ export interface ControlCommand {
   expectedUserRevision: number; expectedControlRevision: number; resolved: ResolvedPresentation;
 }
 export interface BrowserBootstrap { sessionId: string; csrf: string; serverEpoch: string; state: BrowserState }
-export interface BrowserCurrent { session: ViewSession; command?: ControlCommand; pending?: PresentationReceipt }
+/** Public execution summaries only; never chain-of-thought or raw tool arguments/source. */
+export interface BridgeActivity {
+  id: string; sequence: number; kind: 'query' | 'presentation' | 'session'; operation: string;
+  title: string; message: string; status: 'running' | 'completed' | 'paused' | 'failed';
+  startedAt: string; updatedAt: string; scopeId?: string; snapshotId?: string;
+  indexSnapshotId?: string; commandId?: string;
+}
+export interface BrowserCurrent { session: ViewSession; command?: ControlCommand; pending?: PresentationReceipt; activities?: BridgeActivity[] }
 export interface ControlSubmit {
   presentation: AnalysisPresentation; bindingId?: string; expectedUserRevision?: number;
   expectedControlRevision?: number; commandId?: string;

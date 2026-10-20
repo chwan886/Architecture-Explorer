@@ -13,6 +13,8 @@ import type { SemanticLocation, SemanticReverseResult } from '../../../packages/
 import type { ControlCommand } from '../../../packages/control-protocol/src/types';
 import useLinkController from './control/useLinkController';
 import LinkBar from './control/LinkBar';
+import FloatingProgress from './control/FloatingProgress';
+import { presentationIsCurrent } from './control/progress';
 const IntegrationWorkspace = lazy(() => import('./control/IntegrationWorkspace'));
 const GraphCanvas = lazy(() => import('./GraphCanvas'));
 const ArchitectureWorkspace = lazy(() => import('./architecture/ArchitectureWorkspace'));
@@ -130,6 +132,7 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [controlPresentation, setControlPresentation] = useState<ControlCommand>();
   const [controlHighlights, setControlHighlights] = useState(false), [controlStale, setControlStale] = useState('');
+  const [progressOpenToken, setProgressOpenToken] = useState(0);
   const controlledProject = useRef<{ projectId: string; worktreeId: string; worktrees: WorktreeInfo[] } | undefined>(undefined);
   const gesture = useRef<{ at: number; kind: string; target: EventTarget | null }>({ at: 0, kind: '', target: null });
   const searchRef = useRef<HTMLInputElement>(null);
@@ -351,12 +354,13 @@ export default function App() {
     if (node.parentId) { const requestedScope = scope; request<NodeDetails>(`/nodes/${encodeURIComponent(node.parentId)}`, scope).then(value => { if (scopeRef.current === requestedScope && selectedIdRef.current === node.id && navigationSequence.current === navigationAtSearch) { navigate({ view: 'architecture', root: value.node }, node, previous); setFocusRequest({ id: node.id, token: ++focusSequence.current }); } }).catch(error => { if (scopeRef.current === requestedScope && selectedIdRef.current === node.id && navigationSequence.current === navigationAtSearch) { setGraphError(errorMessage(error)); setGraphLoading(false); } }); }
     else navigate({ view: 'architecture' }, node, previous);
   };
-  const openArchitectureCode = (intent: OpenCodeRequest) => {
+  const openArchitectureCode = (intent: OpenCodeRequest, expectedRevision?: string) => {
     const requestedScope = scope; const previous = captureHistory(); const sequence = ++navigationSequence.current;
     if (primaryPage !== 'code') setReturnPage(primaryPage);
     setPrimaryPage('code'); setCodeNavigationPending(true); resetSelection(); setGraph(EMPTY_GRAPH); setGraphLoading(true); setGraphError('');
     request<NodeDetails>(`/nodes/${encodeURIComponent(intent.nodeId)}`, scope).then(value => {
       if (scopeRef.current !== requestedScope || navigationSequence.current !== sequence) return;
+      if (expectedRevision && value.revision !== expectedRevision) { setCodeNavigationPending(false); setGraphLoading(false); setGraphError('源码索引已更新，原演示证据不再匹配。请重新分析后定位。'); return; }
       setCodeNavigationPending(false); enterNode(value.node, previous);
       if (intent.evidenceId && value.evidence.some(item => item.id === intent.evidenceId)) resetSelection(value.node, { evidenceId: intent.evidenceId, bottomTab: 'source', revision: value.revision });
     }).catch(error => { if (scopeRef.current === requestedScope && navigationSequence.current === sequence) { setCodeNavigationPending(false); setNotice(errorMessage(error)); } });
@@ -415,7 +419,15 @@ export default function App() {
       <button className="icon-button scan-button" title="重新完整扫描当前工作区" aria-label="重新完整扫描" disabled={!scope || scanPending || state === 'analyzing'} onClick={() => void scan(true)}><RefreshCw size={15} className={scanPending || state === 'analyzing' ? 'spin' : ''} /></button>
     </header>
 
-    <LinkBar controller={bridge} highlightsEnabled={controlHighlights && !!controlledPage} staleMessage={controlStale} />
+    <LinkBar controller={bridge} highlightsEnabled={controlHighlights && !!controlledPage} staleMessage={controlStale} onShowProgress={() => setProgressOpenToken(value => value + 1)} />
+    <FloatingProgress userRevision={bridge.state.userRevision} activities={bridge.activities} command={bridge.command?.resolved.snapshot.scopeId === scope ? bridge.command : undefined} receipt={bridge.receipt} connected={bridge.connected} allowControl={bridge.state.allowControl} scopeId={scope} staleMessage={controlStale || (bridge.command?.resolved.snapshot.scopeId === scope && revision && bridge.command.resolved.snapshot.indexSnapshotId !== revision ? '当前源码索引已更新，请重新分析后查看实现。' : '')} error={bridge.error} openToken={progressOpenToken} onReconnect={bridge.reconnect} onLeave={() => void bridge.leave()} onOpenCode={(nodeId, evidenceId) => {
+      const command = bridge.command;
+      if (!command || !bridge.state.allowControl || !bridge.connected || !revision || command.resolved.snapshot.indexSnapshotId !== revision || !presentationIsCurrent(command, bridge.receipt, scope, controlStale, Date.now(), bridge.activities, bridge.state.userRevision)) { setNotice('演示已暂停或证据版本已变化，请重新分析后查看实现。'); return; }
+      const nodes = command.resolved.semantic?.flow?.codeNodes || command.resolved.codeGraph?.nodes || [];
+      const node = nodes.find(item => item.id === nodeId);
+      if (!node || (evidenceId && !node.evidenceIds.includes(evidenceId))) { setNotice('该源码证据不属于当前步骤的实现，已停止定位。'); return; }
+      bridge.markUserAction(); setControlPresentation(undefined); openArchitectureCode({ nodeId, evidenceId, mode: 'symbol' }, command.resolved.snapshot.indexSnapshotId);
+    }} />
 
     <nav className="primary-navigation" aria-label="主导航">{([{id:'overview',label:'系统总览',icon:Layers3},{id:'technical',label:'技术架构',icon:LayoutGrid},{id:'flows',label:'业务流程',icon:Workflow},{id:'code',label:'代码地图',icon:Code2}] as const).map(item => <button key={item.id} className={primaryPage === item.id ? 'active' : ''} aria-current={primaryPage === item.id ? 'page' : undefined} onClick={() => changePrimaryPage(item.id)}><item.icon size={14}/>{item.label}</button>)}<span className="navigation-level-note">{primaryPage === 'code' ? 'L3 组件 · L4 方法与源码' : primaryPage === 'flows' ? '解释 · 实现 · 源码证据' : 'L1 系统 · L2 模块'}</span></nav>
     {primaryPage === 'flows' && !controlledPage && <div className="flow-origin-toggle"><span>同一源码快照 · 解释与实现双向关联</span><button aria-pressed={legacyFlows} onClick={() => { if (!legacyFlows) setArchitectureRoute(current => ({ ...current, perspective: 'flows', flowId: semanticLocation.flowId || current.flowId })); setLegacyFlows(current => !current); }}>{legacyFlows ? '返回双层语义图' : '原始流程证据'}</button></div>}

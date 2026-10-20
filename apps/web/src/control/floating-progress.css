@@ -1,0 +1,58 @@
+.floating-progress { position: fixed; z-index: 85; width: 330px; max-width: calc(100vw - 24px); max-height: min(420px, calc(100dvh - 24px)); display: flex; flex-direction: column; color: var(--text, #d9dce5); background: #191d25f5; border: 1px solid #3b4557; border-radius: 11px; box-shadow: 0 10px 32px #0005, 0 1px 4px #0003; overflow: hidden; font-size: 12px; text-align: left; }
+.floating-progress.is-collapsed { width: 292px; }
+.floating-progress-head { display: flex; align-items: center; min-height: 29px; padding: 2px 7px 0 5px; gap: 2px; }
+.floating-progress button { border-radius: 4px; }
+.floating-progress button:focus-visible { outline: 2px solid var(--accent, #a4b2fa); outline-offset: -2px; }
+.floating-progress-handle { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 26px; padding: 0 3px; color: #aeb9d2; font-size: 10px; font-weight: 600; letter-spacing: .3px; cursor: grab; touch-action: none; user-select: none; }
+.floating-progress.is-dragging { user-select: none; }
+.floating-progress.is-dragging .floating-progress-handle { cursor: grabbing; }
+.floating-progress-handle > svg:first-child { color: #67738b; }
+.floating-progress-icon { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex-shrink: 0; color: #8e9bb1; }
+.floating-progress-icon:hover { background: #ffffff0b; }
+.floating-progress-current { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; min-height: 56px; padding: 5px 12px 11px; text-align: left; }
+.floating-progress-current > strong { display: block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.5; font-weight: 560; }
+.floating-progress-status { display: flex; align-items: center; gap: 5px; color: #9caac3; font-size: 10px; }
+.floating-progress[data-progress-tone='complete'] .floating-progress-status { color: #9ccbb5; }
+.floating-progress[data-progress-tone='paused'] .floating-progress-status { color: #c4b48d; }
+.floating-progress[data-progress-tone='failed'] .floating-progress-status { color: #e6a3a5; }
+.floating-progress-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin: 2px 3px; }
+.floating-progress-content { overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 12px 9px; min-height: 0; border-top: 1px solid #ffffff08; }
+.floating-progress-content h3 { margin: 5px 0 7px; font-size: 12px; font-weight: 600; color: #e0e5f0; line-height: 1.55; }
+.floating-progress-content h4 { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; font-weight: 600; color: #abb7cd; margin: 12px 0 5px; }
+.floating-progress-content h4 span { font-weight: 400; color: #75849c; }
+.floating-progress-content p { margin: 4px 0 7px; font-size: 11px; line-height: 1.75; color: #b5bfd0; overflow-wrap: anywhere; }
+.floating-progress-content small { color: #8391a8; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.floating-progress-analysis { padding: 9px 0 4px; border-bottom: 1px solid #ffffff0b; }
+.floating-progress-explanation { padding-bottom: 6px; }
+.floating-progress-content .floating-progress-caution { color: #c1b293; border-left: 2px solid #7e6d47; padding-left: 7px; }
+.floating-progress-content .floating-progress-review { color: #b7ac94; }
+.floating-progress-code { padding: 0 0 6px; border-bottom: 1px solid #ffffff0b; }
+.floating-progress-code > div { margin-top: 5px; }
+.floating-progress-code > div > button { width: 100%; display: flex; align-items: center; gap: 6px; padding: 6px; font-size: 11px; color: #b8c5e3; background: #10151e55; margin-bottom: 3px; text-align: left; }
+.floating-progress-code > div > button:hover:not(:disabled) { background: #a4b2fa12; }
+.floating-progress-code > div > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.floating-progress-code > div > button > small { flex-shrink: 0; }
+.floating-progress-more { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 5px 0; font-size: 10px; color: #98addb; }
+.floating-progress-log > ol { list-style: none; margin: 8px 0 0; padding: 0; }
+.floating-progress-log li { display: flex; gap: 8px; padding: 0 0 12px; position: relative; }
+.floating-progress-log li:not(:last-child)::before { content: ''; position: absolute; width: 1px; top: 16px; bottom: 3px; left: 6px; background: #344055; }
+.floating-progress-log-icon { display: flex; width: 13px; height: 16px; align-items: center; justify-content: center; color: #8da1c7; flex-shrink: 0; margin-top: 1px; }
+.floating-progress-log li[data-activity-status='completed'] .floating-progress-log-icon { color: #8cb9a4; }
+.floating-progress-log li[data-activity-status='paused'] .floating-progress-log-icon { color: #c1b28f; }
+.floating-progress-log li[data-activity-status='failed'] .floating-progress-log-icon { color: #d89d9d; }
+.floating-progress-log li > div { flex: 1; min-width: 0; }
+.floating-progress-log-title { display: flex; align-items: baseline; gap: 9px; justify-content: space-between; line-height: 1.6; }
+.floating-progress-log-title strong { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+.floating-progress-log-title time { font-size: 9px; color: #76839b; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.floating-progress-log li p { margin: 3px 0 0; color: #929fb6; font-size: 10px; line-height: 1.65; }
+.floating-progress-content .floating-progress-footnote { font-size: 9px; line-height: 1.65; color: #78859b; margin: 2px 0 6px; }
+.floating-progress-content .floating-progress-empty { color: #8390a6; }
+.floating-progress-notice { border-radius: 4px; background: #b5a6740c; border: 1px solid #b5a67420; padding: 7px; margin-top: 9px !important; }
+.floating-progress-content .floating-progress-notice, .floating-progress-notice > p { color: #c2b698; font-size: 10px; }
+.floating-progress-footer { min-height: 33px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #ffffff0a; padding: 5px 11px; flex-shrink: 0; }
+.floating-progress-footer > span { flex: 1; color: #75839b; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.floating-progress-footer > button { display: flex; align-items: center; gap: 4px; color: #a8b5ce; font-size: 10px; padding: 3px; }
+.floating-progress-spinner { animation: floating-progress-spin 1s linear infinite; }
+@keyframes floating-progress-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .floating-progress-spinner { animation: none; } }
+@media (max-height: 360px) { .floating-progress { max-height: calc(100dvh - 16px); } .floating-progress-current { min-height: 47px; padding-bottom: 5px; } }
