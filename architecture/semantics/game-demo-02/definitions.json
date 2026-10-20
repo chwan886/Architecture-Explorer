@@ -1,0 +1,2481 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "game-demo-02",
+  "flows": [
+    {
+      "id": "claim-reserve",
+      "sourceFlowId": "claim-reserve",
+      "title": "领取驻守收益：从按钮到已确认余额",
+      "description": "分开领取意图、请求前补算、整数转账、事务与快照显示；共享command／settle不因此成为资源独占组件。",
+      "groups": [
+        {
+          "title": "发起领取意图",
+          "summary": "把用户操作组织为带身份、可等待派发的命令。",
+          "purpose": "把用户操作组织为带身份、可等待派发的命令。",
+          "detail": "把领取按钮的意图交给命令入口。；为一次领取操作建立可重试的命令身份。；在宿主空闲时派发待发意图。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "用户点击领取按钮",
+            "action=claim",
+            "当前账号版本",
+            "Busy",
+            "Pending",
+            "当前 State"
+          ],
+          "processing": [
+            "把领取按钮的意图交给命令入口。",
+            "为一次领取操作建立可重试的命令身份。",
+            "在宿主空闲时派发待发意图。"
+          ],
+          "outputs": [
+            "领取命令意图",
+            "Pending 命令",
+            "请求协程入口"
+          ],
+          "changes": [
+            "更新待发命令。"
+          ],
+          "id": "claim-intent",
+          "childIds": [
+            "claim-click",
+            "claim-send",
+            "claim-dispatch"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "准备并发送请求",
+          "summary": "固定命令版本并越过客户端传输边界。",
+          "purpose": "固定命令版本并越过客户端传输边界。",
+          "detail": "固定首发版本并序列化领取请求。；按照客户端协议发送命令 JSON。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "Pending",
+            "token",
+            "命令路由",
+            "path",
+            "body"
+          ],
+          "processing": [
+            "固定首发版本并序列化领取请求。",
+            "按照客户端协议发送命令 JSON。"
+          ],
+          "outputs": [
+            "path、JSON 和会话令牌",
+            "传输结果回调"
+          ],
+          "changes": [
+            "设置首发 Pending.revision。"
+          ],
+          "id": "claim-transport",
+          "childIds": [
+            "claim-request",
+            "claim-http"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "校验请求与账号",
+          "summary": "通过协议、身份、去重和版本约束进入规则处理。",
+          "purpose": "通过协议、身份、去重和版本约束进入规则处理。",
+          "detail": "把协议层的命令请求交给服务入口。；在共享事务入口检查身份、重放与版本。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "HTTP 路由、JSON、token",
+            "会话",
+            "请求标识",
+            "revision",
+            "账号数据"
+          ],
+          "processing": [
+            "把协议层的命令请求交给服务入口。",
+            "在共享事务入口检查身份、重放与版本。"
+          ],
+          "outputs": [
+            "服务执行请求",
+            "可继续处理的账号和命令，或提前返回结果"
+          ],
+          "changes": [],
+          "id": "claim-gate",
+          "childIds": [
+            "claim-handler",
+            "claim-execute"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "结算并领取储量",
+          "summary": "先补算可领取储量，再按整数部分增加可消费余额。",
+          "purpose": "先补算可领取储量，再按整数部分增加可消费余额。",
+          "detail": "先把驻守经过的时间补算为可领取储量。；将储量中的整数部分转入可消费余额。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "成员与设施",
+            "上次结算时间",
+            "当前时间",
+            "reserve",
+            "action=claim"
+          ],
+          "processing": [
+            "先把驻守经过的时间补算为可领取储量。",
+            "将储量中的整数部分转入可消费余额。"
+          ],
+          "outputs": [
+            "更新后的 reserve",
+            "增加的 stones、iron、essence 余额"
+          ],
+          "changes": [
+            "修改储量及结算水位。",
+            "减少对应 reserve，增加资源余额。"
+          ],
+          "id": "claim-economy",
+          "childIds": [
+            "claim-settle",
+            "claim-transfer"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "保存并构造快照",
+          "summary": "持久保存账号变化与回执，并组织完整状态响应。",
+          "purpose": "持久保存账号变化与回执，并组织完整状态响应。",
+          "detail": "让账号变化与请求回执在同一事务中持久保存。；向客户端提供包含资源余额的完整状态。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "处理后的账号",
+            "请求摘要",
+            "执行结果",
+            "账号状态",
+            "响应模式"
+          ],
+          "processing": [
+            "让账号变化与请求回执在同一事务中持久保存。",
+            "向客户端提供包含资源余额的完整状态。"
+          ],
+          "outputs": [
+            "持久账号与可重放回执",
+            "完整 state 响应"
+          ],
+          "changes": [
+            "写 SQLite accounts、requests，并按条件更新 revision/snapshotSeq。"
+          ],
+          "id": "claim-commit",
+          "childIds": [
+            "claim-persist",
+            "claim-snapshot"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "应用快照并显示余额",
+          "summary": "解析、检查并提交合法快照，再由界面读取资源余额。",
+          "purpose": "解析、检查并提交合法快照，再由界面读取资源余额。",
+          "detail": "将传输 JSON 解码为客户端响应对象。；在完整账号响应路径调用快照检查。；避免旧快照覆盖新状态，并补充静态目录。；把通过检查的完整状态提交给宿主。；让资源控件从当前快照显示余额。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "HTTP 传输结果 JSON",
+            "已解析 SectResponse",
+            "响应 snapshotSeq",
+            "当前 State",
+            "内容目录",
+            "response.state",
+            "State.stones",
+            "State.iron",
+            "State.essence"
+          ],
+          "processing": [
+            "将传输 JSON 解码为客户端响应对象。",
+            "在完整账号响应路径调用快照检查。",
+            "避免旧快照覆盖新状态，并补充静态目录。",
+            "把通过检查的完整状态提交给宿主。",
+            "让资源控件从当前快照显示余额。"
+          ],
+          "outputs": [
+            "SectResponse 或失败结果",
+            "进入会话快照检查",
+            "可应用的候选 State，或拒绝旧包",
+            "供后续页面读取的当前 State",
+            "资源控件文本"
+          ],
+          "changes": [
+            "可能补齐响应中的静态目录。",
+            "替换会话当前状态。",
+            "改变控件显示值。"
+          ],
+          "id": "claim-present",
+          "childIds": [
+            "claim-return",
+            "claim-prepare-call",
+            "claim-check",
+            "claim-apply",
+            "claim-display"
+          ],
+          "origin": "curated"
+        }
+      ],
+      "steps": [
+        {
+          "id": "claim-click",
+          "title": "点击领取驻守收益",
+          "summary": "把领取按钮的意图交给命令入口。",
+          "purpose": "把领取按钮的意图交给命令入口。",
+          "detail": "注册claim按钮回调；实际用户操作没有运行时证明。\n\n已注册回调以 claim 动作为参数调用 Send。\n\n边界：源码证明回调中的调用；没有采集实际点击。",
+          "inputs": [
+            "用户点击领取按钮"
+          ],
+          "processing": [
+            "已注册回调以 claim 动作为参数调用 Send。"
+          ],
+          "outputs": [
+            "领取命令意图"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-click"
+          ],
+          "bindings": [
+            {
+              "id": "claim-click-implementation",
+              "sourceStepId": "claim-click",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.TownPage().lambda[3]",
+                "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "claimClick"
+              ],
+              "expectedDeclarationHash": "54d01fa1bf48c6146e836c143dd50a13101fff77da54318b8594d905f016a469"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "回调只有发生点击时才会执行。",
+              "anchorIds": [
+                "claimClick"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-send",
+          "title": "创建有身份的领取意图",
+          "summary": "为一次领取操作建立可重试的命令身份。",
+          "purpose": "为一次领取操作建立可重试的命令身份。",
+          "detail": "Send构造命令，pending属性交由Session.Queue生成身份。\n\n构造命令并交由 Session.Queue 设置请求身份，再进入派发入口。",
+          "inputs": [
+            "action=claim",
+            "当前账号版本"
+          ],
+          "processing": [
+            "构造命令并交由 Session.Queue 设置请求身份，再进入派发入口。"
+          ],
+          "outputs": [
+            "Pending 命令"
+          ],
+          "changes": [
+            "更新待发命令。"
+          ],
+          "sourceStepIds": [
+            "claim-send"
+          ],
+          "bindings": [
+            {
+              "id": "claim-send-implementation",
+              "sourceStepId": "claim-send",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Send(string, string, string, int)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "send"
+              ],
+              "expectedDeclarationHash": "1037a138a2a36f4fd055f5a06de4eee7831469f922e771a9e7f1adbe1c941c0a"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "需要现有账号状态。",
+              "anchorIds": [
+                "send"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-dispatch",
+          "title": "等待空闲并派发",
+          "summary": "在宿主空闲时派发待发意图。",
+          "purpose": "在宿主空闲时派发待发意图。",
+          "detail": "等待Busy结束再调用Request；调用不证明协程已经运行。\n\n等待正在处理的请求结束，再创建 Request 协程。\n\n边界：协程调用边不证明协程已被调度完成。",
+          "inputs": [
+            "Busy",
+            "Pending",
+            "当前 State"
+          ],
+          "processing": [
+            "等待正在处理的请求结束，再创建 Request 协程。"
+          ],
+          "outputs": [
+            "请求协程入口"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-dispatch"
+          ],
+          "bindings": [
+            {
+              "id": "claim-dispatch-implementation",
+              "sourceStepId": "claim-dispatch",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.DispatchPending()",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "dispatch"
+              ],
+              "expectedDeclarationHash": "f1789b4b9d3c7f95eb90c01a475de6d647419ecbc685a981fb682cbe9f0dad77"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "State 与 Pending 必须仍存在。",
+              "anchorIds": [
+                "dispatch"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "协程调用边不证明协程已被调度完成。",
+              "anchorIds": [
+                "dispatch"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-request",
+          "title": "固定版本与JSON",
+          "summary": "固定首发版本并序列化领取请求。",
+          "purpose": "固定首发版本并序列化领取请求。",
+          "detail": "命令路由改v2，PreparePending固定首发版本，再序列化。\n\n将命令路由改为 v2；PreparePending 固定首发版本；序列化 JSON。\n\n边界：Request 会等待 Busy；传输完成通过协程继续执行。",
+          "inputs": [
+            "Pending",
+            "token",
+            "命令路由"
+          ],
+          "processing": [
+            "将命令路由改为 v2；PreparePending 固定首发版本；序列化 JSON。"
+          ],
+          "outputs": [
+            "path、JSON 和会话令牌"
+          ],
+          "changes": [
+            "设置首发 Pending.revision。"
+          ],
+          "sourceStepIds": [
+            "claim-request"
+          ],
+          "bindings": [
+            {
+              "id": "claim-request-implementation",
+              "sourceStepId": "claim-request",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "路径为命令路由时才准备 Pending。",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "Request 会等待 Busy；传输完成通过协程继续执行。",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-http",
+          "title": "发送JSON意图",
+          "summary": "按照客户端协议发送命令 JSON。",
+          "purpose": "按照客户端协议发送命令 JSON。",
+          "detail": "HTTP组件封装JSON和Bearer；未验证实际网络交付。\n\n封装 JSON 请求及 Bearer 会话信息。\n\n边界：网络交付与服务端实际接收尚未运行验证。",
+          "inputs": [
+            "path",
+            "body",
+            "token"
+          ],
+          "processing": [
+            "封装 JSON 请求及 Bearer 会话信息。"
+          ],
+          "outputs": [
+            "传输结果回调"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-http"
+          ],
+          "bindings": [
+            {
+              "id": "claim-http-implementation",
+              "sourceStepId": "claim-http",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Infrastructure.SectHttpClient.Send(string, string, string, System.Action<Game.Infrastructure.SectTransportResult>)",
+                "filePath": "Assets/Game/Infrastructure/SectHttpClient.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "httpSend"
+              ],
+              "expectedDeclarationHash": "f3a4b645d250706386c9f5cd9abd11f4556b6dd9b762634eea91776e6b6a451e"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "本机服务可达且请求获得响应才有正常结果。",
+              "anchorIds": [
+                "httpSend"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "网络交付与服务端实际接收尚未运行验证。",
+              "anchorIds": [
+                "httpSend"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-handler",
+          "title": "按合同接收命令",
+          "summary": "把协议层的命令请求交给服务入口。",
+          "purpose": "把协议层的命令请求交给服务入口。",
+          "detail": "Handler解析命令路由，通过动态service对象分派；不补造缺失calls。\n\n匹配命令路由并通过 service 对象分派执行。\n\n边界：动态对象分派没有直接静态 calls 证明；HTTP 到达顺序未验证。",
+          "inputs": [
+            "HTTP 路由、JSON、token"
+          ],
+          "processing": [
+            "匹配命令路由并通过 service 对象分派执行。"
+          ],
+          "outputs": [
+            "服务执行请求"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-handler"
+          ],
+          "bindings": [
+            {
+              "id": "claim-handler-implementation",
+              "sourceStepId": "claim-handler",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Handler.run_request",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "route"
+              ],
+              "expectedDeclarationHash": "25ee9f1afee0123c654aae55d11df5e962cfa87b7a02465f67a8191d4df66adf"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "请求匹配命令路由并通过解析。",
+              "anchorIds": [
+                "route"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "动态对象分派没有直接静态 calls 证明；HTTP 到达顺序未验证。",
+              "anchorIds": [
+                "route"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-execute",
+          "title": "认证、去重与版本校验",
+          "summary": "在共享事务入口检查身份、重放与版本。",
+          "purpose": "在共享事务入口检查身份、重放与版本。",
+          "detail": "获取锁和事务，重放／版本冲突可在补算前提前返回。\n\n获取锁并开启事务；认证、加载账号；处理旧回执与版本冲突。\n\n边界：一次事务属于一次请求；不等同于跨请求执行轨迹。",
+          "inputs": [
+            "会话",
+            "请求标识",
+            "revision",
+            "账号数据"
+          ],
+          "processing": [
+            "获取锁并开启事务；认证、加载账号；处理旧回执与版本冲突。"
+          ],
+          "outputs": [
+            "可继续处理的账号和命令，或提前返回结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-execute"
+          ],
+          "bindings": [
+            {
+              "id": "claim-execute-implementation",
+              "sourceStepId": "claim-execute",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.execute",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "transaction",
+                "execAdvance"
+              ],
+              "expectedDeclarationHash": "e375e9842a4a37cfca8a700a3e7aaa17644319c0e243782ff28be2461e880bde"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "旧回执、身份或版本问题可能使执行提前返回。",
+              "anchorIds": [
+                "transaction",
+                "execAdvance"
+              ]
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": [
+                "transaction",
+                "execAdvance"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-settle",
+          "title": "补算驻守储量",
+          "summary": "先把驻守经过的时间补算为可领取储量。",
+          "purpose": "先把驻守经过的时间补算为可领取储量。",
+          "detail": "settle调用rates将elapsed收益写reserve；此函数也服务修炼和探矿。\n\nsettle 中使用 rates 与经过时间累积 reserve；同一函数也处理修炼与探矿。\n\n边界：跨模块导入调用在当前索引中仅有 inferred 依据。",
+          "inputs": [
+            "成员与设施",
+            "上次结算时间",
+            "当前时间"
+          ],
+          "processing": [
+            "settle 中使用 rates 与经过时间累积 reserve；同一函数也处理修炼与探矿。"
+          ],
+          "outputs": [
+            "更新后的 reserve"
+          ],
+          "changes": [
+            "修改储量及结算水位。"
+          ],
+          "sourceStepIds": [
+            "claim-settle"
+          ],
+          "bindings": [
+            {
+              "id": "claim-settle-implementation",
+              "sourceStepId": "claim-settle",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_rules.settle",
+                "filePath": "Server/sect_rules.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "settle"
+              ],
+              "expectedDeclarationHash": "e39fb98a22a3eec323656a3806350b47a0ce48e04644cb2ba950f2ecfec77dce"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "受容量和时间上限约束。",
+              "anchorIds": [
+                "settle"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-transfer",
+          "title": "领取整数资源",
+          "summary": "将储量中的整数部分转入可消费余额。",
+          "purpose": "将储量中的整数部分转入可消费余额。",
+          "detail": "command的claim分支将reserve整数转到余额，小数保留。\n\n逐种资源取整数、增加余额、保留储量小数部分。\n\n边界：分支源码不证明某次请求一定进入该分支。",
+          "inputs": [
+            "reserve",
+            "action=claim"
+          ],
+          "processing": [
+            "逐种资源取整数、增加余额、保留储量小数部分。"
+          ],
+          "outputs": [
+            "增加的 stones、iron、essence 余额"
+          ],
+          "changes": [
+            "减少对应 reserve，增加资源余额。"
+          ],
+          "sourceStepIds": [
+            "claim-transfer"
+          ],
+          "bindings": [
+            {
+              "id": "claim-transfer-implementation",
+              "sourceStepId": "claim-transfer",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_rules.command",
+                "filePath": "Server/sect_rules.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "claim"
+              ],
+              "expectedDeclarationHash": "0a768e0ac08f1bbb37c5ceb3718d5e6acc7dfc137b2972be4d90a4e2023914e2"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "只有 claim 分支执行此转账。",
+              "anchorIds": [
+                "claim"
+              ]
+            },
+            {
+              "kind": "loop",
+              "description": "按资源类型逐项领取整数储量。",
+              "anchorIds": [
+                "claim"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-persist",
+          "title": "同事务保存状态与回执",
+          "summary": "让账号变化与请求回执在同一事务中持久保存。",
+          "purpose": "让账号变化与请求回执在同一事务中持久保存。",
+          "detail": "成功业务推进revision，状态变化才增加snapshotSeq并UPDATE；回执同事务写入。\n\n根据状态是否变化更新序号并保存账号；记录请求回执后提交。\n\n边界：提交后的响应发送不由这段源码证明已经完成。",
+          "inputs": [
+            "处理后的账号",
+            "请求摘要",
+            "执行结果"
+          ],
+          "processing": [
+            "根据状态是否变化更新序号并保存账号；记录请求回执后提交。"
+          ],
+          "outputs": [
+            "持久账号与可重放回执"
+          ],
+          "changes": [
+            "写 SQLite accounts、requests，并按条件更新 revision/snapshotSeq。"
+          ],
+          "sourceStepIds": [
+            "claim-persist"
+          ],
+          "bindings": [
+            {
+              "id": "claim-persist-implementation",
+              "sourceStepId": "claim-persist",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.execute",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "persist"
+              ],
+              "expectedDeclarationHash": "e375e9842a4a37cfca8a700a3e7aaa17644319c0e243782ff28be2461e880bde"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "并非所有失败或重放路径都会推进版本。",
+              "anchorIds": [
+                "persist"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-snapshot",
+          "title": "构造完整账号快照",
+          "summary": "向客户端提供包含资源余额的完整状态。",
+          "purpose": "向客户端提供包含资源余额的完整状态。",
+          "detail": "full响应经snapshot公开账号状态，内部水位不公开。\n\nfull 模式经 snapshot 构造公开状态，保留内部字段边界。\n\n边界：Python 字典到客户端 DTO 的值传递尚无运行时证明。",
+          "inputs": [
+            "账号状态",
+            "响应模式"
+          ],
+          "processing": [
+            "full 模式经 snapshot 构造公开状态，保留内部字段边界。"
+          ],
+          "outputs": [
+            "完整 state 响应"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-snapshot"
+          ],
+          "bindings": [
+            {
+              "id": "claim-snapshot-implementation",
+              "sourceStepId": "claim-snapshot",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.response_state",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "fullResponse"
+              ],
+              "expectedDeclarationHash": "79b0d979ec70ff1a77b8f1d2db688e42a845a6044d182f944f58d793ca06ebef"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "本阶段描述 full 响应路径。",
+              "anchorIds": [
+                "fullResponse"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-return",
+          "title": "接收并解析JSON",
+          "summary": "将传输 JSON 解码为客户端响应对象。",
+          "purpose": "将传输 JSON 解码为客户端响应对象。",
+          "detail": "宿主解析SectResponse；这是协议步骤，不是实际收包轨迹。\n\n使用 JsonUtility 解析 SectResponse；错误与空响应另走保护分支。\n\n边界：没有采集实际收包；服务端发送与客户端接收是协议边界。",
+          "inputs": [
+            "HTTP 传输结果 JSON"
+          ],
+          "processing": [
+            "使用 JsonUtility 解析 SectResponse；错误与空响应另走保护分支。"
+          ],
+          "outputs": [
+            "SectResponse 或失败结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-return"
+          ],
+          "bindings": [
+            {
+              "id": "claim-return-implementation",
+              "sourceStepId": "claim-return",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "decode"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "必须获得可解析响应，且未因错误提前返回。",
+              "anchorIds": [
+                "decode"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "没有采集实际收包；服务端发送与客户端接收是协议边界。",
+              "anchorIds": [
+                "decode"
+              ]
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": [
+                "decode"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-prepare-call",
+          "title": "宿主调用快照检查",
+          "summary": "在完整账号响应路径调用快照检查。",
+          "purpose": "在完整账号响应路径调用快照检查。",
+          "detail": "在本次合法full账号响应路径中，Request解析响应后调用Session.PrepareResponse；这里只定位调用语句。\n\nRequest 在保护分支之后调用 Session.PrepareResponse。\n\n边界：解码到调用点只有同一方法源码顺序支持，不代表运行时必执行。",
+          "inputs": [
+            "已解析 SectResponse"
+          ],
+          "processing": [
+            "Request 在保护分支之后调用 Session.PrepareResponse。"
+          ],
+          "outputs": [
+            "进入会话快照检查"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "claim-prepare-call"
+          ],
+          "bindings": [
+            {
+              "id": "claim-prepare-call-implementation",
+              "sourceStepId": "claim-prepare-call",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "prepareResponse"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "非 401、未提前返回且走完整账号响应路径。",
+              "anchorIds": [
+                "prepareResponse"
+              ]
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": [
+                "prepareResponse"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-check",
+          "title": "检查顺序并补目录",
+          "summary": "避免旧快照覆盖新状态，并补充静态目录。",
+          "purpose": "避免旧快照覆盖新状态，并补充静态目录。",
+          "detail": "Session拒绝旧序号，必要时恢复静态内容目录。\n\nPrepareResponse 检查快照顺序，并按需要恢复静态内容引用。",
+          "inputs": [
+            "响应 snapshotSeq",
+            "当前 State",
+            "内容目录"
+          ],
+          "processing": [
+            "PrepareResponse 检查快照顺序，并按需要恢复静态内容引用。"
+          ],
+          "outputs": [
+            "可应用的候选 State，或拒绝旧包"
+          ],
+          "changes": [
+            "可能补齐响应中的静态目录。"
+          ],
+          "sourceStepIds": [
+            "claim-check"
+          ],
+          "bindings": [
+            {
+              "id": "claim-check-implementation",
+              "sourceStepId": "claim-check",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Application.SectSession.PrepareResponse(Game.Application.SectResponse)",
+                "filePath": "Assets/Game/Application/SectSession.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [],
+              "expectedDeclarationHash": "4ee3ad8f011e6312cacbc1d9d41a4c3c579c6477f3172fb5746700ef4ee9b9d9"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "过旧快照会被拒绝。",
+              "anchorIds": []
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": []
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-apply",
+          "title": "提交合法快照",
+          "summary": "把通过检查的完整状态提交给宿主。",
+          "purpose": "把通过检查的完整状态提交给宿主。",
+          "detail": "宿主提交有效State，无合法state则保留旧界面。\n\n在存在合法 state 的分支提交 Session.State。\n\n边界：提交后何时重绘取决于宿主生命周期。",
+          "inputs": [
+            "response.state"
+          ],
+          "processing": [
+            "在存在合法 state 的分支提交 Session.State。"
+          ],
+          "outputs": [
+            "供后续页面读取的当前 State"
+          ],
+          "changes": [
+            "替换会话当前状态。"
+          ],
+          "sourceStepIds": [
+            "claim-apply"
+          ],
+          "bindings": [
+            {
+              "id": "claim-apply-implementation",
+              "sourceStepId": "claim-apply",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "applyState"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "response.state 非空；否则保留既有状态。",
+              "anchorIds": [
+                "applyState"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "claim-display",
+          "title": "资源控件读取余额",
+          "summary": "让资源控件从当前快照显示余额。",
+          "purpose": "让资源控件从当前快照显示余额。",
+          "detail": "BuildShell注册三个余额读取回调；控件刷新由页面生命周期决定，不与事务同帧。\n\nBuildShell 注册余额读取回调，由页面刷新机制读取并更新文本。\n\n边界：控件刷新与网络事务没有同帧或同步执行证明。",
+          "inputs": [
+            "State.stones",
+            "State.iron",
+            "State.essence"
+          ],
+          "processing": [
+            "BuildShell 注册余额读取回调，由页面刷新机制读取并更新文本。"
+          ],
+          "outputs": [
+            "资源控件文本"
+          ],
+          "changes": [
+            "改变控件显示值。"
+          ],
+          "sourceStepIds": [
+            "claim-display"
+          ],
+          "bindings": [
+            {
+              "id": "claim-display-implementation",
+              "sourceStepId": "claim-display",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.BuildShell()",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "currency"
+              ],
+              "expectedDeclarationHash": "49d01c3ef9055bbb3d5aa2451fcc01b5055b134ec017f160ff9f5db4022b774a"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "存在有效页面与状态。",
+              "anchorIds": [
+                "currency"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "控件刷新与网络事务没有同帧或同步执行证明。",
+              "anchorIds": [
+                "currency"
+              ]
+            }
+          ],
+          "origin": "curated"
+        }
+      ]
+    },
+    {
+      "id": "battle-start-poll-result",
+      "sourceFlowId": "battle-start-poll-result",
+      "title": "开战、后续轮询与权威胜利同步",
+      "description": "拆分开战、后续轮询、固定步、奖励保存和全量刷新；普通与守卫结果按条件区分。",
+      "groups": [
+        {
+          "title": "提交挑战意图",
+          "summary": "选择挑战方式并发出有身份的开战请求。",
+          "purpose": "选择挑战方式并发出有身份的开战请求。",
+          "detail": "把普通挑战或守卫重试交给命令入口。；为开战意图准备身份、版本与 JSON。；通过本机 HTTP 客户端发送开战意图。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "用户点击",
+            "region",
+            "本场/守卫状态",
+            "Pending",
+            "token",
+            "开战参数",
+            "path",
+            "body"
+          ],
+          "processing": [
+            "把普通挑战或守卫重试交给命令入口。",
+            "为开战意图准备身份、版本与 JSON。",
+            "通过本机 HTTP 客户端发送开战意图。"
+          ],
+          "outputs": [
+            "开战命令意图",
+            "待发送的开战请求",
+            "传输结果"
+          ],
+          "changes": [
+            "固定首发命令版本。"
+          ],
+          "id": "battle-intent",
+          "childIds": [
+            "battle-click",
+            "battle-request",
+            "battle-http"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "校验与分派开战",
+          "summary": "通过事务入口和业务分支后进入战斗创建。",
+          "purpose": "通过事务入口和业务分支后进入战斗创建。",
+          "detail": "用共同事务规则接收开战命令。；从共享业务分派器转交 battle 命令。；校验具体开战模式并选择创建入口。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "账号会话",
+            "请求标识",
+            "revision",
+            "开战数据",
+            "action",
+            "data",
+            "state.last",
+            "value",
+            "locked"
+          ],
+          "processing": [
+            "用共同事务规则接收开战命令。",
+            "从共享业务分派器转交 battle 命令。",
+            "校验具体开战模式并选择创建入口。"
+          ],
+          "outputs": [
+            "可执行规则意图或提前返回结果",
+            "战斗命令处理请求",
+            "合法的 start 调用"
+          ],
+          "changes": [],
+          "id": "battle-gate",
+          "childIds": [
+            "battle-route",
+            "battle-rules",
+            "battle-command"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "创建权威本场",
+          "summary": "由服务端建立角色、配置、策略和随机状态。",
+          "purpose": "由服务端建立角色、配置、策略和随机状态。",
+          "detail": "创建服务端权威战斗实例。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "有效技能",
+            "装备属性",
+            "遭遇配置",
+            "策略"
+          ],
+          "processing": [
+            "创建服务端权威战斗实例。"
+          ],
+          "outputs": [
+            "combat.battle"
+          ],
+          "changes": [
+            "建立本场并设置掌门 activity。"
+          ],
+          "id": "battle-create",
+          "childIds": [
+            "battle-start"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "后续请求驱动固定步",
+          "summary": "用独立轮询请求和服务端时间推进本场。",
+          "purpose": "用独立轮询请求和服务端时间推进本场。",
+          "detail": "在后续界面帧到期时发起新的轮询。；让新的查询请求也能推进权威状态。；按服务端时间与心跳预算推进固定步。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "State",
+            "Busy",
+            "pollAt",
+            "fullPollAt",
+            "会话",
+            "当前账号",
+            "查询路由",
+            "now",
+            "heartbeat",
+            "battle.last",
+            "active 状态"
+          ],
+          "processing": [
+            "在后续界面帧到期时发起新的轮询。",
+            "让新的查询请求也能推进权威状态。",
+            "按服务端时间与心跳预算推进固定步。"
+          ],
+          "outputs": [
+            "新的 battle/state 请求",
+            "待补算的当前账号",
+            "推进后的本场或中止结果"
+          ],
+          "changes": [
+            "设置下一轮询时间。",
+            "推进 last/heartbeat 等本场水位。"
+          ],
+          "id": "battle-heartbeat",
+          "childIds": [
+            "battle-next-poll",
+            "battle-poll-execute",
+            "battle-advance"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "命中与终局分支",
+          "summary": "结算固定步并按结果应用奖励、解锁或连续战斗条件。",
+          "purpose": "结算固定步并按结果应用奖励、解锁或连续战斗条件。",
+          "detail": "结算一个固定步内的动作、命中和终局条件。；按终局类型发放奖励、解锁或处理连续战斗。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "角色",
+            "待结算效果",
+            "动作与飞剑",
+            "status",
+            "boss",
+            "rewards",
+            "continuous"
+          ],
+          "processing": [
+            "结算一个固定步内的动作、命中和终局条件。",
+            "按终局类型发放奖励、解锁或处理连续战斗。"
+          ],
+          "outputs": [
+            "本步状态，或 finish 调用",
+            "本场 result 与条件奖励"
+          ],
+          "changes": [
+            "可修改 HP、法力、状态与反馈。",
+            "修改资源或 opened/essence，并设置 result/nextAt 等。"
+          ],
+          "id": "battle-resolve",
+          "childIds": [
+            "battle-step",
+            "battle-finish"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "保存结果并选择响应",
+          "summary": "把规则结果保存，明确动态包与完整快照的范围。",
+          "purpose": "把规则结果保存，明确动态包与完整快照的范围。",
+          "detail": "把补算结果与奖励写回账号。；按查询模式返回动态战斗包或完整账号快照。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "更新后的本场和账号",
+            "权威账号",
+            "响应模式"
+          ],
+          "processing": [
+            "把补算结果与奖励写回账号。",
+            "按查询模式返回动态战斗包或完整账号快照。"
+          ],
+          "outputs": [
+            "持久化账号与 snapshotSeq",
+            "HTTP 响应对象"
+          ],
+          "changes": [
+            "按状态变化写 SQLite 账号。"
+          ],
+          "id": "battle-commit",
+          "childIds": [
+            "battle-save",
+            "battle-response"
+          ],
+          "origin": "curated"
+        },
+        {
+          "title": "补取全量并刷新表现",
+          "summary": "按条件补取完整状态，再将快照交给只读视图和生命条。",
+          "purpose": "按条件补取完整状态，再将快照交给只读视图和生命条。",
+          "detail": "解析战斗响应并判断是否需要补取全量状态。；取得能包含奖励与矿格变化的完整账号状态。；在应用完整快照前检查顺序和目录。；把已提交快照交给只读战斗表现。；用当前快照刷新生命与法力显示。\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。",
+          "inputs": [
+            "JSON",
+            "battleOnly",
+            "combat.locked",
+            "动态结束条件",
+            "周期全量条件",
+            "snapshotSeq",
+            "revision",
+            "静态目录",
+            "State.combat",
+            "hero.hp/maxHp",
+            "hero.mana/maxMana"
+          ],
+          "processing": [
+            "解析战斗响应并判断是否需要补取全量状态。",
+            "取得能包含奖励与矿格变化的完整账号状态。",
+            "在应用完整快照前检查顺序和目录。",
+            "把已提交快照交给只读战斗表现。",
+            "用当前快照刷新生命与法力显示。"
+          ],
+          "outputs": [
+            "可合并响应或全量查询意图",
+            "新的 /v2/state 请求及其响应路径",
+            "可应用的候选 State",
+            "战斗视图快照",
+            "生命条和法力条文本/数值"
+          ],
+          "changes": [
+            "可能补全候选响应的目录。",
+            "更新视图快照及表现对象。",
+            "改变 meter.value 与 title。"
+          ],
+          "id": "battle-present",
+          "childIds": [
+            "battle-decode",
+            "battle-full-state",
+            "battle-prepare",
+            "battle-view",
+            "battle-hud"
+          ],
+          "origin": "curated"
+        }
+      ],
+      "steps": [
+        {
+          "id": "battle-click",
+          "title": "点击挑战按钮",
+          "summary": "把普通挑战或守卫重试交给命令入口。",
+          "purpose": "把普通挑战或守卫重试交给命令入口。",
+          "detail": "回调选择普通battle_start或已有守卫重试battle_guard；用户是否操作未运行验证。\n\n回调按重试条件选择 battle_start 或 battle_guard。\n\n边界：用户点击没有运行时采集。",
+          "inputs": [
+            "用户点击",
+            "region",
+            "本场/守卫状态"
+          ],
+          "processing": [
+            "回调按重试条件选择 battle_start 或 battle_guard。"
+          ],
+          "outputs": [
+            "开战命令意图"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-click"
+          ],
+          "bindings": [
+            {
+              "id": "battle-click-implementation",
+              "sourceStepId": "battle-click",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.BuildBattleFocus().lambda[1]",
+                "filePath": "Assets/Game/Presentation/SectGameHost.Battle.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "battleClick"
+              ],
+              "expectedDeclarationHash": "de2eca20fe18e47e17ede9e5344f332d027c93b9e7adcc2fadc9b1be693d64f2"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "满足当前界面的允许开战条件。",
+              "anchorIds": [
+                "battleClick"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-request",
+          "title": "提交带身份的开战意图",
+          "summary": "为开战意图准备身份、版本与 JSON。",
+          "purpose": "为开战意图准备身份、版本与 JSON。",
+          "detail": "经Send、DispatchPending和Request准备命令；折叠编排，不声称按钮直接调用Request。\n\n场景模型折叠 Send→DispatchPending→Request 的请求准备职责。\n\n边界：按钮到折叠请求阶段仅是解释关联，不伪造直接调用边。",
+          "inputs": [
+            "Pending",
+            "token",
+            "开战参数"
+          ],
+          "processing": [
+            "场景模型折叠 Send→DispatchPending→Request 的请求准备职责。"
+          ],
+          "outputs": [
+            "待发送的开战请求"
+          ],
+          "changes": [
+            "固定首发命令版本。"
+          ],
+          "sourceStepIds": [
+            "battle-request"
+          ],
+          "bindings": [
+            {
+              "id": "battle-request-implementation",
+              "sourceStepId": "battle-request",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "合法 Pending 且宿主可发起请求。",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "按钮到折叠请求阶段仅是解释关联，不伪造直接调用边。",
+              "anchorIds": [
+                "prepare",
+                "httpCall"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-http",
+          "title": "loopback发送命令",
+          "summary": "通过本机 HTTP 客户端发送开战意图。",
+          "purpose": "通过本机 HTTP 客户端发送开战意图。",
+          "detail": "传输层构造JSON请求；网络交付未验证。\n\n构造命令 JSON 请求并等待传输回调。\n\n边界：网络送达、接收与完成时刻均未运行验证。",
+          "inputs": [
+            "path",
+            "body",
+            "token"
+          ],
+          "processing": [
+            "构造命令 JSON 请求并等待传输回调。"
+          ],
+          "outputs": [
+            "传输结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-http"
+          ],
+          "bindings": [
+            {
+              "id": "battle-http-implementation",
+              "sourceStepId": "battle-http",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Infrastructure.SectHttpClient.Send(string, string, string, System.Action<Game.Infrastructure.SectTransportResult>)",
+                "filePath": "Assets/Game/Infrastructure/SectHttpClient.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "httpSend"
+              ],
+              "expectedDeclarationHash": "f3a4b645d250706386c9f5cd9abd11f4556b6dd9b762634eea91776e6b6a451e"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "连接与服务正常时才能取得成功结果。",
+              "anchorIds": [
+                "httpSend"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "网络送达、接收与完成时刻均未运行验证。",
+              "anchorIds": [
+                "httpSend"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-route",
+          "title": "服务事务执行合法意图",
+          "summary": "用共同事务规则接收开战命令。",
+          "purpose": "用共同事务规则接收开战命令。",
+          "detail": "HTTP合同进入execute，认证、回执、版本和时间补算后调用rules.command。\n\n认证、回执去重、版本检查与时间补算后，进入规则命令入口。\n\n边界：HTTP 分派和跨模块规则调用保持未验证。",
+          "inputs": [
+            "账号会话",
+            "请求标识",
+            "revision",
+            "开战数据"
+          ],
+          "processing": [
+            "认证、回执去重、版本检查与时间补算后，进入规则命令入口。"
+          ],
+          "outputs": [
+            "可执行规则意图或提前返回结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-route"
+          ],
+          "bindings": [
+            {
+              "id": "battle-route-implementation",
+              "sourceStepId": "battle-route",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.execute",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "transaction",
+                "execCommand"
+              ],
+              "expectedDeclarationHash": "e375e9842a4a37cfca8a700a3e7aaa17644319c0e243782ff28be2461e880bde"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "请求未被重放/冲突/认证分支提前结束。",
+              "anchorIds": [
+                "transaction",
+                "execCommand"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "HTTP 分派和跨模块规则调用保持未验证。",
+              "anchorIds": [
+                "transaction",
+                "execCommand"
+              ]
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": [
+                "transaction",
+                "execCommand"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-rules",
+          "title": "转交battle命令",
+          "summary": "从共享业务分派器转交 battle 命令。",
+          "purpose": "从共享业务分派器转交 battle 命令。",
+          "detail": "共享rules.command按battle_前缀转交独立combat处理器。\n\nrules.command 识别 battle_ 前缀，再调用 combat 处理器。\n\n边界：当前 Python 跨模块调用为 inferred，不能标成静态确认。",
+          "inputs": [
+            "action",
+            "data",
+            "state.last"
+          ],
+          "processing": [
+            "rules.command 识别 battle_ 前缀，再调用 combat 处理器。"
+          ],
+          "outputs": [
+            "战斗命令处理请求"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-rules"
+          ],
+          "bindings": [
+            {
+              "id": "battle-rules-implementation",
+              "sourceStepId": "battle-rules",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_rules.command",
+                "filePath": "Server/sect_rules.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "routeBattle",
+                "rulesBranch",
+                "rulesDispatch"
+              ],
+              "expectedDeclarationHash": "0a768e0ac08f1bbb37c5ceb3718d5e6acc7dfc137b2972be4d90a4e2023914e2"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "action 以 battle_ 开头。",
+              "anchorIds": [
+                "routeBattle",
+                "rulesBranch",
+                "rulesDispatch"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-command",
+          "title": "校验并选择开战分支",
+          "summary": "校验具体开战模式并选择创建入口。",
+          "purpose": "校验具体开战模式并选择创建入口。",
+          "detail": "普通开战与守卫开战分别校验后调用start；共享命令不是其他业务独占组件。\n\n普通和守卫分支分别校验条件，再调用 start。",
+          "inputs": [
+            "action",
+            "value",
+            "locked"
+          ],
+          "processing": [
+            "普通和守卫分支分别校验条件，再调用 start。"
+          ],
+          "outputs": [
+            "合法的 start 调用"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-command"
+          ],
+          "bindings": [
+            {
+              "id": "battle-command-implementation",
+              "sourceStepId": "battle-command",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.command",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "startCommand",
+                "guardStart"
+              ],
+              "expectedDeclarationHash": "d5ac5c299075f5dbc9fce2c8bf2edf25d8f511036ba324b12665c111020ca308"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "battle_start 或 battle_guard，且符合本场锁定与场景限制。",
+              "anchorIds": [
+                "startCommand",
+                "guardStart"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-start",
+          "title": "创建权威本场",
+          "summary": "创建服务端权威战斗实例。",
+          "purpose": "创建服务端权威战斗实例。",
+          "detail": "按有效技能、装备属性和encounters生成角色，持有奖励、策略和随机流。\n\n生成双方角色，保存奖励、随机流和本场状态。\n\n边界：创建本场后仍需后续请求驱动补算；没有后台持续 tick。",
+          "inputs": [
+            "有效技能",
+            "装备属性",
+            "遭遇配置",
+            "策略"
+          ],
+          "processing": [
+            "生成双方角色，保存奖励、随机流和本场状态。"
+          ],
+          "outputs": [
+            "combat.battle"
+          ],
+          "changes": [
+            "建立本场并设置掌门 activity。"
+          ],
+          "sourceStepIds": [
+            "battle-start"
+          ],
+          "bindings": [
+            {
+              "id": "battle-start-implementation",
+              "sourceStepId": "battle-start",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.start",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "start",
+                "state"
+              ],
+              "expectedDeclarationHash": "d08bf249aacd1579a653c8b3b9e45023d166f32a6058b2864c03a53314123997"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "通过开战分支的条件检查。",
+              "anchorIds": [
+                "start",
+                "state"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-next-poll",
+          "title": "后续帧开启新轮询",
+          "summary": "在后续界面帧到期时发起新的轮询。",
+          "purpose": "在后续界面帧到期时发起新的轮询。",
+          "detail": "开战结束后，后续Update满足pollAt才开启新的battle/state请求。\n\nUpdate 检查空闲和时间条件，选择动态或完整状态请求。\n\n边界：这是开战请求之后的独立请求，实际先后未运行验证。",
+          "inputs": [
+            "State",
+            "Busy",
+            "pollAt",
+            "fullPollAt"
+          ],
+          "processing": [
+            "Update 检查空闲和时间条件，选择动态或完整状态请求。"
+          ],
+          "outputs": [
+            "新的 battle/state 请求"
+          ],
+          "changes": [
+            "设置下一轮询时间。"
+          ],
+          "sourceStepIds": [
+            "battle-next-poll"
+          ],
+          "bindings": [
+            {
+              "id": "battle-next-poll-implementation",
+              "sourceStepId": "battle-next-poll",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Update()",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "poll"
+              ],
+              "expectedDeclarationHash": "41d7aa5503b26c2379753385fcf58882e5ff37aa59a5d671d06bccb7d060f873"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "已有 State、空闲且达到 pollAt。",
+              "anchorIds": [
+                "poll"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "这是开战请求之后的独立请求，实际先后未运行验证。",
+              "anchorIds": [
+                "poll"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-poll-execute",
+          "title": "新轮询请求进入事务",
+          "summary": "让新的查询请求也能推进权威状态。",
+          "purpose": "让新的查询请求也能推进权威状态。",
+          "detail": "/v2/battle或/v2/state重新进入execute；查询也可能补算和写账号。\n\nbattle/state 路由重新进入 execute，处理时间推进与事务保存。\n\n边界：轮询与开战不属于同一调用栈。",
+          "inputs": [
+            "会话",
+            "当前账号",
+            "查询路由"
+          ],
+          "processing": [
+            "battle/state 路由重新进入 execute，处理时间推进与事务保存。"
+          ],
+          "outputs": [
+            "待补算的当前账号"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-poll-execute"
+          ],
+          "bindings": [
+            {
+              "id": "battle-poll-execute-implementation",
+              "sourceStepId": "battle-poll-execute",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.execute",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "execAdvance",
+                "transaction"
+              ],
+              "expectedDeclarationHash": "e375e9842a4a37cfca8a700a3e7aaa17644319c0e243782ff28be2461e880bde"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "这是新 HTTP 请求，客户端不提交权威胜负。",
+              "anchorIds": [
+                "execAdvance",
+                "transaction"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "轮询与开战不属于同一调用栈。",
+              "anchorIds": [
+                "execAdvance",
+                "transaction"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-advance",
+          "title": "心跳及固定步预算",
+          "summary": "按服务端时间与心跳预算推进固定步。",
+          "purpose": "按服务端时间与心跳预算推进固定步。",
+          "detail": "advance检查心跳并按now补算，超出宽限可中止。\n\n检查心跳宽限并计算可补算的固定步，逐步调用 step。",
+          "inputs": [
+            "now",
+            "heartbeat",
+            "battle.last",
+            "active 状态"
+          ],
+          "processing": [
+            "检查心跳宽限并计算可补算的固定步，逐步调用 step。"
+          ],
+          "outputs": [
+            "推进后的本场或中止结果"
+          ],
+          "changes": [
+            "推进 last/heartbeat 等本场水位。"
+          ],
+          "sourceStepIds": [
+            "battle-advance"
+          ],
+          "bindings": [
+            {
+              "id": "battle-advance-implementation",
+              "sourceStepId": "battle-advance",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.advance",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "fixed"
+              ],
+              "expectedDeclarationHash": "41d7cd584d840e00f34827147bf62de6655d264ea9eeea62aa20b1bd8ff9d2fd"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "本场 active 且满足心跳条件；超出宽限可能中止。",
+              "anchorIds": [
+                "fixed"
+              ]
+            },
+            {
+              "kind": "loop",
+              "description": "按固定步预算或本步待处理对象迭代；不代表无限后台循环。",
+              "anchorIds": [
+                "fixed"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-step",
+          "title": "结算本步动作与命中",
+          "summary": "结算一个固定步内的动作、命中和终局条件。",
+          "purpose": "结算一个固定步内的动作、命中和终局条件。",
+          "detail": "处理状态和到期效果，飞剑经回调进入统一命中，然后检查胜负。\n\n处理到期效果和命中回调，再检查双方 HP 与胜负。\n\n边界：飞剑回调的全部动态分派仍有分析限制。",
+          "inputs": [
+            "角色",
+            "待结算效果",
+            "动作与飞剑"
+          ],
+          "processing": [
+            "处理到期效果和命中回调，再检查双方 HP 与胜负。"
+          ],
+          "outputs": [
+            "本步状态，或 finish 调用"
+          ],
+          "changes": [
+            "可修改 HP、法力、状态与反馈。"
+          ],
+          "sourceStepIds": [
+            "battle-step"
+          ],
+          "bindings": [
+            {
+              "id": "battle-step-implementation",
+              "sourceStepId": "battle-step",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.step",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "step",
+                "hit",
+                "outcome"
+              ],
+              "expectedDeclarationHash": "5e826f0cab09a11f45d9178bd23822fdef866230a6f24dbb1d2dd4e62e2bece5"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "对应效果到期；胜负条件成立时进入终局。",
+              "anchorIds": [
+                "step",
+                "hit",
+                "outcome"
+              ]
+            },
+            {
+              "kind": "loop",
+              "description": "按固定步预算或本步待处理对象迭代；不代表无限后台循环。",
+              "anchorIds": [
+                "step",
+                "hit",
+                "outcome"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-finish",
+          "title": "胜利奖励或守卫解锁",
+          "summary": "按终局类型发放奖励、解锁或处理连续战斗。",
+          "purpose": "按终局类型发放奖励、解锁或处理连续战斗。",
+          "detail": "finish只处理active：普通胜利发资源和wave；守卫胜利开格给灵髓。连续普通战斗可能仍锁定。\n\nactive 本场结束后，普通胜利推进资源/wave；守卫胜利开放矿格并给灵髓。\n\n边界：条件结果写入不是完整运行时数据传播证明。",
+          "inputs": [
+            "status",
+            "boss",
+            "rewards",
+            "continuous"
+          ],
+          "processing": [
+            "active 本场结束后，普通胜利推进资源/wave；守卫胜利开放矿格并给灵髓。"
+          ],
+          "outputs": [
+            "本场 result 与条件奖励"
+          ],
+          "changes": [
+            "修改资源或 opened/essence，并设置 result/nextAt 等。"
+          ],
+          "sourceStepIds": [
+            "battle-finish"
+          ],
+          "bindings": [
+            {
+              "id": "battle-finish-implementation",
+              "sourceStepId": "battle-finish",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.finish",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "reward",
+                "continuous"
+              ],
+              "expectedDeclarationHash": "b0de31e1bd16a692d97c335701040c09bda0b93e2470446e29a4dbd554c26331"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "胜利与失败、普通与守卫、连续模式具有不同分支。",
+              "anchorIds": [
+                "reward",
+                "continuous"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-save",
+          "title": "保存本场及奖励",
+          "summary": "把补算结果与奖励写回账号。",
+          "purpose": "把补算结果与奖励写回账号。",
+          "detail": "finish经step／advance返回后execute继续经营补算和状态保存；无独立领奖请求。\n\nstep/advance 返回后，execute 继续经营结算和事务保存。\n\n边界：本阶段是跨过程返回后的叙述关联，不宣称 finish 直接调用数据库。",
+          "inputs": [
+            "更新后的本场和账号"
+          ],
+          "processing": [
+            "step/advance 返回后，execute 继续经营结算和事务保存。"
+          ],
+          "outputs": [
+            "持久化账号与 snapshotSeq"
+          ],
+          "changes": [
+            "按状态变化写 SQLite 账号。"
+          ],
+          "sourceStepIds": [
+            "battle-save"
+          ],
+          "bindings": [
+            {
+              "id": "battle-save-implementation",
+              "sourceStepId": "battle-save",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.execute",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "execAdvance",
+                "persist"
+              ],
+              "expectedDeclarationHash": "e375e9842a4a37cfca8a700a3e7aaa17644319c0e243782ff28be2461e880bde"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "需走到事务保存路径。",
+              "anchorIds": [
+                "execAdvance",
+                "persist"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-response",
+          "title": "构造动态或全量响应",
+          "summary": "按查询模式返回动态战斗包或完整账号快照。",
+          "purpose": "按查询模式返回动态战斗包或完整账号快照。",
+          "detail": "动态包仅含battle/locked/continuous/wave，经济和矿格需要完整state。\n\n动态包提供 battle/locked/continuous/wave；完整 state 才覆盖经济和矿格。\n\n边界：响应生成与实际送达分开；精简包不代表已同步全部奖励。",
+          "inputs": [
+            "权威账号",
+            "响应模式"
+          ],
+          "processing": [
+            "动态包提供 battle/locked/continuous/wave；完整 state 才覆盖经济和矿格。"
+          ],
+          "outputs": [
+            "HTTP 响应对象"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-response"
+          ],
+          "bindings": [
+            {
+              "id": "battle-response-implementation",
+              "sourceStepId": "battle-response",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Server.sect_server.Service.response_state",
+                "filePath": "Server/sect_server.py"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "compact",
+                "fullResponse"
+              ],
+              "expectedDeclarationHash": "79b0d979ec70ff1a77b8f1d2db688e42a845a6044d182f944f58d793ca06ebef"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "由请求模式决定返回范围。",
+              "anchorIds": [
+                "compact",
+                "fullResponse"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "响应生成与实际送达分开；精简包不代表已同步全部奖励。",
+              "anchorIds": [
+                "compact",
+                "fullResponse"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-decode",
+          "title": "解析结果并检查结束条件",
+          "summary": "解析战斗响应并判断是否需要补取全量状态。",
+          "purpose": "解析战斗响应并判断是否需要补取全量状态。",
+          "detail": "battleOnly且locked=false时先重取全量；其他情况正常合并或等待周期全量。\n\n解析响应；动态战斗已解锁时进入重新请求全量状态的分支。\n\n边界：后续全量请求具有新的异步边界。",
+          "inputs": [
+            "JSON",
+            "battleOnly",
+            "combat.locked"
+          ],
+          "processing": [
+            "解析响应；动态战斗已解锁时进入重新请求全量状态的分支。"
+          ],
+          "outputs": [
+            "可合并响应或全量查询意图"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-decode"
+          ],
+          "bindings": [
+            {
+              "id": "battle-decode-implementation",
+              "sourceStepId": "battle-decode",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "decode",
+                "fullAgain"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "收到有效 HTTP 结果；特殊错误分支可能提前返回。",
+              "anchorIds": [
+                "decode",
+                "fullAgain"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "后续全量请求具有新的异步边界。",
+              "anchorIds": [
+                "decode",
+                "fullAgain"
+              ]
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": [
+                "decode",
+                "fullAgain"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-full-state",
+          "title": "取得含奖励和矿格的全量",
+          "summary": "取得能包含奖励与矿格变化的完整账号状态。",
+          "purpose": "取得能包含奖励与矿格变化的完整账号状态。",
+          "detail": "已解锁动态结束立即请求/v2/state；连续待续仍locked时由周期全量刷新，不强行走立即结束分支。\n\n动态包且 locked=false 时立即重取 state；连续待续仍锁定时等待周期全量。\n\n边界：不能把所有终局都画成立刻解锁；多个请求的实际顺序未采集。",
+          "inputs": [
+            "动态结束条件",
+            "周期全量条件"
+          ],
+          "processing": [
+            "动态包且 locked=false 时立即重取 state；连续待续仍锁定时等待周期全量。"
+          ],
+          "outputs": [
+            "新的 /v2/state 请求及其响应路径"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "battle-full-state"
+          ],
+          "bindings": [
+            {
+              "id": "battle-full-state-implementation",
+              "sourceStepId": "battle-full-state",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.Request(string, string, bool, Game.Application.SectLogin, bool)",
+                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "fullAgain"
+              ],
+              "expectedDeclarationHash": "f81c93a0fba87acb913433702f0ffebb683e486c35e058ee732826571542c381"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "立即结束或后续周期全量分支。",
+              "anchorIds": [
+                "fullAgain"
+              ]
+            },
+            {
+              "kind": "request-boundary",
+              "description": "不能把所有终局都画成立刻解锁；多个请求的实际顺序未采集。",
+              "anchorIds": [
+                "fullAgain"
+              ]
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-prepare",
+          "title": "检查快照顺序与目录",
+          "summary": "在应用完整快照前检查顺序和目录。",
+          "purpose": "在应用完整快照前检查顺序和目录。",
+          "detail": "Session拒绝旧包并补目录，再提供候选State。\n\nPrepareResponse 拒绝旧快照，并补齐需要的内容引用。",
+          "inputs": [
+            "snapshotSeq",
+            "revision",
+            "静态目录"
+          ],
+          "processing": [
+            "PrepareResponse 拒绝旧快照，并补齐需要的内容引用。"
+          ],
+          "outputs": [
+            "可应用的候选 State"
+          ],
+          "changes": [
+            "可能补全候选响应的目录。"
+          ],
+          "sourceStepIds": [
+            "battle-prepare"
+          ],
+          "bindings": [
+            {
+              "id": "battle-prepare-implementation",
+              "sourceStepId": "battle-prepare",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Application.SectSession.PrepareResponse(Game.Application.SectResponse)",
+                "filePath": "Assets/Game/Application/SectSession.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [],
+              "expectedDeclarationHash": "4ee3ad8f011e6312cacbc1d9d41a4c3c579c6477f3172fb5746700ef4ee9b9d9"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "快照未过旧且响应可用。",
+              "anchorIds": []
+            },
+            {
+              "kind": "early-return",
+              "description": "错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。",
+              "anchorIds": []
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-view",
+          "title": "提交到只读战斗视图",
+          "summary": "把已提交快照交给只读战斗表现。",
+          "purpose": "把已提交快照交给只读战斗表现。",
+          "detail": "宿主先提交State，再SetState；视图不推算权威伤害。\n\n宿主提交 State 后调用 SetState，视图据此更新表现对象。\n\n边界：视图不承担权威伤害推算；画面播放与规则步没有同步时钟证明。",
+          "inputs": [
+            "State.combat"
+          ],
+          "processing": [
+            "宿主提交 State 后调用 SetState，视图据此更新表现对象。"
+          ],
+          "outputs": [
+            "战斗视图快照"
+          ],
+          "changes": [
+            "更新视图快照及表现对象。"
+          ],
+          "sourceStepIds": [
+            "battle-view"
+          ],
+          "bindings": [
+            {
+              "id": "battle-view-implementation",
+              "sourceStepId": "battle-view",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "method"
+                ],
+                "qualifiedName": "Game.Presentation.SectBattleView.SetState(Game.Application.SectCombatState)",
+                "filePath": "Assets/Game/Presentation/SectBattleView.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [],
+              "expectedDeclarationHash": "cf046205589851482eba71f7e9c33207e72d41d3ae9f0b9d3ac6098d2ec917ab"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "存在合法响应状态。",
+              "anchorIds": []
+            },
+            {
+              "kind": "async",
+              "description": "视图不承担权威伤害推算；画面播放与规则步没有同步时钟证明。",
+              "anchorIds": []
+            }
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "battle-hud",
+          "title": "生命条读取快照HP",
+          "summary": "用当前快照刷新生命与法力显示。",
+          "purpose": "用当前快照刷新生命与法力显示。",
+          "detail": "HUD回调读hp/maxHp并更新百分比；它与网络和事务不锁步。\n\nHUD 读取快照字段并计算进度条 value 与 title。\n\n边界：HUD 帧、网络轮询和服务端固定步是独立频率。",
+          "inputs": [
+            "hero.hp/maxHp",
+            "hero.mana/maxMana"
+          ],
+          "processing": [
+            "HUD 读取快照字段并计算进度条 value 与 title。"
+          ],
+          "outputs": [
+            "生命条和法力条文本/数值"
+          ],
+          "changes": [
+            "改变 meter.value 与 title。"
+          ],
+          "sourceStepIds": [
+            "battle-hud"
+          ],
+          "bindings": [
+            {
+              "id": "battle-hud-implementation",
+              "sourceStepId": "battle-hud",
+              "selector": {
+                "language": "csharp",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Game.Presentation.SectGameHost.BattleMeters(UnityEngine.UIElements.VisualElement).lambda[0]",
+                "filePath": "Assets/Game/Presentation/SectGameHost.Theme.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "hud"
+              ],
+              "expectedDeclarationHash": "4610deeae7471ef4966c1c7a027e3a235aafde9e613703ddb91bdd03419f88d4"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "对应角色和界面控件可用。",
+              "anchorIds": [
+                "hud"
+              ]
+            },
+            {
+              "kind": "async",
+              "description": "HUD 帧、网络轮询和服务端固定步是独立频率。",
+              "anchorIds": [
+                "hud"
+              ]
+            }
+          ],
+          "origin": "curated"
+        }
+      ]
+    }
+  ]
+}

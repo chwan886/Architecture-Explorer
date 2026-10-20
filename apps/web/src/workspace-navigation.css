@@ -9,3 +9,5 @@
 .ownership-link small { display: block; color: #bfa77d; font-size: 10px; }
 .ownership-section .warning-text, .ownership-section .muted { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
 @media (max-width: 800px) { .primary-navigation { padding: 0 8px; gap: 2px; } .primary-navigation > button { padding: 0 9px; font-size: 11px; } .navigation-level-note { display: none; } }
+.flow-origin-toggle{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:5px 18px;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px;flex-shrink:0}
+.flow-origin-toggle button{background:transparent;border:1px solid var(--line);border-radius:5px;color:var(--text);padding:4px 8px;cursor:pointer}

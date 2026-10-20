@@ -83,7 +83,7 @@ switch($Task) {
   'Scan' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','scan','--full')+$commandArgs) }
   'Watch' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','watch')+$commandArgs) }
   'Verify' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','verify')+$commandArgs) }
-  'Test' { Invoke-Checked $node @('node_modules/tsx/dist/cli.mjs','--test','tests/*.test.ts','apps/web/src/*.test.ts') }
+  'Test' { Invoke-Checked $node @('node_modules/tsx/dist/cli.mjs','--test','tests/*.test.ts','apps/web/src/*.test.ts','apps/web/src/architecture/*.test.ts','apps/web/src/semantics/*.test.ts') }
   'Typecheck' { Invoke-Checked $node @('node_modules/typescript/bin/tsc','--noEmit') }
   'Build' { Invoke-Checked $node @('node_modules/vite/bin/vite.js','build','--config','apps/web/vite.config.ts') }
 }

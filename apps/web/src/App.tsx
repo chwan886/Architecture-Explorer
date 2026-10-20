@@ -9,8 +9,10 @@ import { confidenceLabels, edgeLabels, expandableKinds, formatTime, nodeLabels, 
 import { applySelectionResponse, isCurrentSelectionRequest } from './selection';
 import type { SelectionRequest } from './selection';
 import type { ArchitectureRoute, OpenCodeRequest, OwnershipResult } from '../../../packages/architecture-model/src/types';
+import type { SemanticLocation, SemanticReverseResult } from '../../../packages/semantic-model/src/types';
 const GraphCanvas = lazy(() => import('./GraphCanvas'));
 const ArchitectureWorkspace = lazy(() => import('./architecture/ArchitectureWorkspace'));
+const SemanticWorkspace = lazy(() => import('./semantics/SemanticWorkspace'));
 
 type View = 'architecture' | 'calls' | 'data' | 'impact';
 type BottomTab = 'source' | 'relations' | 'warnings';
@@ -59,6 +61,11 @@ export default function App() {
   const [owners, setOwners] = useState<OwnershipResult>();
   const [ownershipError, setOwnershipError] = useState('');
   const [modelRefresh, setModelRefresh] = useState('');
+  const [semanticRefresh, setSemanticRefresh] = useState('');
+  const [semanticLocation, setSemanticLocation] = useState<SemanticLocation>({});
+  const [semanticMatches, setSemanticMatches] = useState<SemanticReverseResult>();
+  const [semanticReverseError, setSemanticReverseError] = useState('');
+  const [legacyFlows, setLegacyFlows] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState('');
   const [worktrees, setWorktrees] = useState<WorktreeInfo[]>([]);
@@ -163,6 +170,7 @@ export default function App() {
 
   useEffect(() => {
     setCodeNavigationPending(false);
+    setSemanticLocation({}); setSemanticMatches(undefined); setSemanticReverseError(''); setLegacyFlows(false);
     navigationSequence.current++; resetSelection(); setArchitectureRoute({ perspective: primaryPage === 'technical' ? 'technical' : primaryPage === 'flows' ? 'flows' : 'business' }); setReturnPage(undefined); setOwners(undefined); setOwnershipError(''); setLocation({ view: 'architecture' }); setHistory([]); setGraph(EMPTY_GRAPH); setGraphView('architecture'); setRootNodes([]); setSummary(undefined); setStatus(undefined); setGraphError(''); setScanError(''); setSearch(''); setFocusRequest(undefined);
     setFavorites(scope ? loadSaved(`ae:favorites:${scope}`) : []); setRecent(scope ? loadSaved(`ae:recent:${scope}`) : []);
     if (!scope) return;
@@ -170,6 +178,7 @@ export default function App() {
     request<IndexStatus>('/status', scope).then(value => { if (alive) setStatus(value); }).catch(error => { if (alive) setBootstrapError(errorMessage(error)); });
     const stream = new EventSource(`/api/events?scope=${encodeURIComponent(scope)}`);
     stream.addEventListener?.('architecture-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; modelRevision: string }; if (alive && value.scopeId === scope) setModelRefresh(value.modelRevision); } catch { /* malformed architecture refresh */ } });
+    stream.addEventListener?.('semantic-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; overlayRevision: string }; if (alive && value.scopeId === scope) setSemanticRefresh(value.overlayRevision); } catch { /* malformed semantic refresh */ } });
     stream.onopen = () => { if (alive) setConnectionLost(false); };
     stream.onmessage = event => { try { const value = JSON.parse(event.data) as IndexStatus; if (alive && value.scopeId === scope) { setStatus(value); setConnectionLost(false); } } catch { /* ignore malformed event; HTTP state remains available */ } };
     stream.onerror = () => { if (alive) setConnectionLost(true); };
@@ -251,6 +260,19 @@ export default function App() {
   }, [scope, selected?.id, primaryPage, summary?.metadata.revision, modelRefresh]);
 
   useEffect(() => {
+    setSemanticMatches(undefined); setSemanticReverseError('');
+    if (!scope || !selected || primaryPage !== 'code') return;
+    let alive = true;
+    const query = new URLSearchParams({ nodeId: selected.id, ...(activeRelation ? { edgeId: activeRelation.id } : {}) });
+    request<SemanticReverseResult>(`/semantics/reverse?${query}`, scope).then(value => {
+      if (!alive) return;
+      if (value.metadata.scopeId !== scope || (summary && value.metadata.sourceRevision !== summary.metadata.revision)) throw new Error('解释与代码快照不一致，请等待同步。');
+      setSemanticMatches(value);
+    }).catch(error => { if (alive) setSemanticReverseError(errorMessage(error)); });
+    return () => { alive = false; };
+  }, [scope, selected?.id, activeRelation?.id, primaryPage, summary?.metadata.revision, modelRefresh, semanticRefresh]);
+
+  useEffect(() => {
     if (!scope || !search.trim()) { setSearchResults([]); setSearchLoading(false); setSearchError(''); return; }
     let alive = true; setSearchLoading(true); setSearchError('');
     const timer = window.setTimeout(() => {
@@ -318,7 +340,8 @@ export default function App() {
     if (page !== 'code') setArchitectureRoute(current => ({ ...current, perspective: page === 'overview' ? 'business' : page === 'technical' ? 'technical' : 'flows', rootId: undefined }));
   };
   const openOwner = (systemId: string, moduleId?: string) => { navigationSequence.current++; setArchitectureRoute({ perspective: 'business', rootId: moduleId || systemId }); setPrimaryPage('overview'); };
-  const changeArchitectureRoute = (next: ArchitectureRoute) => { navigationSequence.current++; setArchitectureRoute(next); setPrimaryPage(next.perspective === 'technical' ? 'technical' : next.perspective === 'flows' ? 'flows' : 'overview'); };
+  const changeArchitectureRoute = (next: ArchitectureRoute) => { navigationSequence.current++; setArchitectureRoute(next); if (next.perspective === 'flows') { if (!(primaryPage === 'flows' && legacyFlows)) setLegacyFlows(false); setSemanticLocation(current => next.flowId && next.flowId !== current.flowId ? { flowId: next.flowId } : current); } setPrimaryPage(next.perspective === 'technical' ? 'technical' : next.perspective === 'flows' ? 'flows' : 'overview'); };
+  const openSemanticMatch = (flowId: string, nodeId?: string, hasEdge = false) => { navigationSequence.current++; setLegacyFlows(false); setSemanticLocation({ flowId, mode: 'compare', level: 'detailed', nodeId, codeNodeId: selected?.id, codeEdgeId: hasEdge ? activeRelation?.id : undefined }); setPrimaryPage('flows'); };
   const openSaved = (saved: SavedNode) => { const requestedScope = scope; const navigationAtOpen = ++navigationSequence.current; request<NodeDetails>(`/nodes/${encodeURIComponent(saved.id)}`, scope).then(value => { if (scopeRef.current === requestedScope && navigationSequence.current === navigationAtOpen) locateNode(value.node); }).catch(() => { if (scopeRef.current === requestedScope && navigationSequence.current === navigationAtOpen) setNotice('此节点已不存在于当前索引。可重新搜索，或取消收藏。'); }); };
   const toggleFavorite = () => { if (!selectedSaved) return; const next = favorite ? favorites.filter(n => n.id !== selectedSaved.id) : [...favorites, selectedSaved]; setFavorites(next); saveNodes(`ae:favorites:${scope}`, next); };
   const scan = async (full = true) => { if (!scope || scanPending) return; setScanPending(true); setScanError(''); try { await request('/scan', undefined, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope, full }) }); setStatus(current => current ? { ...current, state: 'analyzing', message: '已提交扫描请求' } : current); setNotice(full ? '已提交完整扫描。旧索引会保留到新索引验证通过。' : '已提交索引校验。'); } catch (error) { setScanError(errorMessage(error)); } finally { setScanPending(false); } };
@@ -357,7 +380,8 @@ export default function App() {
       <button className="icon-button scan-button" title="重新完整扫描当前工作区" aria-label="重新完整扫描" disabled={!scope || scanPending || state === 'analyzing'} onClick={() => void scan(true)}><RefreshCw size={15} className={scanPending || state === 'analyzing' ? 'spin' : ''} /></button>
     </header>
 
-    <nav className="primary-navigation" aria-label="主导航">{([{id:'overview',label:'系统总览',icon:Layers3},{id:'technical',label:'技术架构',icon:LayoutGrid},{id:'flows',label:'业务流程',icon:Workflow},{id:'code',label:'代码地图',icon:Code2}] as const).map(item => <button key={item.id} className={primaryPage === item.id ? 'active' : ''} aria-current={primaryPage === item.id ? 'page' : undefined} onClick={() => changePrimaryPage(item.id)}><item.icon size={14}/>{item.label}</button>)}<span className="navigation-level-note">{primaryPage === 'code' ? 'L3 组件 · L4 方法与源码' : 'L1 系统 · L2 模块'}</span></nav>
+    <nav className="primary-navigation" aria-label="主导航">{([{id:'overview',label:'系统总览',icon:Layers3},{id:'technical',label:'技术架构',icon:LayoutGrid},{id:'flows',label:'业务流程',icon:Workflow},{id:'code',label:'代码地图',icon:Code2}] as const).map(item => <button key={item.id} className={primaryPage === item.id ? 'active' : ''} aria-current={primaryPage === item.id ? 'page' : undefined} onClick={() => changePrimaryPage(item.id)}><item.icon size={14}/>{item.label}</button>)}<span className="navigation-level-note">{primaryPage === 'code' ? 'L3 组件 · L4 方法与源码' : primaryPage === 'flows' ? '解释 · 实现 · 源码证据' : 'L1 系统 · L2 模块'}</span></nav>
+    {primaryPage === 'flows' && <div className="flow-origin-toggle"><span>同一源码快照 · 解释与实现双向关联</span><button aria-pressed={legacyFlows} onClick={() => { if (!legacyFlows) setArchitectureRoute(current => ({ ...current, perspective: 'flows', flowId: semanticLocation.flowId || current.flowId })); setLegacyFlows(current => !current); }}>{legacyFlows ? '返回双层语义图' : '原始流程证据'}</button></div>}
     {primaryPage === 'code' ? <div className="workbench">
       <aside className="sidebar" aria-label="项目导航">
         <div className="sidebar-heading"><span>项目浏览器</span><button className="icon-button" aria-label="收起导航" title="收起导航" onClick={() => setSidebarOpen(false)}><PanelLeftClose size={15} /></button></div>
@@ -390,13 +414,14 @@ export default function App() {
         {!selected ? <div className="inspector-placeholder"><div className="placeholder-node"><Box size={28} strokeWidth={1.3} /></div><h3>从一个节点开始</h3><p>点击画布中的模块或符号，探索它的职责、依赖与源码。</p><div><span><Search size={13} />Ctrl K 搜索代码</span><span><Target size={13} />双击逐层深入</span><span><ShieldCheck size={13} />每条关系可追溯</span></div></div> : <div className="inspector-scroll"><div className="node-overview"><div className="node-type-heading"><span className={`node-type-chip kind-${selected.kind}`}><Box size={12} />{nodeLabels[selected.kind]}</span><span>{selected.language === 'csharp' ? 'C#' : selected.language === 'unknown' ? '项目结构' : selected.language}</span></div><h1>{selected.label}</h1><p className="qualified-name">{selected.qualifiedName}</p>{selected.summary && <p className="node-summary">{selected.summary}</p>}<div className="node-file"><FileCode2 size={13} /><span>{selected.filePath || '由扫描目录结构聚合'}</span></div>{selected.signature && <code className="signature">{selected.signature}</code>}</div>
           {expandableKinds.has(selected.kind) && <button className="enter-structure-button" onClick={() => enterNode(selected)}><Layers3 size={13} />展开内部结构<ChevronRight size={13} /></button>}<div className="inspector-quick-actions"><button onClick={() => navigate({ ...location, view: 'calls', focus: selected })}><GitFork size={13} />调用链</button><button onClick={() => navigate({ ...location, view: 'data', focus: selected })}><Workflow size={13} />读写关系</button><button onClick={() => navigate({ ...location, view: 'impact', focus: selected })}><Route size={13} />影响范围</button></div>
           <div className="detail-section ownership-section"><h3>所属业务系统与模块</h3>{ownershipError ? <p className="warning-text">归属读取失败：{ownershipError}</p> : !owners ? <p className="muted">正在解析业务归属…</p> : owners.owners.length ? ownerLinks.map(owner => <button className="ownership-link" key={owner.membershipId} onClick={() => openOwner(owner.systemId, owner.moduleId)}><Layers3 size={12}/><span>{owner.systemName} / {owner.moduleName}<small>{owner.role === 'owner' ? '主要归属 · ' : owner.role === 'shared' ? '共享参与 · ' : '参与职责 · '}{owner.reviewState === 'confirmed' ? '人工确认' : owner.reviewState === 'needs-review' ? '需要复核' : owner.reviewState === 'rejected' ? '已拒绝' : '候选归属'}</small></span><ChevronRight size={12}/></button>) : <p className="muted">待分类：当前模型没有可定位的业务归属。</p>}</div>
+          <div className="detail-section semantic-ownership"><h3>相关业务解释</h3>{semanticReverseError ? <p className="warning-text">{semanticReverseError}</p> : !semanticMatches ? <p className="muted">正在查找解释映射…</p> : semanticMatches.matches.length ? semanticMatches.matches.map(match => <button className="ownership-link" key={match.flowId} onClick={() => openSemanticMatch(match.flowId, match.nodeIds[0], match.edgeIds.length > 0)}><Workflow size={12}/><span>{match.flowTitle}<small>{match.nodeIds.length} 个相关步骤 · 在双层对照中查看</small></span><ChevronRight size={12}/></button>) : <p className="muted">当前两条流程中没有此实体的解释映射。</p>}</div>
           {detailLoading && <div className="inspector-loading"><Loader2 size={13} className="spin" />读取符号详情…</div>}{detailError && <div className="inspector-error">{detailError}</div>}
           {details && <><div className="detail-section"><h3>结构位置</h3><div className="parent-chain">{details.parents.map(parent => <button key={parent.id} onClick={() => enterNode(parent)}><Folder size={12} />{parent.label}<ChevronRight size={11} /></button>)}{!details.parents.length && <span className="muted">项目顶层</span>}</div></div><div className="detail-section"><h3>依赖与数据<span>{relationships.length}</span></h3><div className="dependency-metrics"><button onClick={() => { setDirection('up'); navigate({ ...location, view: 'calls', focus: selected }); }}><span><ArrowDownLeft size={13} />上游关系</span><strong>{details.incoming.filter(e => e.kind !== 'contains').length}</strong></button><button onClick={() => { setDirection('down'); navigate({ ...location, view: 'calls', focus: selected }); }}><span><ArrowUpRight size={13} />下游关系</span><strong>{details.outgoing.filter(e => e.kind !== 'contains').length}</strong></button></div>{(['reads', 'writes', 'initializes', 'passes', 'returns', 'calls', 'inherits', 'implements', 'references', 'imports', 'publishes', 'subscribes', 'unsubscribes', 'contract-mapping'] as const).map(kind => { const list = relationships.filter(edge => edge.kind === kind); return list.length > 0 && <div className="relationship-group" key={kind}><div className="relationship-group-label">{edgeLabels[kind]}<span>{list.length}</span></div>{list.slice(0, 6).map(edge => { const target = related.get(edge.source === selected.id ? edge.target : edge.source); return <button className="relationship-item" key={edge.id} onClick={() => target ? locateNode(target) : showRelation(edge)}><span className={`edge-dot ${edge.confidence}`} /><span title={target?.qualifiedName}>{target?.label || '查看关系证据'}</span><ChevronRight size={11} /></button>; })}{list.length > 6 && <button className="text-button show-all-relations" onClick={() => { setBottomTab('relations'); setBottomOpen(true); }}>查看全部 {list.length} 条</button>}</div>; })}{!relationships.filter(e => e.kind !== 'contains').length && <p className="detail-empty">当前分析范围内没有其他可确认的依赖关系。</p>}</div>
             <div className="detail-section"><h3>源码证据<span>{details.evidence.length}</span></h3>{details.evidence.slice(0, 12).map(evidence => <button className={`evidence-item ${evidenceId === evidence.id ? 'active' : ''}`} key={evidence.id} onClick={() => showEvidence(evidence)}><FileCode2 size={14} /><span><strong>{shortPath(evidence.filePath)}<small>L{evidence.startLine}{evidence.endLine !== evidence.startLine ? `–${evidence.endLine}` : ''}</small></strong><small>{evidence.rule}</small></span><ArrowUpRight size={11} /></button>)}{!details.evidence.length && <p className="detail-empty">结构聚合节点没有单一源码位置。展开后查看具体符号。</p>}</div>
             <div className="inspector-trust-note"><ShieldCheck size={14} /><p>关系依据源码证据建立。静态读写说明引用位置；潜在影响表示依赖范围，不能证明运行时必然执行。</p></div></>}
         </div>}
       </aside>
-    </div> : <Suspense fallback={<StateCard title="正在加载系统架构" description="加载系统与模块探索界面。" busy />}><ArchitectureWorkspace scope={scope} revision={`${revision || ''}:${modelRefresh}`} route={architectureRoute} onRouteChange={changeArchitectureRoute} onOpenCode={openArchitectureCode} /></Suspense>}
+    </div> : <Suspense fallback={<StateCard title="正在加载系统架构" description="加载系统与模块探索界面。" busy />}>{primaryPage === 'flows' && !legacyFlows ? <SemanticWorkspace scope={scope} revision={`${revision || ''}:${modelRefresh}:${semanticRefresh}`} location={semanticLocation} onLocationChange={setSemanticLocation} onOpenCode={openArchitectureCode}/> : <ArchitectureWorkspace scope={scope} revision={`${revision || ''}:${modelRefresh}`} route={architectureRoute} onRouteChange={changeArchitectureRoute} onOpenCode={openArchitectureCode} />}</Suspense>}
     <footer className="statusbar"><div><span className="statusbar-branch"><GitBranch size={11} />{branch}</span>{summary?.metadata.gitDirty && <span className="dirty-indicator">有未提交变更</span>}<span className="statusbar-head">{summary?.metadata.gitHead?.slice(0, 8)}</span></div><div><span className="index-revision" title={revision}>索引 {revision ? revision.slice(0, 8) : '—'}</span><span><Clock3 size={10} />{formatTime(summary?.metadata.generatedAt)}</span><span className="statusbar-end"><ShieldCheck size={10} />本地 · 只读分析</span></div></footer>
     {notice && <div className="toast" role="status"><Info size={15} /><span>{notice}</span><button aria-label="关闭通知" onClick={() => setNotice('')}><X size={13} /></button></div>}
   </div>;

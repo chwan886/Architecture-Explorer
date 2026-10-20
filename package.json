@@ -12,7 +12,8 @@
     "scan": "tsx apps/server/src/cli.ts scan",
     "watch": "tsx apps/server/src/cli.ts watch",
     "verify-index": "tsx apps/server/src/cli.ts verify",
-    "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts",
+    "verify-semantics": "tsx Tools/verify-semantics.ts",
+    "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts apps/web/src/semantics/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "vite build --config apps/web/vite.config.ts"
   },

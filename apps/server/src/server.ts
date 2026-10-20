@@ -6,6 +6,7 @@ import { AccessError, authorizedFile } from '../../../packages/indexer/src/secur
 import type { Confidence, EdgeKind, IndexStatus } from '../../../packages/schema/src/index.ts';
 import type { ServerResponse } from 'node:http';
 import { registerArchitectureRoutes } from './architecture.ts';
+import { registerSemanticRoutes } from './semantics.ts';
 
 const kinds = new Set<EdgeKind>(['contains', 'inherits', 'implements', 'references', 'imports', 'calls', 'reads', 'writes', 'initializes', 'passes', 'returns', 'subscribes', 'unsubscribes', 'publishes', 'contract-mapping']);
 const confidences = new Set<Confidence>(['static-confirmed', 'runtime-verified', 'inferred']);
@@ -60,7 +61,8 @@ export async function createServer(manager: IndexManager) {
     if (!runtime.index) throw Object.assign(new Error(runtime.status.state === 'failed' ? runtime.status.message : '索引尚未就绪，请等待扫描完成'), { statusCode: 409 });
     return runtime.index;
   };
-  registerArchitectureRoutes(app, manager);
+  const architecture = registerArchitectureRoutes(app, manager);
+  registerSemanticRoutes(app, manager, architecture);
 
   app.get('/api/projects', async () => ({ projects: manager.config.projects.map(project => ({ id: project.id, name: project.name, root: project.root })) }));
   app.get<{ Params: { projectId: string } }>('/api/projects/:projectId/worktrees', async request => {
@@ -105,9 +107,13 @@ export async function createServer(manager: IndexManager) {
       if (value.projectId === runtime.project.id && !reply.raw.destroyed) reply.raw.write(`event: architecture-model\ndata: ${JSON.stringify({ ...value, scopeId: runtime.id })}\n\n`);
     };
     manager.on('architecture-model', modelListener);
+    const semanticListener = (value: { scopeId: string; overlayRevision: string }) => {
+      if (value.scopeId === runtime.id && !reply.raw.destroyed) reply.raw.write(`event: semantic-model\ndata: ${JSON.stringify(value)}\n\n`);
+    };
+    manager.on('semantic-model', semanticListener);
     const heartbeat = setInterval(() => { if (!reply.raw.destroyed) reply.raw.write(': keepalive\n\n'); }, 25000);
     heartbeat.unref();
-    const cleanup = () => { clearInterval(heartbeat); manager.off('status', listener); manager.off('architecture-model', modelListener); streams.delete(reply.raw); };
+    const cleanup = () => { clearInterval(heartbeat); manager.off('status', listener); manager.off('architecture-model', modelListener); manager.off('semantic-model', semanticListener); streams.delete(reply.raw); };
     request.raw.on('aborted', cleanup); reply.raw.on('close', cleanup);
   });
   const staticRoot = path.join(manager.config.toolRoot, 'dist');
