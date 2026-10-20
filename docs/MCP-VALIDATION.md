@@ -49,7 +49,9 @@
 
 ## 未完成的外部验收与边界
 
-**未修改用户级 Codex 配置，未宣称 Codex App 已发现或实际调用该新MCP服务。** 当前完成的是官方SDK真实stdio客户端 → 本机服务 → 实际浏览器的联动验收。现有Codex对话工具发现列表没有该新服务；需用户审查 `docs/CODEX-CONFIG-PENDING.diff` 并批准新增配置，再按App提示重载/开启新对话进行实际工具调用。`codex mcp list` 或注册成功均不能代替该验证。
+用户在2026-10-20明确批准后，已仅追加 `docs/CODEX-CONFIG-PENDING.diff` 中的 Architecture Explorer 块到用户级 Codex 配置。原文件3346字节逐字节保留，追加410字节，TOML及已有配置语义校验通过；没有覆盖既有 `node_repl` 配置。`codex mcp get architecture_explorer` 已识别启用的stdio命令、参数与安装目录。
+
+**Codex App 实际发现与调用仍待验证。** 当前完成的是官方SDK真实stdio客户端 → 本机服务 → 实际浏览器的联动验收。本轮主Agent和重启任务的子Agent工具列表均没有该新服务。已安装CLI支持的 `app-server proxy` 连接默认控制socket失败（Windows socket错误10050），未通过内部接口注入或重启整个应用绕过。已请求用户在App设置中重载MCP后继续实际调用；`codex mcp list/get` 或注册成功均不能代替该验证。
 
 不接入模型API，不提供网页聊天、Shell、注册任意路径、修改游戏或人工语义模型的MCP工具。完整飞剑专属语义流程、动态回调、完整过程间数据流及运行时顺序尚未实现。服务重启不保留旧快照句柄；需重新查询、允许并绑定。人工历史/布局仅当前文档内保持。待呈现最长5分钟，快照10分钟，租约120秒，过期明确拒绝。
 

@@ -22,7 +22,7 @@ stdio 服务启动命令（正常会等待输入，stdout 仅用于 MCP JSON-RPC
 
 Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；也可审查后向用户级 `~/.codex/config.toml` **新增** `config/codex-mcp.example.toml` 的块。App 与 CLI 使用官方 MCP 配置机制。已存在同名块时先合并审查，不重复追加。实现不会修改用户配置。示例路径指向安装目录 `E:\Projects\Architecture-Explorer`；如从开发工作树测试，使用该工作树的绝对路径及对应配置，端口和缓存必须一致。
 
-完整字段与官方连接说明：[Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)。保存配置后按 App 提示重载/重启并开启可发现新工具的对话。`codex mcp list` 只证明已配置，不能证明工具调用成功。连接后实际调用 `get_capabilities` 与 `list_projects`，再完成下方流程，才算验证工具可用。
+完整字段与官方连接说明：[Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)。保存配置后在 App 的 MCP servers 设置按提示选择 Restart，再在对话输入 `/mcp` 检查连接；本轮未刷新工具列表时可在重载后继续下一轮。`codex mcp list` 只证明已配置，不能证明工具调用成功。连接后实际调用 `get_capabilities` 与 `list_projects`，再完成下方流程，才算验证工具可用。
 
 ## 推荐调用顺序
 
@@ -78,7 +78,7 @@ Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；�
 | 版本冲突 / 用户手动浏览 | 停止旧控制请求。保留用户操作；确认新意图后才重新绑定/提交。 |
 | pending / received | 检查页面联动提示、SSE/网络和回执。收到不等于呈现，不循环无限重试。 |
 | PRESENTATION_TOO_LARGE | 缩小节点/路径范围，分步展示。单个代码展示不超过80节点。 |
-| 当前 Codex 对话没有新工具 | 按 App 设置重载并开启新对话。配置存在与模型实际调用是两个验证步骤。 |
+| 当前 Codex 对话没有新工具 | 在 App MCP servers 设置重载，用 `/mcp`（或 `/mcp verbose`）检查；本轮未刷新时重载后继续下一轮。配置存在与模型实际调用是两个验证步骤。 |
 
 服务使用 Host/Origin、JSON/CSRF 与 HttpOnly SameSite=Strict 浏览器身份；私有调用使用工具缓存中仅当前用户+SYSTEM可读的令牌。sidecar先用随机nonce/HMAC校验服务身份，再向固定 `127.0.0.1` 端口发送认证请求，不跟随重定向。SSE仅通知，前端主动读取状态并做最后版本校验。令牌、浏览器CSRF和缓存不提交Git、不写进Codex配置。
 
