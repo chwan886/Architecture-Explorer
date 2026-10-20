@@ -1,5 +1,5 @@
 ﻿param(
-  [ValidateSet('Setup','Dev','Web','Scan','Watch','Verify','Test','Build','Typecheck','Mcp')][string]$Task='Dev',
+  [ValidateSet('Setup','Dev','Web','Scan','Watch','Verify','Audit','Test','Build','Typecheck','Mcp')][string]$Task='Dev',
   [string]$ProjectRoot='', [string]$ProjectName='', [string]$ProjectId='my-project',
   [string]$UnityEditorPath='', [string]$Config='', [string]$Project='', [string]$Worktree=''
 )
@@ -84,6 +84,7 @@ switch($Task) {
   'Scan' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','scan','--full')+$commandArgs) }
   'Watch' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','watch')+$commandArgs) }
   'Verify' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','apps/server/src/cli.ts','verify')+$commandArgs) }
+  'Audit' { Invoke-Checked $node (@('node_modules/tsx/dist/cli.mjs','Tools/audit-evidence.ts')+$commandArgs) }
   'Test' { Invoke-Checked $node @('node_modules/tsx/dist/cli.mjs','--test','tests/*.test.ts','apps/web/src/*.test.ts','apps/web/src/architecture/*.test.ts','apps/web/src/semantics/*.test.ts','apps/web/src/control/*.test.ts') }
   'Typecheck' { Invoke-Checked $node @('node_modules/typescript/bin/tsc','--noEmit') }
   'Build' { Invoke-Checked $node @('node_modules/vite/bin/vite.js','build','--config','apps/web/vite.config.ts') }

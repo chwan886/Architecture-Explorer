@@ -179,9 +179,14 @@ test('incremental source changes invalidate reviews, refresh actual system edges
   const f = await fixture();
   try {
     await f.install(); assert.equal((await f.review('membership', 'apply-owner', 'confirmed')).statusCode, 200);
-    const previous = await f.view(); const relation = previous.relations[0]; assert.ok(relation);
+    const previous = await f.view(); const relation = previous.relations.find(item => item.kinds.includes('calls')); assert.ok(relation);
     const page = await f.get('/relations/' + encodeURIComponent(relation.id), f.primary, { viewRevision: previous.metadata.viewRevision, limit: '1' });
-    assert.equal(page.statusCode, 200, page.body); assert.equal(page.json().edges[0].kind, 'calls');
+    assert.equal(page.statusCode, 200, page.body);
+    assert.equal(page.json().edges.length, 1);
+    assert.ok(relation.memberEdgeIds.includes(page.json().edges[0].id), 'pagination returns an actual member regardless of relation ordering');
+    const members = await f.get('/relations/' + encodeURIComponent(relation.id), f.primary, { viewRevision: previous.metadata.viewRevision, limit: '100' });
+    assert.equal(members.statusCode, 200, members.body);
+    assert.ok(members.json().edges.some((edge: { kind: string }) => edge.kind === 'calls'), 'the removed invocation is present before the edit');
     await writeFile(path.join(f.target, 'src/combat.py'), 'def apply(amount):\n    return amount\n\ndef reward(value):\n    return value\n');
     await f.manager.requestScan(f.primary); assert.equal(f.manager.scope(f.primary).status.state, 'synced');
     const current = await f.view(); assert.notEqual(current.metadata.viewRevision, previous.metadata.viewRevision);

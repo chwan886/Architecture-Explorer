@@ -14,6 +14,7 @@
     "watch": "tsx apps/server/src/cli.ts watch",
     "verify-index": "tsx apps/server/src/cli.ts verify",
     "verify-semantics": "tsx Tools/verify-semantics.ts",
+    "audit-evidence": "tsx Tools/audit-evidence.ts",
     "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts apps/web/src/semantics/*.test.ts apps/web/src/control/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "vite build --config apps/web/vite.config.ts"

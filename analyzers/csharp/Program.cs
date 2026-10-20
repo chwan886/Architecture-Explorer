@@ -105,6 +105,7 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
     readonly Dictionary<SyntaxNode, string> declaredNodes = [];
     readonly Dictionary<(SyntaxTree Tree, int Start), string> anonymousIds = [];
     readonly Dictionary<SyntaxTree, int> unresolvedCalls = [];
+    readonly Dictionary<SyntaxTree, int> delegateCalls = [];
     CSharpCompilation compilation = null!;
 
     string Id(string category, string key) => category + ":" + Convert.ToHexString(
@@ -184,6 +185,23 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
         if (identity is null && symbol is IMethodSymbol { MethodKind: MethodKind.LocalFunction } local)
             identity = SymbolKey(local.ContainingSymbol) + "|local|" + local.Name + "|" +
                 string.Join(",", local.Parameters.Select(p => p.RefKind + ":" + p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+        if (identity is null && symbol is ILocalSymbol variable)
+        {
+            var syntax = variable.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            var owner = variable.ContainingSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            // Same-named locals in different procedures or disjoint lexical blocks
+            // are different storage slots. Ordinal ignores whitespace/line offsets
+            // and unrelated variable names; it is never a runtime alias identity.
+            var ordinal = 0;
+            if (syntax is not null && owner is not null)
+            {
+                var model = compilation.GetSemanticModel(syntax.SyntaxTree);
+                ordinal = owner.DescendantNodesAndSelf().Where(item => item.RawKind == syntax.RawKind && item.SpanStart < syntax.SpanStart)
+                    .Count(item => model.GetDeclaredSymbol(item) is ILocalSymbol other && other.Name == variable.Name &&
+                        SymbolEqualityComparer.Default.Equals(other.ContainingSymbol, variable.ContainingSymbol));
+            }
+            identity = SymbolKey(variable.ContainingSymbol) + "|local-variable|" + variable.Name + "|" + (syntax?.RawKind ?? 0) + "|" + ordinal;
+        }
         identity ??= symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var assembly = symbol.ContainingAssembly?.Identity.Name ?? request.AssemblyName ?? "source";
         return $"csharp|{assembly}|{symbol.Kind}|{identity}";
@@ -222,6 +240,11 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
             var eid = EvidenceFor(declaration, "csharp.declaration");
             if (!node.EvidenceIds.Contains(eid)) node.EvidenceIds.Add(eid);
             node.FilePath ??= sources[declaration.SyntaxTree].Path;
+        }
+        else if (symbol is ILocalSymbol && symbol.DeclaringSyntaxReferences.FirstOrDefault(r => sources.ContainsKey(r.SyntaxTree))?.GetSyntax() is { } localDeclaration)
+        {
+            var eid = EvidenceFor(localDeclaration, "csharp.declaration");
+            if (!node.EvidenceIds.Contains(eid)) node.EvidenceIds.Add(eid);
         }
         return id;
     }
@@ -419,9 +442,43 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
         if (semanticIssues.Length > 80) Diagnostic("CS_DIAGNOSTICS_TRUNCATED", $"共 {semanticIssues.Length} 条语义上下文诊断，仅返回前 80 条。");
         foreach (var (tree, count) in unresolvedCalls)
             Diagnostic("CS_UNRESOLVED_CALLS", $"{count} 处调用目标无法静态确认；未按名称猜测调用边。", syntax: tree.GetRoot());
+        foreach (var (tree, count) in delegateCalls)
+            Diagnostic("CS_DELEGATE_TARGETS", $"{count} 处委托调用点已由编译器识别；可定位持有委托的符号，但实际处理器、执行条件和顺序未验证。", syntax: tree.GetRoot());
         Diagnostic("CS_STATIC_SCOPE", "结果是静态声明、绑定与读写证据；虚调用实际实现、反射、动态分发、Unity生命周期顺序和运行时数据流未验证。", "info");
         Diagnostic("incremental-parser", $"parsed={parsed}; reused={reused}; removed={removed}; C#未变文件复用SyntaxTree，更新不可变Compilation并保守重新绑定语义。", "info");
         return new(nodes.Values.ToArray(), edges.Values.ToArray(), evidence.Values.ToArray(), diagnostics.ToArray());
+    }
+
+    // These are expression bindings, not interprocedural value/alias proofs.
+    static ISymbol? ExpressionSymbol(IOperation? value)
+    {
+        while (value is IConversionOperation { OperatorMethod: null } or IParenthesizedOperation or IDelegateCreationOperation)
+            value = value switch { IConversionOperation conversion => conversion.Operand, IParenthesizedOperation parentheses => parentheses.Operand, IDelegateCreationOperation creation => creation.Target, _ => value };
+        return value switch
+        {
+            IFieldReferenceOperation field => field.Field,
+            IPropertyReferenceOperation property => property.Property,
+            IParameterReferenceOperation parameter => parameter.Parameter,
+            ILocalReferenceOperation local => local.Local,
+            IMethodReferenceOperation method => method.Method,
+            IAnonymousFunctionOperation anonymous => anonymous.Symbol,
+            _ => null
+        };
+    }
+
+    void ArgumentBindings(IInvocationOperation call)
+    {
+        var method = call.TargetMethod;
+        if (call.IsVirtual || method.ContainingType?.TypeKind is TypeKind.Error or TypeKind.Interface || method.IsExtensionMethod || method.ReducedFrom is not null ||
+            method.MethodKind == MethodKind.DelegateInvoke || !method.DeclaringSyntaxReferences.Any(item => sources.ContainsKey(item.SyntaxTree))) return;
+        foreach (var argument in call.Arguments)
+        {
+            if (argument.ArgumentKind != ArgumentKind.Explicit || argument.Parameter is not { RefKind: RefKind.None, IsParams: false } parameter) continue;
+            var source = ExpressionSymbol(argument.Value);
+            if (source is null || source is ILocalSymbol { Type.TypeKind: TypeKind.Error }) continue;
+            Edge(EnsureSymbol(source), EnsureSymbol(parameter), "passes", argument.Syntax, "csharp.argument-binding", "declared-parameter",
+                ["编译器确认此实参表达式绑定到源内直接方法的声明形参；不证明跨函数对象身份、值保持、回调执行或完整运行时数据流。"]);
+        }
     }
 
     void AnalyzeSyntax(SyntaxNode syntax, SemanticModel model)
@@ -466,7 +523,23 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
                     {
                         var target = model.GetSymbolInfo(((InvocationExpressionSyntax)syntax).Expression).Symbol as IEventSymbol;
                         if (target is not null) Edge(Owner(syntax, model), EnsureSymbol(target), "publishes", syntax, "csharp.event-invocation");
-                        else unresolvedCalls[syntax.SyntaxTree] = unresolvedCalls.GetValueOrDefault(syntax.SyntaxTree) + 1;
+                        else
+                        {
+                            var instance = call.Instance;
+                            if (instance is IConditionalAccessInstanceOperation)
+                            {
+                                var conditional = syntax.Ancestors().OfType<ConditionalAccessExpressionSyntax>().FirstOrDefault();
+                                if (conditional is not null) instance = model.GetOperation(conditional.Expression);
+                            }
+                            var binding = ExpressionSymbol(instance);
+                            if (binding is not null)
+                            {
+                                Edge(Owner(syntax, model), EnsureSymbol(binding), "references", syntax, "csharp.delegate-invocation", "delegate-storage",
+                                    ["委托调用表达式与持有符号已确认；没有把字段、形参或局部变量当作实际处理器，目标集合及运行时执行未验证。"]);
+                                delegateCalls[syntax.SyntaxTree] = delegateCalls.GetValueOrDefault(syntax.SyntaxTree) + 1;
+                            }
+                            else unresolvedCalls[syntax.SyntaxTree] = unresolvedCalls.GetValueOrDefault(syntax.SyntaxTree) + 1;
+                        }
                     }
                 }
                 else
@@ -476,6 +549,7 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
                     Edge(Owner(syntax, model), EnsureSymbol(method), "calls", syntax, "csharp.bound-invocation",
                         virtualDispatch ? "virtual-declaration" : "direct",
                         virtualDispatch ? ["静态声明目标已确认；运行时覆写/接口实现未确认。"] : ["源码调用点已绑定；不证明运行时执行。"]);
+                    ArgumentBindings(call);
                 }
             }
             else if (operation is not INameOfOperation)

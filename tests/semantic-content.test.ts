@@ -20,14 +20,17 @@ const architecture: ArchitectureModel = JSON.parse(await readFile(path.join(root
 const original = definitions.flows[0];
 const clone = <T>(value: T): T => structuredClone(value);
 
-test('curated two-flow seed covers all 35 original steps with six/seven summary groups and precise implementation bindings', () => {
-  assert.deepEqual(definitions.flows.map(flow => flow.groups.length), [6, 7]);
-  assert.equal(definitions.flows.flatMap(flow => flow.steps).length, 35);
+test('reviewed flows preserve the original 35 steps and every flow retains precise implementation bindings', () => {
+  assert.deepEqual(definitions.flows.slice(0, 2).map(flow => flow.id), ['claim-reserve', 'battle-start-poll-result']);
+  assert.deepEqual(definitions.flows.slice(0, 2).map(flow => flow.groups.length), [6, 7]);
+  assert.equal(definitions.flows.slice(0, 2).flatMap(flow => flow.steps).length, 35);
+  assert.deepEqual(definitions.flows.map(flow => flow.sourceFlowId).sort(), architecture.flows.map(flow => flow.id).sort(), 'each authored source flow has one real semantic projection');
   const anchors = new Set(architecture.anchors.map(anchor => anchor.id));
   for (const flow of definitions.flows) {
     const source = architecture.flows.find(item => item.id === flow.sourceFlowId)!;
     assert.ok(source);
     assert.deepEqual(flow.steps.flatMap(step => step.sourceStepIds).sort(), source.steps.map(step => step.id).sort());
+    assert.deepEqual(flow.groups.flatMap(group => group.childIds).sort(), flow.steps.map(step => step.id).sort(), 'summary groups cover detail exactly once');
     for (const node of [...flow.groups, ...flow.steps]) {
       assert.equal(node.origin, 'curated');
       assert.ok(node.purpose && node.summary && node.detail && node.processing.length);

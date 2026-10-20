@@ -4444,6 +4444,438 @@
       "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
       "quote": "            advance(state, self.clock())",
       "description": "execute内推进表达式；导入调用在事实索引中为inferred。"
+    },
+    {
+      "id": "review-flight-dispatch",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 295,
+      "endLine": 299,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "    def projectile_hit(p, victim):\n        critical = apply_hit(b, p['controller'], victim, p['damage'], p['contactAt'], element=p.get('element'), on_hit_status=p.get('onHitStatus'))\n        log(b, p['name']+'命中 → '+victim['name'])\n        return critical\n    sect_projectiles.advance(b, dt, t, projectile_hit)",
+      "description": "固定步传入局部命中函数；传参不等于动态回调已执行。"
+    },
+    {
+      "id": "review-flight-contact-call",
+      "filePath": "Server/sect_projectiles.py",
+      "startLine": 245,
+      "endLine": 247,
+      "expectedFileHash": "f682ea89dd94ec21f67e33e41e14d8453d3a839aa5b345bf7e6dc74cfcecac49",
+      "quote": "                else:turn(p,p['motion']['v'] if length(p['motion']['v'])>.001 else [math.cos(p['angle']),math.sin(p['angle'])],used)\n            if phase not in ('aiming','hovering'):\n                contact_step(battle,p,actors,all_proxies,old,rotation,at,end,on_hit)",
+      "description": "非瞄准、非悬停阶段才检查接触。"
+    },
+    {
+      "id": "review-contact-gate",
+      "filePath": "Server/sect_projectiles.py",
+      "startLine": 134,
+      "endLine": 145,
+      "expectedFileHash": "f682ea89dd94ec21f67e33e41e14d8453d3a839aa5b345bf7e6dc74cfcecac49",
+      "quote": "    ignored=set()\n    for _ in range(8):\n        if not p['damageEnabled']:return\n        candidates=[v for v in all_proxies if v['id'] not in ignored and decision(v,p,actors,start)!='ignore']\n        changed=False\n        for contact in ordered_contacts(path,rotation,start,end,PROFILE['contactHalfLength'],PROFILE['hitRadius'],candidates):\n            proxy=contact['proxy'];at=contact['at'];kind=decision(proxy,p,actors,at)\n            if kind=='ignore':continue\n            if kind=='damage':\n                victim=actors[proxy['owner']];p['hitTargets'].append(victim['id']);p['contactAt']=at\n                p['criticalFollowup'] |= bool(on_hit(p,victim))\n                event(battle,p,'hit',at,victim['id'])",
+      "description": "最多8轮接触，伤害禁用提前返回，仅damage决策调用on_hit。"
+    },
+    {
+      "id": "review-hit-critical",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 193,
+      "endLine": 205,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def apply_hit(b, source, victim, amount, t, can_crit=True, element=None, on_hit_status=None):\n    if victim['hp'] <= 0: return\n    critical = False\n    if can_crit:\n        # Approved Xorshift32V1, encounter-owned critical stream; UI/flight never consume it.\n        x = b.get('criticalRandom', 1)\n        x ^= (x << 13) & 0xffffffff\n        x ^= x >> 17\n        x ^= (x << 5) & 0xffffffff\n        b['criticalRandom'] = x & 0xffffffff\n        critical = b['criticalRandom'] % 10000 < D['criticalChanceBps']\n    before = victim['hp']\n    damage(victim, amount * (D['criticalMultiplier'] if critical else 1))",
+      "description": "死亡目标提前返回；可暴击时推进本场随机流并向damage传入倍率伤害。"
+    },
+    {
+      "id": "review-hit-feedback",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 205,
+      "endLine": 207,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "    damage(victim, amount * (D['criticalMultiplier'] if critical else 1))\n    feedback(b, source, victim, 'critical' if critical else 'hit', t,\n             amount=before-victim['hp'], killed=victim['hp'] <= 0)",
+      "description": "根据伤前伤后生命差记录反馈，不证明客户端播放。"
+    },
+    {
+      "id": "review-hit-survivor",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 208,
+      "endLine": 220,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "    if victim['hp'] <= 0: return critical and before > victim['hp']\n    # Examine pre-existing attachments. A hit cannot react with its own newly applied state.\n    match = sect_reactions.match(b.get('reactions', CONTENT['reactions']),\n        b.get('statusEffects', CONTENT['statusEffects']), victim['statuses'], element, t)\n    if match:\n        rule, consumed = match\n        if rule['consume']:\n            for status in consumed: remove_status(b, victim, status, t)\n        apply_configured_status(b, source, victim, rule['resultStatus'], t)\n        feedback(b, source, victim, 'reaction', t, effect=rule['id'], name=rule['name'], cue=rule['cue'])\n        log(b, victim['name']+'触发'+rule['name'])\n    if on_hit_status: apply_configured_status(b, source, victim, on_hit_status, t)\n    return critical and before > victim['hp']",
+      "description": "死亡早退；先匹配旧附着反应，再应用本次onHitStatus。"
+    },
+    {
+      "id": "review-damage-rules",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 183,
+      "endLine": 190,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def damage(a, amount):\n    # Defense is fixed reduction; the minimum hit is one. DOT uses the same rule.\n    amount = max(1, amount-a['defense'])\n    shield = next((s for s in a['statuses'] if s['id'] == 'shield'), None)\n    if shield:\n        used = min(shield['amount'], amount); shield['amount'] -= used; amount -= used\n        if shield['amount'] <= 0: a['statuses'].remove(shield)\n    a['hp'] = max(0.0, a['hp']-amount)",
+      "description": "防御减伤、最低原始命中1、护盾吸收、生命下限0。"
+    },
+    {
+      "id": "review-feedback-record",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 164,
+      "endLine": 168,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def feedback(b, source, victim, kind, t, **fields):\n    b['feedbackSerial'] = b.get('feedbackSerial', 0) + 1\n    item = dict(sequence=b['feedbackSerial'], target=victim['id'], source=source, kind=kind, amount=0, killed=False, at=t)\n    item.update(fields); b.setdefault('feedback', []).append(item)\n    b['feedback'] = b['feedback'][-64:]",
+      "description": "服务端有序且有界反馈记录，不是UI回执。"
+    },
+    {
+      "id": "review-status-apply",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 171,
+      "endLine": 174,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def apply_configured_status(b, source, victim, sid, t):\n    d = next(v for v in b.get('statusEffects', CONTENT['statusEffects']) if v['id'] == sid)\n    add_status(victim, sid, d['amount'], d['duration'], t, d, source)\n    feedback(b, source, victim, 'statusApplied', t, effect=sid, name=d['name'], cue=d['cue'])",
+      "description": "读取状态定义，添加状态并记录反馈。"
+    },
+    {
+      "id": "review-reaction-match",
+      "filePath": "Server/sect_reactions.py",
+      "startLine": 48,
+      "endLine": 59,
+      "expectedFileHash": "2701247c13f1ab97e64fc94164d6aa5447a2b64e12179d93ee63da9ddda4f777",
+      "quote": "def match(rules, definitions, statuses, element, seconds):\n    \"\"\"Return at most one rule and its matching old attachments; ties retain config order.\"\"\"\n    if not element: return None\n    tags = {d['id']: set(d['tags']) for d in definitions}\n    live = [s for s in statuses if s['until'] > seconds+1e-6]\n    present = set().union(*(tags.get(s['id'], set()) for s in live))\n    for rule in sorted(rules, key=lambda r: r['priority']):\n        if not rule['enabled'] or rule['incomingElement'] != element: continue\n        required = set(rule['requiredTags'])\n        if required <= present:\n            return rule, [s for s in live if tags.get(s['id'], set()) & required]\n    return None",
+      "description": "未过期旧附着按优先级最多选一个反应。"
+    },
+    {
+      "id": "review-forge-ui",
+      "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs",
+      "startLine": 207,
+      "endLine": 210,
+      "expectedFileHash": "0d23e258268a95c1d0b00dbe53c250ac38651e0ff066f7ab1342d5918ce11c80",
+      "quote": "                info.Add(Text(owner==null?\"仓库\":owner.name+\"佩戴\",12,Muted));\n                var actions=Row();actions.style.flexWrap=Wrap.Wrap;actions.style.marginTop=12;card.Add(actions);\n                actions.Add(Button(\"装备给\"+State.members.First(m=>m.id==selectedMember).name,()=>Send(\"equip\",member:selectedMember,target:gear.id)));\n                var enhance=Button(gear.level==3?\"已满级\":$\"强化 · {40*(gear.level+1)}灵石 / {8*(gear.level+1)}精铁\",()=>Send(\"enhance\",target:gear.id));enhance.SetEnabled(gear.level<3);actions.Add(enhance);",
+      "description": "装备与强化按钮分别发送独立意图。"
+    },
+    {
+      "id": "review-craft-ui",
+      "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs",
+      "startLine": 217,
+      "endLine": 221,
+      "expectedFileHash": "0d23e258268a95c1d0b00dbe53c250ac38651e0ff066f7ab1342d5918ce11c80",
+      "quote": "                string id=recipe.id;var card=new VisualElement();card.AddToClassList(\"sect-card\");Pad(card,12);detail.Add(card);\n                var header=Row();card.Add(header);var icon=IconButton(recipe.id,()=>{},\"SectRecipe-\"+recipe.id);BindGearTip(icon,recipe);header.Add(icon);\n                var info=new VisualElement();info.style.marginLeft=12;info.style.flexShrink=1;header.Add(info);\n                info.Add(Text(recipe.name,17,Gold));info.Add(Text($\"工坊Lv.{recipe.workshop}\\n{recipe.stones}灵石 / {recipe.iron}精铁\",12,Muted));\n                var craft=Button(\"开始锻造\",()=>Send(\"craft\",target:id));craft.style.marginTop=10;card.Add(craft);",
+      "description": "配方显示代价并注册craft意图；实际点击未验证。"
+    },
+    {
+      "id": "review-command-lock",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 137,
+      "endLine": 144,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        return message\n    if active(state):\n        leader = state[\"members\"][0]\n        worn = {leader[\"weapon\"], leader[\"armor\"]} - {\"\"}\n        locked = (action in (\"assign\", \"train\", \"breakthrough\", \"unequip\") and data.get(\"member\") == \"leader\")\n        locked |= action in (\"equip\", \"enhance\") and (data.get(\"member\") == \"leader\" or data.get(\"target\") in worn)\n        locked |= action == \"dig\"\n        require(not locked, \"战斗期间掌门配置与职责已锁定，请先撤退\")",
+      "description": "战斗期掌门配置和探矿被锁定。"
+    },
+    {
+      "id": "review-craft-check",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 220,
+      "endLine": 226,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action == \"craft\":\n        definition = GEAR.get(data.get(\"target\")) if isinstance(data.get(\"target\"), str) else None\n        recipe = (definition['id'], definition['name'], definition['slot'], definition['stones'], definition['iron'], definition['workshop'], definition['bonus']) if definition else None\n        require(recipe is not None, \"无此配方\")\n        require(len(state[\"equipment\"]) < 60, \"装备仓库已满（60件）\")\n        require(state[\"facilities\"][3] >= recipe[5], \"工坊等级不足\")\n        pay(state, recipe[3], recipe[4])",
+      "description": "配方、容量、工坊检查后支付材料。"
+    },
+    {
+      "id": "review-craft-store",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 227,
+      "endLine": 229,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        item_id = \"gear-\"+str(state[\"revision\"]+1)\n        state[\"equipment\"].append(dict(id=item_id, recipe=recipe[0], name=recipe[1], slot=recipe[2], level=0, bonus=recipe[6]))\n        message = recipe[1]+\"制作完成，请在装备列表中选择佩戴者\"",
+      "description": "创建装备入库，不自动穿戴。"
+    },
+    {
+      "id": "review-item-check",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 230,
+      "endLine": 232,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action in (\"equip\", \"enhance\"):\n        item = next((i for i in state[\"equipment\"] if i[\"id\"] == data.get(\"target\")), None)\n        require(item is not None, \"装备不存在\")",
+      "description": "equip/enhance查找已有实例，找不到直接拒绝。"
+    },
+    {
+      "id": "review-item-transfer",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 233,
+      "endLine": 239,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        if action == \"equip\":\n            p = person(state, data.get(\"member\"))\n            for m in state[\"members\"]:\n                if m[item[\"slot\"]] == item[\"id\"]:\n                    m[item[\"slot\"]] = \"\"\n            p[item[\"slot\"]] = item[\"id\"]\n            message = p[\"name\"]+\"已装备\"+item[\"name\"]",
+      "description": "equip分支查成员，移除其他成员同槽引用，再交给目标成员。"
+    },
+    {
+      "id": "review-item-enhance",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 240,
+      "endLine": 244,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        else:\n            require(item[\"level\"] < 3, \"装备强化上限为+3\")\n            pay(state, 40*(item[\"level\"]+1), 8*(item[\"level\"]+1))\n            item[\"level\"] += 1\n            message = \"装备强化成功\"",
+      "description": "独立强化分支：上限校验、支付、level增加。"
+    },
+    {
+      "id": "review-pay",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 123,
+      "endLine": 128,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "def pay(state, stones=0, iron=0, essence=0):\n    require(state[\"stones\"] >= stones and state[\"iron\"] >= iron and state[\"essence\"] >= essence,\n            f\"资源不足，需要灵石 {stones} / 精铁 {iron} / 灵髓 {essence}\")\n    state[\"stones\"] -= stones\n    state[\"iron\"] -= iron\n    state[\"essence\"] -= essence",
+      "description": "同时检查资源余额，成功后逐项扣除。"
+    },
+    {
+      "id": "review-gear-stats",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 49,
+      "endLine": 61,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def stats(state, skills):\n    realm = state['members'][0]['realm']\n    result = dict(hp=D['hp']+realm*70, mana=D['mana']+realm*20, attack=D['attack']+realm*6,\n                  defense=D['defense']+realm*3, speed=D['speed'], regen=D['regen'], range=1.5, interval=1.4)\n    for slot in ('weapon', 'armor'):\n        item = next((i for i in state['equipment'] if i['id'] == state['members'][0][slot]), None)\n        if item:\n            result['attack' if slot == 'weapon' else 'defense'] += item['bonus']+3*item['level']\n            if slot == 'weapon':\n                gear = GEAR[item['recipe']]\n                result.update(range=gear['basicRange'], interval=gear['basicInterval'])\n    for s in skills:\n        if s['kind'] == 'passive': result[s['effect']] += s['magnitude']",
+      "description": "新本场读取掌门穿戴与强化等级计算属性。"
+    },
+    {
+      "id": "review-growth-ui",
+      "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs",
+      "startLine": 178,
+      "endLine": 185,
+      "expectedFileHash": "0d23e258268a95c1d0b00dbe53c250ac38651e0ff066f7ab1342d5918ce11c80",
+      "quote": "            var member=State.members.First(m=>m.id==selectedMember);\n            var card=Card(parent,member.name+\" · \"+State.realms[member.realm],\"闭关修炼会占用主要活动；换职不清空修为。弟子境界不超过掌门。\");\n            var progress=new ProgressBar{lowValue=0,highValue=100};card.Add(progress);\n            liveLabels.Bind(progress,()=>{var p=State.members.First(m=>m.id==selectedMember);int need=State.realmNeed[p.realm];progress.value=need==0?100:Math.Min(100,p.xp/need*100);progress.title=need==0?\"当前境界上限 · 可继续积累修为\":$\"修为 {p.xp:0} / {need}\";});\n            AssignmentButtons(card,member);\n            card.Add(Button(\"引气修炼 · 30灵石 / +\"+(30+15*State.facilities[2])+\"修为\",()=>Send(\"train\",member:member.id),\"SectTrain\"));\n            if(member.realm<3)\n            {int r=member.realm;card.Add(Text($\"突破至{State.realms[r+1]}\\n需要修为 {State.realmNeed[r]} / 大殿Lv.{r+1}\\n消耗 {new[]{50,160,400}[r]}灵石 / {new[]{0,10,30}[r]}精铁 / {new[]{0,0,3}[r]}灵髓\",14,Gold));card.Add(Button(\"准备充足 · 突破\",()=>Send(\"breakthrough\",member:member.id),\"SectBreakthrough\"));}",
+      "description": "修炼和突破是独立按钮，realm<3才展示突破。"
+    },
+    {
+      "id": "review-train-check",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 176,
+      "endLine": 179,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action == \"train\":\n        p = person(state, data.get(\"member\"))\n        require(p[\"realm\"] < 3, \"已达到首版境界上限\")\n        pay(state, 30)",
+      "description": "主动修炼查成员、境界上限并支付30灵石。"
+    },
+    {
+      "id": "review-train-gain",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 180,
+      "endLine": 181,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        p[\"xp\"] = min(2000, p[\"xp\"] + 30 + 15*state[\"facilities\"][2])\n        message = p[\"name\"] + \"完成一轮引气修炼\"",
+      "description": "即时修为增加30+15×修炼堂等级，封顶2000。"
+    },
+    {
+      "id": "review-breakthrough-check",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 182,
+      "endLine": 189,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action == \"breakthrough\":\n        p = person(state, data.get(\"member\"))\n        realm = p[\"realm\"]\n        require(realm < 3, \"当前上限为筑基初期，后续境界尚未开放\")\n        require(p[\"xp\"] >= (60, 240, 720)[realm], \"修为不足\")\n        require(state[\"facilities\"][0] >= realm+1, \"宗门大殿等级不足\")\n        require(p[\"id\"] == \"leader\" or realm < state[\"members\"][0][\"realm\"], \"弟子境界不能超过掌门\")\n        pay(state, (50, 160, 400)[realm], (0, 10, 30)[realm], (0, 0, 3)[realm])",
+      "description": "突破检查境界、修为、大殿、弟子上限并支付。"
+    },
+    {
+      "id": "review-breakthrough-gain",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 190,
+      "endLine": 192,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        p[\"xp\"] -= (60, 240, 720)[realm]\n        p[\"realm\"] += 1\n        message = p[\"name\"]+\"突破至\"+REALMS[p[\"realm\"]]+\"；招募资格已更新\"",
+      "description": "扣修为、增境界并更新提示。"
+    },
+    {
+      "id": "review-passive-cultivation",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 89,
+      "endLine": 92,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    for p in state[\"members\"]:\n        if p[\"activity\"] == \"cultivate\":\n            speed = (1 + .3*(state[\"facilities\"][2]-1)) * (1.6 if p[\"specialty\"] == \"修炼\" else 1)\n            p[\"xp\"] = min(2000, p[\"xp\"] + elapsed*speed)",
+      "description": "activity=cultivate才按时间、设施和专长加修为。"
+    },
+    {
+      "id": "review-realm-stats",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 49,
+      "endLine": 52,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "def stats(state, skills):\n    realm = state['members'][0]['realm']\n    result = dict(hp=D['hp']+realm*70, mana=D['mana']+realm*20, attack=D['attack']+realm*6,\n                  defense=D['defense']+realm*3, speed=D['speed'], regen=D['regen'], range=1.5, interval=1.4)",
+      "description": "新本场初始属性读取掌门realm。"
+    },
+    {
+      "id": "review-dig-ui",
+      "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs",
+      "startLine": 90,
+      "endLine": 94,
+      "expectedFileHash": "0d23e258268a95c1d0b00dbe53c250ac38651e0ff066f7ab1342d5918ce11c80",
+      "quote": "                    int index=row*7+x, cell=region*49+index;var tile=State.maps[region].tiles[index];\n                    int queued=Array.IndexOf(State.queue,cell);\n                    string title=tile.opened?(tile.kind==\"node\"?\"灵脉\":\"·\"):queued>=0?(queued+1)+\" · 挖\":tile.visible?TileName(tile.kind):\"?\";\n                    var button=Button(title,()=>{selectedTile=index;BuildShell();if(!tile.opened&&tile.visible&&tile.kind!=\"guard\")Send(\"dig\",value:cell);},\"SectTile-\"+cell);\n                    button.style.flexGrow=1;button.style.flexBasis=0;button.style.minWidth=0;",
+      "description": "矿格回调仅向未开采可见非守卫格发送dig。"
+    },
+    {
+      "id": "review-dig-check",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 203,
+      "endLine": 213,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action == \"dig\":\n        cell = data.get(\"value\")\n        require(type(cell) is int and 0 <= cell < 147, \"无效矿格\")\n        region, index = divmod(cell, 49)\n        require(region_open(state, region), \"掌门境界与大殿等级不足，区域尚未开放\")\n        tile = state[\"maps\"][region][\"tiles\"][index]\n        require(not tile[\"opened\"] and cell not in state[\"queue\"], \"此格已开采或已排队\")\n        require(len(state[\"queue\"]) < 12, \"队列最多12格\")\n        require(tile[\"kind\"] != \"guard\", \"守卫阻挡此路：请在此矿格发起首领挑战\")\n        require(any(state[\"maps\"][region][\"tiles\"][n][\"opened\"] or region*49+n in state[\"queue\"] for n in adjacent(index)), \"请从已探索区域相邻的矿格开始\")\n        require(index != 48 or state[\"maps\"][region][\"tiles\"][45][\"opened\"], \"此处为守卫封锁的深层矿藏\")",
+      "description": "校验范围、区域、队列、前沿及守卫封锁。"
+    },
+    {
+      "id": "review-dig-enqueue",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 214,
+      "endLine": 216,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        state[\"queue\"].append(cell)\n        state[\"members\"][0][\"activity\"] = \"explore\"\n        message = \"已排入开采队列；掌门正在带队探矿，离线时队列暂停\"",
+      "description": "入队并将掌门activity设为explore。"
+    },
+    {
+      "id": "review-dig-cancel",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 217,
+      "endLine": 219,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    elif action == \"cancel\":\n        state[\"queue\"] = []\n        message = \"已清空队列，格子的已投入进度保留\"",
+      "description": "cancel清空队列但保留矿格work。"
+    },
+    {
+      "id": "review-mine-active",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 93,
+      "endLine": 96,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    # Only a live, recent heartbeat advances manual mining. Away production is separate.\n    active = now-state[\"seen\"] <= 10\n    if active and state[\"members\"][0][\"activity\"] == \"explore\":\n        budget = min(5, elapsed)*(1+.3*(state[\"facilities\"][1]-1))",
+      "description": "最近10秒活跃且掌门探索时，取至多5秒经过时间，再乘矿务堂效率生成工作预算。"
+    },
+    {
+      "id": "review-mine-work",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 97,
+      "endLine": 105,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "        while budget > 0 and state[\"queue\"]:\n            cell = state[\"queue\"][0]\n            tile = state[\"maps\"][cell//49][\"tiles\"][cell % 49]\n            duration = 3 + 2*(cell//49)\n            used = min(budget, duration-tile[\"work\"])\n            tile[\"work\"] += used\n            budget -= used\n            if tile[\"work\"] + 1e-6 < duration:\n                break",
+      "description": "按队首花预算，工作未完成即break并保留进度。"
+    },
+    {
+      "id": "review-mine-open",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 106,
+      "endLine": 118,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "            tile[\"opened\"] = True\n            state[\"queue\"].pop(0)\n            region = cell//49\n            if tile[\"kind\"] == \"ore\":\n                state[\"iron\"] += 10*(region+1)\n            elif tile[\"kind\"] == \"essence\":\n                state[\"essence\"] += 6*(region+1)\n            elif tile[\"kind\"] == \"cache\":\n                state[\"stones\"] += 60*(region+1)\n                state[\"iron\"] += 5*(region+1)\n            else:\n                state[\"stones\"] += 8*(region+1)\n            state[\"lastMessage\"] = \"开采完成：\" + {\"rock\":\"岩层\", \"node\":\"发现稳定灵脉，可分配驻守\", \"ore\":\"精铁矿藏\", \"essence\":\"灵髓矿藏\", \"cache\":\"先人遗留物\"}[tile[\"kind\"]]",
+      "description": "完成格子后出队，按类型发材料并更新结果提示。"
+    },
+    {
+      "id": "review-settle-watermark",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 119,
+      "endLine": 120,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "    state[\"last\"] = now\n    state[\"seen\"] = max(now, state[\"seen\"])",
+      "description": "末尾记录last和不回拨seen。"
+    },
+    {
+      "id": "review-map-frontier",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 283,
+      "endLine": 291,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "                  realmNeed=[60, 240, 720, 0], serverTime=state[\"last\"])\n    # Internal watermarks stay server-side; client gets only visible/frontier geology.\n    for mine in result[\"maps\"]:\n        for tile in mine[\"tiles\"]:\n            tile[\"visible\"] = tile[\"opened\"] or mine[\"region\"]*49+tile[\"index\"] in state[\"queue\"] or any(mine[\"tiles\"][n][\"opened\"] for n in adjacent(tile[\"index\"]))\n            if not tile[\"visible\"]:\n                tile[\"kind\"] = \"unknown\"\n    result.pop(\"last\")\n    result.pop(\"seen\")",
+      "description": "仅公开已开、排队与相邻前沿的地质，移除last/seen内部水位。"
+    },
+    {
+      "id": "review-transaction-open",
+      "filePath": "Server/sect_server.py",
+      "startLine": 144,
+      "endLine": 149,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "    def execute(self, token, data=None, mode='full', include_catalog=True):\n        with self.lock, self.connect() as db:\n            # Time settlement still writes, but a same-clock query does not dirty the account.\n            db.execute(\"BEGIN IMMEDIATE\")\n            row = self.account(db, token)\n            state = self.load_state(row)",
+      "description": "锁和事务覆盖认证及账号读取。"
+    },
+    {
+      "id": "review-state-load",
+      "filePath": "Server/sect_server.py",
+      "startLine": 76,
+      "endLine": 79,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "    def load_state(row):\n        state = json.loads(row[\"state\"])\n        migrate_state(state)\n        return state",
+      "description": "解析账号JSON并进入结构迁移。"
+    },
+    {
+      "id": "review-request-guards",
+      "filePath": "Server/sect_server.py",
+      "startLine": 151,
+      "endLine": 165,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            if data is not None:\n                require_protocol = data.get('protocolVersion', 1)\n                if type(require_protocol) is not int or require_protocol not in (1, 2): raise RuleError('接口协议版本不兼容')\n                request_id = data.get('requestId')\n                expirable = sect_requests.validate_id(request_id, self.clock(), data.get('protocolVersion', 1))\n                payload = sect_requests.digest(data)\n                sect_requests.prune(db, self.clock())\n                prior = db.execute('SELECT * FROM requests WHERE account=? AND id=?', (row['id'], request_id)).fetchone()\n                if prior:\n                    return self.response_state(state, row, sect_requests.replay(prior, data), mode, include_catalog)\n                if type(data.get('revision')) is not int or data['revision'] != state['revision']:\n                    return self.response_state(state, row, dict(ok=False, conflict=True, code='revision_conflict',\n                        message='进度已更新，已同步服务器；请重新操作'), mode, include_catalog)\n                if not isinstance(data.get('action'), str):\n                    raise RuleError('需要有效操作名称')",
+      "description": "校验协议、请求身份、回执、revision；允许提前响应。"
+    },
+    {
+      "id": "review-transaction-settle",
+      "filePath": "Server/sect_server.py",
+      "startLine": 166,
+      "endLine": 168,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            advance(state, self.clock())\n            settle(state, self.clock())\n            settled = copy.deepcopy(state)",
+      "description": "战斗及经营结算后复制settled回退点。"
+    },
+    {
+      "id": "review-transaction-command",
+      "filePath": "Server/sect_server.py",
+      "startLine": 169,
+      "endLine": 181,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            if data is not None:\n                try:\n                    if data.get('action') == 'bless':\n                        message = self.bless(db, row, state, data.get('target'))\n                    else:\n                        message = command(state, data.get('action'), data)\n                except RuleError as exc:\n                    state = settled\n                    message, ok = str(exc), False\n                else:\n                    ok = True\n            else:\n                message, ok = '服务器已同步', True",
+      "description": "分派祝福或规则，拒绝恢复settled，轮询无命令。"
+    },
+    {
+      "id": "review-account-write",
+      "filePath": "Server/sect_server.py",
+      "startLine": 183,
+      "endLine": 186,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            if data is not None and ok: state['revision'] += 1\n            if encode(state) != row['state']:\n                state['snapshotSeq'] += 1\n                db.execute('UPDATE accounts SET state=? WHERE id=?', (encode(state), row['id']))",
+      "description": "成功命令增revision；状态变化才增snapshotSeq并UPDATE。"
+    },
+    {
+      "id": "review-request-receipt",
+      "filePath": "Server/sect_server.py",
+      "startLine": 187,
+      "endLine": 191,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            result = dict(ok=ok, message=message)\n            if not ok: result['code'] = 'rule_rejected'\n            if payload is not None:\n                db.execute('INSERT INTO requests(account,id,payload,response,created,expirable) VALUES (?,?,?,?,?,?)',\n                    (row['id'], request_id, payload, encode(result), self.clock(), int(expirable)))",
+      "description": "仅命令payload存在才写幂等回执。"
+    },
+    {
+      "id": "review-response-call",
+      "filePath": "Server/sect_server.py",
+      "startLine": 192,
+      "endLine": 192,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "            return self.response_state(state, row, result, mode, include_catalog)",
+      "description": "正常尾部调用response_state。"
+    },
+    {
+      "id": "review-response-battle",
+      "filePath": "Server/sect_server.py",
+      "startLine": 124,
+      "endLine": 139,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "    def response_state(state, row, result, mode='full', include_catalog=True):\n        result = dict(result)\n        if mode == 'battle':\n            combat = view(state, False)\n            battle = combat.get('battle')\n            if battle:\n                # Viewers intentionally play only recent feedback; history remains authoritative in storage.\n                battle['feedback'] = [f for f in battle.get('feedback', []) if battle['elapsed']-f['at'] <= 1]\n            def wire(value):\n                if isinstance(value, float): return round(value, 6)\n                if isinstance(value, dict): return {k: wire(v) for k, v in value.items()}\n                if isinstance(value, list): return [wire(v) for v in value]\n                return value\n            combat = wire(combat)\n            result.update(battleOnly=True, combat={k: combat[k] for k in ('battle', 'locked', 'continuous', 'wave')},\n                revision=state['revision'], snapshotSeq=state['snapshotSeq'], serverTime=state['last'])",
+      "description": "battle动态字段、版本水位与近期反馈窗口。"
+    },
+    {
+      "id": "review-response-full",
+      "filePath": "Server/sect_server.py",
+      "startLine": 140,
+      "endLine": 142,
+      "expectedFileHash": "66d7ceae61cb8c992b6a752b346f9cc049c0a998a48ddeba3ade73b584e80d3c",
+      "quote": "        else:\n            result['state'] = snapshot(state, row['id'], row['name'], include_catalog)\n        return result",
+      "description": "非battle模式调用完整snapshot。"
+    },
+    {
+      "id": "review-snapshot-shape",
+      "filePath": "Server/sect_rules.py",
+      "startLine": 279,
+      "endLine": 282,
+      "expectedFileHash": "a25337c552c046a03666d34b4181a33acdf4de8e04580a98583a6c896a9591ed",
+      "quote": "def snapshot(state, account, name, include_catalog=True):\n    result = copy.deepcopy(state)\n    result.update(account=account, sectName=name, realms=REALMS, regionNames=REGIONS,\n                  production=rates(state), capacity=3600*state[\"facilities\"][1],",
+      "description": "复制状态，添加公开派生字段。"
+    },
+    {
+      "id": "review-hit-callback",
+      "filePath": "Server/sect_combat.py",
+      "startLine": 295,
+      "endLine": 298,
+      "expectedFileHash": "a60e1abc5791703c7f121998955398c8c02a41cabc3a8a4ca186514d5bf253e7",
+      "quote": "    def projectile_hit(p, victim):\n        critical = apply_hit(b, p['controller'], victim, p['damage'], p['contactAt'], element=p.get('element'), on_hit_status=p.get('onHitStatus'))\n        log(b, p['name']+'命中 → '+victim['name'])\n        return critical",
+      "description": "局部projectile_hit的完整声明，仅含apply_hit、日志和返回值。"
     }
   ],
   "flows": [
@@ -5824,6 +6256,1902 @@
         "资源／地图是finish的条件结果写入；这种业务关联不升级为完整运行时数据传递。",
         "规则步、HTTP轮询和显示帧是三个独立频率；服务端没有后台持续tick。",
         "不虚构事件发布订阅；未解析委托和动态分派继续保留事实索引诊断。"
+      ]
+    },
+    {
+      "id": "sword-hit-resolution",
+      "name": "飞剑接触与命中：从动态回调边界到生命值变化",
+      "description": "区分运动接触、动态回调、实际伤害和存活后反应，不补造on_hit确定执行边。",
+      "trigger": "本场固定步推进飞剑；仅有效damage接触请求命中处理。",
+      "systemIds": [
+        "solo-combat"
+      ],
+      "lanes": [
+        {
+          "id": "sword-flight-lane",
+          "name": "飞剑运动与接触",
+          "systemId": "solo-combat"
+        },
+        {
+          "id": "sword-hit-lane",
+          "name": "伤害与状态",
+          "systemId": "solo-combat"
+        }
+      ],
+      "steps": [
+        {
+          "id": "sword-dispatch",
+          "laneId": "sword-flight-lane",
+          "phase": 1,
+          "name": "把命中处理交给飞剑推进",
+          "description": "固定步把本场局部命中函数作为实参交给飞剑推进。",
+          "moduleId": "combat-flight",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.step",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-flight-dispatch"
+          ],
+          "reads": [
+            "battle.projectiles、dt、elapsed"
+          ],
+          "writes": []
+        },
+        {
+          "id": "sword-flight-contact",
+          "laneId": "sword-flight-lane",
+          "phase": 1,
+          "name": "在可接触阶段检查碰撞",
+          "description": "非瞄准、非悬停的运动阶段才检查轨迹接触。",
+          "moduleId": "combat-flight",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_projectiles.advance",
+            "filePath": "Server/sect_projectiles.py"
+          },
+          "anchorIds": [
+            "review-flight-contact-call"
+          ],
+          "reads": [
+            "projectile.phase、轨迹段、on_hit参数"
+          ],
+          "writes": [],
+          "condition": "phase not in ('aiming','hovering')"
+        },
+        {
+          "id": "sword-contact-gate",
+          "laneId": "sword-flight-lane",
+          "phase": 2,
+          "name": "区分命中、阻挡与忽略",
+          "description": "只有damage决策才调用on_hit；没有伤害权限直接返回。",
+          "moduleId": "combat-flight",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_projectiles.contact_step",
+            "filePath": "Server/sect_projectiles.py"
+          },
+          "anchorIds": [
+            "review-contact-gate"
+          ],
+          "reads": [
+            "有序接触、damageEnabled、on_hit"
+          ],
+          "writes": [
+            "p.hitTargets、p.contactAt、p.criticalFollowup"
+          ]
+        },
+        {
+          "id": "sword-hit-callback",
+          "laneId": "sword-hit-lane",
+          "phase": 3,
+          "name": "处理一次飞剑命中",
+          "description": "局部回调把控制者、目标、伤害与接触时刻交给统一命中处理。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.step.projectile_hit",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-hit-callback"
+          ],
+          "reads": [
+            "controller、victim、damage、contactAt",
+            "element、onHitStatus"
+          ],
+          "writes": [
+            "本场logs"
+          ]
+        },
+        {
+          "id": "sword-critical",
+          "laneId": "sword-hit-lane",
+          "phase": 3,
+          "name": "检查目标并计算暴击倍率",
+          "description": "目标存活时按can_crit决定是否推进暴击流，再将倍率伤害交给damage。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.apply_hit",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-hit-critical"
+          ],
+          "reads": [
+            "victim.hp、amount、can_crit、criticalRandom"
+          ],
+          "writes": [
+            "b.criticalRandom（允许暴击时）"
+          ],
+          "condition": "victim.hp > 0"
+        },
+        {
+          "id": "sword-damage",
+          "laneId": "sword-hit-lane",
+          "phase": 4,
+          "name": "先吸收护盾，再减少生命",
+          "description": "防御固定减伤后由护盾吸收，剩余数值使生命值最低降至零。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.damage",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-damage-rules"
+          ],
+          "reads": [
+            "amount、defense、hp、shield"
+          ],
+          "writes": [
+            "a.hp、shield.amount、a.statuses"
+          ]
+        },
+        {
+          "id": "sword-hit-feedback",
+          "laneId": "sword-hit-lane",
+          "phase": 4,
+          "name": "记录实际生命损失反馈",
+          "description": "把伤前伤后生命差、命中类型与击杀标记存入服务端反馈。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.feedback",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-feedback-record"
+          ],
+          "reads": [
+            "hp差值、hit或critical、接触时刻"
+          ],
+          "writes": [
+            "feedbackSerial、feedback"
+          ]
+        },
+        {
+          "id": "sword-survivor",
+          "laneId": "sword-hit-lane",
+          "phase": 5,
+          "name": "存活后再处理附着反应",
+          "description": "受击后仍存活才匹配旧附着反应，最后再应用本次附带状态。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.apply_hit",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-hit-survivor"
+          ],
+          "reads": [
+            "结算后hp、旧statuses、element、on_hit_status"
+          ],
+          "writes": [
+            "victim.statuses、feedback、logs"
+          ],
+          "condition": "damage后victim.hp > 0"
+        },
+        {
+          "id": "sword-reaction-match",
+          "laneId": "sword-hit-lane",
+          "phase": 5,
+          "name": "从旧附着中选一个反应",
+          "description": "从未过期旧附着中按优先级挑选首个满足标签的反应。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_reactions.match",
+            "filePath": "Server/sect_reactions.py"
+          },
+          "anchorIds": [
+            "review-reaction-match"
+          ],
+          "reads": [
+            "反应与状态目录、旧附着、element、seconds"
+          ],
+          "writes": []
+        },
+        {
+          "id": "sword-status-apply",
+          "laneId": "sword-hit-lane",
+          "phase": 6,
+          "name": "按目录应用状态并留证",
+          "description": "按本场状态目录应用定义，并记录statusApplied反馈。",
+          "moduleId": "combat-damage",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.apply_configured_status",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-status-apply"
+          ],
+          "reads": [
+            "sid、source、victim、t、状态目录"
+          ],
+          "writes": [
+            "victim.statuses、feedback"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "id": "sword-dispatch--sword-flight-contact",
+          "source": "sword-dispatch",
+          "target": "sword-flight-contact",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-flight-dispatch",
+            "review-flight-contact-call"
+          ],
+          "limitations": [
+            "真实导入调用site存在；裸绝对导入依赖未知sys.path，不提升为确定目标。"
+          ]
+        },
+        {
+          "id": "sword-flight-contact--sword-contact-gate",
+          "source": "sword-flight-contact",
+          "target": "sword-contact-gate",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-flight-contact-call"
+          ],
+          "limitations": [],
+          "condition": "phase not in ('aiming','hovering')"
+        },
+        {
+          "id": "sword-contact-gate--sword-hit-callback",
+          "source": "sword-contact-gate",
+          "target": "sword-hit-callback",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-contact-gate",
+            "review-flight-dispatch"
+          ],
+          "limitations": [
+            "实参传递与形参调用存在，动态分发目标仍未验证，不补造calls。"
+          ],
+          "condition": "kind == 'damage'且damageEnabled"
+        },
+        {
+          "id": "sword-hit-callback--sword-critical",
+          "source": "sword-hit-callback",
+          "target": "sword-critical",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-hit-callback"
+          ],
+          "limitations": []
+        },
+        {
+          "id": "sword-critical--sword-damage",
+          "source": "sword-critical",
+          "target": "sword-damage",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-hit-critical"
+          ],
+          "limitations": [],
+          "condition": "目标未提前返回"
+        },
+        {
+          "id": "sword-critical--sword-hit-feedback",
+          "source": "sword-critical",
+          "target": "sword-hit-feedback",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-hit-feedback"
+          ],
+          "limitations": [],
+          "condition": "damage正常返回"
+        },
+        {
+          "id": "sword-critical--sword-survivor",
+          "source": "sword-critical",
+          "target": "sword-survivor",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-hit-critical",
+            "review-hit-survivor"
+          ],
+          "limitations": [
+            "两端在同一apply_hit；早退可截断路径，不代表每次命中都反应。"
+          ],
+          "condition": "目标原先存活、damage正常返回且受击后仍存活"
+        },
+        {
+          "id": "sword-survivor--sword-reaction-match",
+          "source": "sword-survivor",
+          "target": "sword-reaction-match",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-hit-survivor",
+            "review-reaction-match"
+          ],
+          "limitations": [
+            "导入调用表达式有源码，但未知sys.path的跨模块绑定保留候选。"
+          ]
+        },
+        {
+          "id": "sword-survivor--sword-status-apply",
+          "source": "sword-survivor",
+          "target": "sword-status-apply",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-hit-survivor"
+          ],
+          "limitations": [],
+          "condition": "存在反应结果或on_hit_status"
+        }
+      ],
+      "limitations": [
+        "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
+        "on_hit为形参：传入projectile_hit有源码依据，动态目标与某次实际命中未运行验证。",
+        "反射、阻挡、过期或伤害禁用可能使接触不扣血。",
+        "服务端feedback不等于客户端已收到或播放。"
+      ]
+    },
+    {
+      "id": "forge-equip-operations",
+      "name": "锻造、穿戴与强化：三个独立装备操作",
+      "description": "解释工坊入库、实例转移、强化与下一场属性读取；三个分支不是自动执行链。",
+      "trigger": "用户分别选择craft、equip或enhance；一次command只进入一个分支。",
+      "systemIds": [
+        "forge-loadout",
+        "solo-combat",
+        "shared-support"
+      ],
+      "lanes": [
+        {
+          "id": "forge-ui-lane",
+          "name": "工坊界面",
+          "systemId": "forge-loadout"
+        },
+        {
+          "id": "forge-rule-lane",
+          "name": "装备与资源规则",
+          "systemId": "forge-loadout"
+        },
+        {
+          "id": "forge-combat-lane",
+          "name": "下一场属性读取",
+          "systemId": "solo-combat"
+        }
+      ],
+      "steps": [
+        {
+          "id": "forge-choice",
+          "laneId": "forge-ui-lane",
+          "phase": 1,
+          "name": "选择锻造、穿戴或强化",
+          "description": "工坊分别提供按配方锻造、移交实例和强化实例三种独立意图。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "csharp",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Game.Presentation.SectGameHost.ForgePage(UnityEngine.UIElements.VisualElement)",
+            "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+          },
+          "anchorIds": [
+            "review-forge-ui",
+            "review-craft-ui"
+          ],
+          "reads": [
+            "配方、仓库、selectedMember"
+          ],
+          "writes": []
+        },
+        {
+          "id": "forge-craft-check",
+          "laneId": "forge-rule-lane",
+          "phase": 2,
+          "name": "检查配方和仓库容量",
+          "description": "craft检查配方、60件容量和工坊等级，再请求材料支付。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-craft-check",
+            "review-command-lock"
+          ],
+          "reads": [
+            "action=craft、target配方",
+            "facilities[3]、equipment、余额"
+          ],
+          "writes": [],
+          "condition": "action == craft"
+        },
+        {
+          "id": "forge-pay",
+          "laneId": "forge-rule-lane",
+          "phase": 2,
+          "name": "校验并扣除这次材料",
+          "description": "统一支付先同时检查三种余额，再按本次操作参数扣除。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.pay",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-pay"
+          ],
+          "reads": [
+            "资源余额、本次操作代价"
+          ],
+          "writes": [
+            "stones、iron、essence"
+          ]
+        },
+        {
+          "id": "forge-store",
+          "laneId": "forge-rule-lane",
+          "phase": 3,
+          "name": "创建装备实例存入仓库",
+          "description": "支付成功后新增level=0装备实例到equipment，不自动设置佩戴者。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-craft-store"
+          ],
+          "reads": [
+            "recipe、revision"
+          ],
+          "writes": [
+            "state.equipment、lastMessage"
+          ],
+          "condition": "action == craft且pay正常返回"
+        },
+        {
+          "id": "forge-item-check",
+          "laneId": "forge-rule-lane",
+          "phase": 2,
+          "name": "查找待操作装备实例",
+          "description": "equip或enhance必须引用仓库已有实例，战斗期另有掌门配置锁。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-item-check",
+            "review-command-lock"
+          ],
+          "reads": [
+            "target实例ID、action、member"
+          ],
+          "writes": [],
+          "condition": "action in (equip,enhance)"
+        },
+        {
+          "id": "forge-equip",
+          "laneId": "forge-rule-lane",
+          "phase": 3,
+          "name": "把同一实例移交给成员",
+          "description": "先清除其他成员同槽对该实例的引用，再赋给目标成员。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-item-transfer"
+          ],
+          "reads": [
+            "item.id、slot、成员列表"
+          ],
+          "writes": [
+            "members[*].weapon或armor"
+          ],
+          "condition": "action == equip"
+        },
+        {
+          "id": "forge-enhance",
+          "laneId": "forge-rule-lane",
+          "phase": 3,
+          "name": "按当前等级强化一次",
+          "description": "独立enhance分支在+3以下支付当前等级对应材料，再增加level。",
+          "moduleId": "equipment-workshop",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-item-enhance"
+          ],
+          "reads": [
+            "item.level、余额"
+          ],
+          "writes": [
+            "item.level、余额"
+          ],
+          "condition": "action == enhance"
+        },
+        {
+          "id": "forge-combat-stats",
+          "laneId": "forge-combat-lane",
+          "phase": 4,
+          "name": "下一场读取已穿戴加成",
+          "description": "新本场读取掌门穿戴，以bonus+3×level增加对应属性。",
+          "moduleId": "combat-lifecycle",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.stats",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-gear-stats"
+          ],
+          "reads": [
+            "掌门weapon/armor、equipment、GEAR"
+          ],
+          "writes": []
+        }
+      ],
+      "transitions": [
+        {
+          "id": "forge-choice--forge-craft-check",
+          "source": "forge-choice",
+          "target": "forge-craft-check",
+          "basis": "protocol-contract",
+          "anchorIds": [
+            "review-craft-ui",
+            "review-craft-check"
+          ],
+          "limitations": [
+            "客户端action与服务端分支对应，点击和网络送达未验证。"
+          ],
+          "condition": "用户选择craft"
+        },
+        {
+          "id": "forge-choice--forge-item-check",
+          "source": "forge-choice",
+          "target": "forge-item-check",
+          "basis": "protocol-contract",
+          "anchorIds": [
+            "review-forge-ui",
+            "review-item-check"
+          ],
+          "limitations": [
+            "各自独立请求，只表示协议字段对应。"
+          ],
+          "condition": "用户选择equip或enhance"
+        },
+        {
+          "id": "forge-craft-check--forge-pay",
+          "source": "forge-craft-check",
+          "target": "forge-pay",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-craft-check"
+          ],
+          "limitations": [],
+          "condition": "craft前置通过"
+        },
+        {
+          "id": "forge-craft-check--forge-store",
+          "source": "forge-craft-check",
+          "target": "forge-store",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-craft-check",
+            "review-craft-store"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == craft、检查通过且pay未抛错"
+        },
+        {
+          "id": "forge-item-check--forge-equip",
+          "source": "forge-item-check",
+          "target": "forge-equip",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-item-check",
+            "review-item-transfer"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == equip且实例与成员存在"
+        },
+        {
+          "id": "forge-item-check--forge-enhance",
+          "source": "forge-item-check",
+          "target": "forge-enhance",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-item-check",
+            "review-item-enhance"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == enhance且实例存在"
+        },
+        {
+          "id": "forge-enhance--forge-pay",
+          "source": "forge-enhance",
+          "target": "forge-pay",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-item-enhance"
+          ],
+          "limitations": [],
+          "condition": "action == enhance且level<3"
+        },
+        {
+          "id": "forge-equip--forge-combat-stats",
+          "source": "forge-equip",
+          "target": "forge-combat-stats",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-item-transfer",
+            "review-gear-stats"
+          ],
+          "limitations": [
+            "共享装备状态写入/读取相关，但不同请求先后未验证；command不直接调用stats。"
+          ],
+          "condition": "之后另有合法新本场创建"
+        },
+        {
+          "id": "forge-enhance--forge-combat-stats",
+          "source": "forge-enhance",
+          "target": "forge-combat-stats",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-item-enhance",
+            "review-gear-stats"
+          ],
+          "limitations": [
+            "强化等级被新本场读取，不代表热更新当前本场。"
+          ],
+          "condition": "之后另有合法新本场创建"
+        }
+      ],
+      "limitations": [
+        "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
+        "craft/equip/enhance是独立请求，不是同次执行或必经先后。",
+        "锻造只入库；新本场读取装备不热更新当前本场。",
+        "支付与前置条件失败由共享事务回退业务副本，未证明用户实际完成操作。"
+      ]
+    },
+    {
+      "id": "cultivation-breakthrough",
+      "name": "修炼与突破：资源、修为和境界的三条路径",
+      "description": "分开主动修炼、独立突破与时间结算修为，再说明境界被新本场读取。",
+      "trigger": "用户选择train或breakthrough；闭关成员由后续settle累积修为。",
+      "systemIds": [
+        "people-cultivation",
+        "production-facilities",
+        "solo-combat"
+      ],
+      "lanes": [
+        {
+          "id": "growth-ui-lane",
+          "name": "培养界面",
+          "systemId": "people-cultivation"
+        },
+        {
+          "id": "growth-rule-lane",
+          "name": "修为与境界规则",
+          "systemId": "people-cultivation"
+        },
+        {
+          "id": "growth-combat-lane",
+          "name": "新本场属性",
+          "systemId": "solo-combat"
+        }
+      ],
+      "steps": [
+        {
+          "id": "growth-choice",
+          "laneId": "growth-ui-lane",
+          "phase": 1,
+          "name": "选择培养对象与操作",
+          "description": "界面分别提供主动修炼和满足展示条件时的突破按钮。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "csharp",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Game.Presentation.SectGameHost.CultivationPage(UnityEngine.UIElements.VisualElement)",
+            "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+          },
+          "anchorIds": [
+            "review-growth-ui"
+          ],
+          "reads": [
+            "selectedMember、realm、xp、facilities"
+          ],
+          "writes": []
+        },
+        {
+          "id": "growth-train-check",
+          "laneId": "growth-rule-lane",
+          "phase": 2,
+          "name": "检查主动修炼资格",
+          "description": "train查找成员、检查境界上限并请求支付30灵石。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-train-check",
+            "review-command-lock"
+          ],
+          "reads": [
+            "action=train、member、realm、余额"
+          ],
+          "writes": [],
+          "condition": "action == train"
+        },
+        {
+          "id": "growth-train-pay",
+          "laneId": "growth-rule-lane",
+          "phase": 2,
+          "name": "支付主动修炼灵石",
+          "description": "按train实参检查并扣除30灵石，失败抛业务拒绝。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.pay",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-pay"
+          ],
+          "reads": [
+            "30灵石代价、余额"
+          ],
+          "writes": [
+            "state.stones"
+          ]
+        },
+        {
+          "id": "growth-train-gain",
+          "laneId": "growth-rule-lane",
+          "phase": 3,
+          "name": "增加这一轮即时修为",
+          "description": "成功后增加30+15×修炼堂等级修为，总量最高2000。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-train-gain"
+          ],
+          "reads": [
+            "xp、facilities[2]"
+          ],
+          "writes": [
+            "p.xp、lastMessage"
+          ],
+          "condition": "action == train且pay正常返回"
+        },
+        {
+          "id": "growth-break-check",
+          "laneId": "growth-rule-lane",
+          "phase": 2,
+          "name": "检查境界突破前置",
+          "description": "突破同时校验境界、修为、大殿与弟子不能超过掌门等条件。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-breakthrough-check",
+            "review-command-lock"
+          ],
+          "reads": [
+            "action=breakthrough、member、realm、xp、大殿"
+          ],
+          "writes": [],
+          "condition": "action == breakthrough"
+        },
+        {
+          "id": "growth-break-pay",
+          "laneId": "growth-rule-lane",
+          "phase": 2,
+          "name": "支付突破材料",
+          "description": "按当前境界代价校验并扣除灵石、精铁和灵髓。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.pay",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-pay"
+          ],
+          "reads": [
+            "当前realm材料代价、三种余额"
+          ],
+          "writes": [
+            "stones、iron、essence"
+          ]
+        },
+        {
+          "id": "growth-break-gain",
+          "laneId": "growth-rule-lane",
+          "phase": 3,
+          "name": "消耗修为并增加境界",
+          "description": "扣除原境界所需修为，再将成员realm加一并更新提示。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-breakthrough-gain"
+          ],
+          "reads": [
+            "原realm、xp"
+          ],
+          "writes": [
+            "p.xp、p.realm、lastMessage"
+          ],
+          "condition": "action == breakthrough且前置和支付成功"
+        },
+        {
+          "id": "growth-passive",
+          "laneId": "growth-rule-lane",
+          "phase": 4,
+          "name": "按闭关时间累积修为",
+          "description": "只有闭关成员按经过时间、修炼堂等级与专长积累修为。",
+          "moduleId": "people-growth",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.settle",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-passive-cultivation"
+          ],
+          "reads": [
+            "elapsed、facilities[2]、activity、specialty、xp"
+          ],
+          "writes": [
+            "members[*].xp"
+          ]
+        },
+        {
+          "id": "growth-battle-stats",
+          "laneId": "growth-combat-lane",
+          "phase": 5,
+          "name": "下一场读取掌门境界",
+          "description": "新本场stats按掌门realm增加生命、法力、攻击和防御初值。",
+          "moduleId": "combat-lifecycle",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_combat.stats",
+            "filePath": "Server/sect_combat.py"
+          },
+          "anchorIds": [
+            "review-realm-stats"
+          ],
+          "reads": [
+            "members[0].realm、基础参数D"
+          ],
+          "writes": []
+        }
+      ],
+      "transitions": [
+        {
+          "id": "growth-choice--growth-train-check",
+          "source": "growth-choice",
+          "target": "growth-train-check",
+          "basis": "protocol-contract",
+          "anchorIds": [
+            "review-growth-ui",
+            "review-train-check"
+          ],
+          "limitations": [
+            "客户端action与分支对应，不证明网络交付。"
+          ],
+          "condition": "用户选择train"
+        },
+        {
+          "id": "growth-choice--growth-break-check",
+          "source": "growth-choice",
+          "target": "growth-break-check",
+          "basis": "protocol-contract",
+          "anchorIds": [
+            "review-growth-ui",
+            "review-breakthrough-check"
+          ],
+          "limitations": [
+            "与train为独立请求，没有自动突破。"
+          ],
+          "condition": "用户另行选择breakthrough"
+        },
+        {
+          "id": "growth-train-check--growth-train-pay",
+          "source": "growth-train-check",
+          "target": "growth-train-pay",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-train-check"
+          ],
+          "limitations": [],
+          "condition": "action == train且成员可修炼"
+        },
+        {
+          "id": "growth-train-check--growth-train-gain",
+          "source": "growth-train-check",
+          "target": "growth-train-gain",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-train-check",
+            "review-train-gain"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == train且检查支付成功"
+        },
+        {
+          "id": "growth-break-check--growth-break-pay",
+          "source": "growth-break-check",
+          "target": "growth-break-pay",
+          "basis": "static-call",
+          "anchorIds": [
+            "review-breakthrough-check"
+          ],
+          "limitations": [],
+          "condition": "action == breakthrough且前置满足"
+        },
+        {
+          "id": "growth-break-check--growth-break-gain",
+          "source": "growth-break-check",
+          "target": "growth-break-gain",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-breakthrough-check",
+            "review-breakthrough-gain"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == breakthrough且检查支付成功"
+        },
+        {
+          "id": "growth-passive--growth-break-check",
+          "source": "growth-passive",
+          "target": "growth-break-check",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-passive-cultivation",
+            "review-breakthrough-check"
+          ],
+          "limitations": [
+            "仅xp写入与门槛读取相关，不证明实际请求或必然突破。"
+          ],
+          "condition": "之后另行请求突破"
+        },
+        {
+          "id": "growth-break-gain--growth-battle-stats",
+          "source": "growth-break-gain",
+          "target": "growth-battle-stats",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-breakthrough-gain",
+            "review-realm-stats"
+          ],
+          "limitations": [
+            "realm联系培养与战斗；command不直接调用stats或热更新当前本场。"
+          ],
+          "condition": "掌门突破后另有合法开战请求"
+        }
+      ],
+      "limitations": [
+        "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
+        "train和breakthrough互斥，修炼不自动触发突破。",
+        "activity=cultivate的被动修为由settle处理，与即时train不是同条执行路径。",
+        "境界影响下一场stats，不表示当前本场生命或属性即时变化。"
+      ]
+    },
+    {
+      "id": "mining-queue-progress",
+      "name": "主动探矿：入队、活跃推进与可见地图",
+      "description": "区分入队校验、后续心跳边界、有限预算循环和未完成break；不把驻守离线收益当主动挖矿。",
+      "trigger": "点击可见非守卫矿格发dig；后续有效请求调用settle才可能推进。",
+      "systemIds": [
+        "vein-exploration",
+        "production-facilities",
+        "people-cultivation",
+        "shared-support"
+      ],
+      "lanes": [
+        {
+          "id": "mine-ui-lane",
+          "name": "矿格选择",
+          "systemId": "vein-exploration"
+        },
+        {
+          "id": "mine-rule-lane",
+          "name": "入队与工作量",
+          "systemId": "vein-exploration"
+        },
+        {
+          "id": "mine-view-lane",
+          "name": "公开地图快照",
+          "systemId": "shared-support"
+        }
+      ],
+      "steps": [
+        {
+          "id": "mine-choice",
+          "laneId": "mine-ui-lane",
+          "phase": 1,
+          "name": "选择可见的普通矿格",
+          "description": "按钮仅为未开采、可见、非守卫矿格发送dig意图。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "csharp",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Game.Presentation.SectGameHost.MinePage()",
+            "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+          },
+          "anchorIds": [
+            "review-dig-ui"
+          ],
+          "reads": [
+            "tile.opened、visible、kind、region/index"
+          ],
+          "writes": [
+            "selectedTile"
+          ]
+        },
+        {
+          "id": "mine-check",
+          "laneId": "mine-rule-lane",
+          "phase": 2,
+          "name": "检查矿格能否入队",
+          "description": "校验范围、区域资格、前沿、容量与守卫及深层封锁。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-dig-check",
+            "review-command-lock"
+          ],
+          "reads": [
+            "action=dig、cell、maps、queue、掌门境界、大殿"
+          ],
+          "writes": [],
+          "condition": "action == dig且不在战斗锁定期"
+        },
+        {
+          "id": "mine-enqueue",
+          "laneId": "mine-rule-lane",
+          "phase": 3,
+          "name": "入队并让掌门探索",
+          "description": "合法矿格追加队尾，并把掌门主要活动设为explore。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-dig-enqueue"
+          ],
+          "reads": [
+            "合法cell、queue"
+          ],
+          "writes": [
+            "state.queue、members[0].activity"
+          ],
+          "condition": "action == dig且全部检查通过"
+        },
+        {
+          "id": "mine-active",
+          "laneId": "mine-rule-lane",
+          "phase": 4,
+          "name": "后续请求检查活跃预算",
+          "description": "最近10秒活跃且掌门仍探索时，取至多5秒经过时间，再乘矿务堂效率生成工作预算。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.settle",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-mine-active"
+          ],
+          "reads": [
+            "now、seen、elapsed、activity、矿务堂等级"
+          ],
+          "writes": [],
+          "condition": "now-seen <= 10且activity=explore"
+        },
+        {
+          "id": "mine-work",
+          "laneId": "mine-rule-lane",
+          "phase": 5,
+          "name": "按队首先投入工作量",
+          "description": "预算与队列都存在时处理队首；未达到duration立即break，保留已投work。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.settle",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-mine-work"
+          ],
+          "reads": [
+            "budget、queue[0]、tile.work、duration"
+          ],
+          "writes": [
+            "tile.work、budget"
+          ],
+          "condition": "budget>0且queue非空"
+        },
+        {
+          "id": "mine-open",
+          "laneId": "mine-rule-lane",
+          "phase": 6,
+          "name": "完成矿格并发对应材料",
+          "description": "达到工作量后标记opened并出队，再按kind增加材料。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.settle",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-mine-open"
+          ],
+          "reads": [
+            "完成的tile、region、kind"
+          ],
+          "writes": [
+            "tile.opened、queue、stones/iron/essence、lastMessage"
+          ],
+          "condition": "tile.work达到duration"
+        },
+        {
+          "id": "mine-watermark",
+          "laneId": "mine-rule-lane",
+          "phase": 7,
+          "name": "结束本次时间结算",
+          "description": "尾部记录last和不回拨seen，供后续时间与活跃检查。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.settle",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-settle-watermark"
+          ],
+          "reads": [
+            "now、现有seen"
+          ],
+          "writes": [
+            "state.last、state.seen"
+          ]
+        },
+        {
+          "id": "mine-frontier",
+          "laneId": "mine-view-lane",
+          "phase": 8,
+          "name": "只公开可见地图信息",
+          "description": "快照公开已开、排队或邻接前沿的地质，隐藏格kind改为unknown。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.snapshot",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-map-frontier"
+          ],
+          "reads": [
+            "maps、queue、相邻已开格"
+          ],
+          "writes": [
+            "仅result.maps[*].tiles[*].visible/kind"
+          ]
+        },
+        {
+          "id": "mine-cancel",
+          "laneId": "mine-rule-lane",
+          "phase": 3,
+          "name": "独立取消队列但保留进度",
+          "description": "cancel只清空queue，不清零已投入的矿格work。",
+          "moduleId": "map-exploration",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.command",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-dig-cancel"
+          ],
+          "reads": [
+            "action=cancel、queue、已有work"
+          ],
+          "writes": [
+            "state.queue"
+          ],
+          "condition": "action == cancel"
+        }
+      ],
+      "transitions": [
+        {
+          "id": "mine-choice--mine-check",
+          "source": "mine-choice",
+          "target": "mine-check",
+          "basis": "protocol-contract",
+          "anchorIds": [
+            "review-dig-ui",
+            "review-dig-check"
+          ],
+          "limitations": [
+            "value字段与分支有源码对应；实际点击与网络未验证。"
+          ],
+          "condition": "用户选择dig"
+        },
+        {
+          "id": "mine-check--mine-enqueue",
+          "source": "mine-check",
+          "target": "mine-enqueue",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-dig-check",
+            "review-dig-enqueue"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "action == dig且全部require通过"
+        },
+        {
+          "id": "mine-enqueue--mine-active",
+          "source": "mine-enqueue",
+          "target": "mine-active",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-dig-enqueue",
+            "review-mine-active"
+          ],
+          "limitations": [
+            "dig只改队列与活动，后续请求才可能推进；不按两个过程行号猜顺序。"
+          ],
+          "condition": "之后另有正常请求进入settle"
+        },
+        {
+          "id": "mine-active--mine-work",
+          "source": "mine-active",
+          "target": "mine-work",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-mine-active",
+            "review-mine-work"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "活跃、explore、budget>0且queue非空"
+        },
+        {
+          "id": "mine-work--mine-open",
+          "source": "mine-work",
+          "target": "mine-open",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-mine-work",
+            "review-mine-open"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "本次队首达到duration且没有break"
+        },
+        {
+          "id": "mine-open--mine-watermark",
+          "source": "mine-open",
+          "target": "mine-watermark",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-mine-open",
+            "review-settle-watermark"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "本次循环正常结束，可能处理多个矿格"
+        },
+        {
+          "id": "mine-open--mine-frontier",
+          "source": "mine-open",
+          "target": "mine-frontier",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-mine-open",
+            "review-map-frontier"
+          ],
+          "limitations": [
+            "真实opened/queue写入与快照读取相关，不证明snapshot时刻或客户端交付。"
+          ]
+        },
+        {
+          "id": "mine-enqueue--mine-cancel",
+          "source": "mine-enqueue",
+          "target": "mine-cancel",
+          "basis": "request-boundary",
+          "anchorIds": [
+            "review-dig-enqueue",
+            "review-dig-cancel"
+          ],
+          "limitations": [
+            "可选独立请求，不是dig自动进入cancel。"
+          ],
+          "condition": "用户另行发送cancel"
+        }
+      ],
+      "limitations": [
+        "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
+        "dig不直接调用settle，后续请求与心跳先后未运行验证。",
+        "要求10秒内活跃且掌门explore；取至多5秒经过时间，再乘矿务堂效率生成工作预算，离线队列不推进。",
+        "普通dig拒绝guard；守卫与深层解锁由另一战斗结果负责。",
+        "可见地质是快照规则，不表示完整运行时值传播。"
+      ]
+    },
+    {
+      "id": "state-transaction-persistence",
+      "name": "账号状态事务：读取、拒绝回退与持久化",
+      "description": "只在execute同一过程内说明源码阶段，区分命令/轮询、提前返回、业务回退与同事务回执。",
+      "trigger": "读取或命令进入Service.execute；本工具仅分析源码，不执行该事务。",
+      "systemIds": [
+        "shared-support"
+      ],
+      "lanes": [
+        {
+          "id": "state-transaction-lane",
+          "name": "账号事务",
+          "systemId": "shared-support"
+        },
+        {
+          "id": "state-shape-lane",
+          "name": "响应与公开快照",
+          "systemId": "shared-support"
+        }
+      ],
+      "steps": [
+        {
+          "id": "state-open",
+          "laneId": "state-transaction-lane",
+          "phase": 1,
+          "name": "锁定并读取当前账号",
+          "description": "锁与数据库事务覆盖账号认证和读取，随后加载JSON状态。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-transaction-open"
+          ],
+          "reads": [
+            "token、SQLite账号行"
+          ],
+          "writes": []
+        },
+        {
+          "id": "state-load",
+          "laneId": "state-transaction-lane",
+          "phase": 1,
+          "name": "解析存档并进入迁移",
+          "description": "解析row.state JSON，再通过迁移入口规范状态结构。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.load_state",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-state-load"
+          ],
+          "reads": [
+            "row.state JSON"
+          ],
+          "writes": [
+            "state（迁移可规范结构）"
+          ]
+        },
+        {
+          "id": "state-request-guards",
+          "laneId": "state-transaction-lane",
+          "phase": 2,
+          "name": "先检查幂等与版本",
+          "description": "命令先校验协议与身份，重放或revision冲突在时间结算前返回。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-request-guards"
+          ],
+          "reads": [
+            "data、requestId、revision、旧回执"
+          ],
+          "writes": [],
+          "condition": "data is not None"
+        },
+        {
+          "id": "state-settled-copy",
+          "laneId": "state-transaction-lane",
+          "phase": 3,
+          "name": "推进时间并保存回退点",
+          "description": "正常路径先推进战斗和经营，再复制settled供失败命令恢复。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-transaction-settle"
+          ],
+          "reads": [
+            "state、服务端clock"
+          ],
+          "writes": [
+            "state、settled"
+          ]
+        },
+        {
+          "id": "state-command-branch",
+          "laneId": "state-transaction-lane",
+          "phase": 4,
+          "name": "分派命令或处理轮询",
+          "description": "祝福和一般规则互斥分派；RuleError恢复settled；轮询不执行业务命令。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-transaction-command"
+          ],
+          "reads": [
+            "data或None、settled、action"
+          ],
+          "writes": [
+            "业务状态或回退state"
+          ]
+        },
+        {
+          "id": "state-account-write",
+          "laneId": "state-transaction-lane",
+          "phase": 5,
+          "name": "仅在变化时保存账号",
+          "description": "成功业务命令增revision；状态确实变化才增snapshotSeq并UPDATE。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-account-write"
+          ],
+          "reads": [
+            "data、ok、state、原row.state"
+          ],
+          "writes": [
+            "revision、snapshotSeq、accounts.state"
+          ]
+        },
+        {
+          "id": "state-receipt",
+          "laneId": "state-transaction-lane",
+          "phase": 6,
+          "name": "按需同事务保存回执",
+          "description": "生成ok/message，只有payload存在的命令才INSERT幂等回执。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-request-receipt"
+          ],
+          "reads": [
+            "ok、message、payload、requestId"
+          ],
+          "writes": [
+            "requests（仅命令）"
+          ],
+          "condition": "有payload才写回执"
+        },
+        {
+          "id": "state-response-call",
+          "laneId": "state-transaction-lane",
+          "phase": 7,
+          "name": "交给响应构造",
+          "description": "正常尾部把state、row、result、mode交给response_state。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.execute",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-response-call"
+          ],
+          "reads": [
+            "state、result、mode、include_catalog"
+          ],
+          "writes": []
+        },
+        {
+          "id": "state-response-shape",
+          "laneId": "state-shape-lane",
+          "phase": 8,
+          "name": "区分动态战斗与完整响应",
+          "description": "battle只返回动态战斗与序号，其他模式将完整snapshot放入state。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "method"
+            ],
+            "qualifiedName": "Server.sect_server.Service.response_state",
+            "filePath": "Server/sect_server.py"
+          },
+          "anchorIds": [
+            "review-response-battle",
+            "review-response-full"
+          ],
+          "reads": [
+            "state、mode、result"
+          ],
+          "writes": [
+            "仅响应副本"
+          ]
+        },
+        {
+          "id": "state-public-snapshot",
+          "laneId": "state-shape-lane",
+          "phase": 9,
+          "name": "复制并公开允许的状态",
+          "description": "完整快照复制持久状态并加派生字段，移除内部水位并隐藏未知地质。",
+          "moduleId": "support-server-transaction",
+          "selector": {
+            "language": "python",
+            "kinds": [
+              "function"
+            ],
+            "qualifiedName": "Server.sect_rules.snapshot",
+            "filePath": "Server/sect_rules.py"
+          },
+          "anchorIds": [
+            "review-snapshot-shape",
+            "review-map-frontier"
+          ],
+          "reads": [
+            "state、账号名、地图前沿"
+          ],
+          "writes": [
+            "仅result副本"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "id": "state-open--state-load",
+          "source": "state-open",
+          "target": "state-load",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-transaction-open",
+            "review-state-load"
+          ],
+          "limitations": [
+            "self.load_state有调用表达式，对象方法绑定仍按索引支持范围保守展示。"
+          ]
+        },
+        {
+          "id": "state-open--state-request-guards",
+          "source": "state-open",
+          "target": "state-request-guards",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-transaction-open",
+            "review-request-guards"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "认证和加载成功且data非None"
+        },
+        {
+          "id": "state-request-guards--state-settled-copy",
+          "source": "state-request-guards",
+          "target": "state-settled-copy",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-request-guards",
+            "review-transaction-settle"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "命令校验通过且没有重放或冲突提前返回"
+        },
+        {
+          "id": "state-settled-copy--state-command-branch",
+          "source": "state-settled-copy",
+          "target": "state-command-branch",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-transaction-settle",
+            "review-transaction-command"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "advance/settle正常返回，按data有无进入对应分支"
+        },
+        {
+          "id": "state-command-branch--state-account-write",
+          "source": "state-command-branch",
+          "target": "state-account-write",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-transaction-command",
+            "review-account-write"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "业务成功、已捕获RuleError或无命令，且无未捕获异常"
+        },
+        {
+          "id": "state-account-write--state-receipt",
+          "source": "state-account-write",
+          "target": "state-receipt",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-account-write",
+            "review-request-receipt"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "账号保存阶段未抛异常，payload可为空"
+        },
+        {
+          "id": "state-receipt--state-response-call",
+          "source": "state-receipt",
+          "target": "state-response-call",
+          "basis": "source-order",
+          "anchorIds": [
+            "review-request-receipt",
+            "review-response-call"
+          ],
+          "limitations": [
+            "仅保留有源码支持的说明关系，不证明运行时必达、跨请求先后或完整值传播。"
+          ],
+          "condition": "回执分支执行或跳过后正常继续"
+        },
+        {
+          "id": "state-response-call--state-response-shape",
+          "source": "state-response-call",
+          "target": "state-response-shape",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-response-call",
+            "review-response-full"
+          ],
+          "limitations": [
+            "self.response_state绑定按索引范围处理；响应构造不证明提交与网络交付。"
+          ]
+        },
+        {
+          "id": "state-response-shape--state-public-snapshot",
+          "source": "state-response-shape",
+          "target": "state-public-snapshot",
+          "basis": "narrative",
+          "anchorIds": [
+            "review-response-full",
+            "review-snapshot-shape"
+          ],
+          "limitations": [
+            "真实导入调用site保留，未知sys.path不提升目标绑定可信度。"
+          ],
+          "condition": "mode != battle"
+        }
+      ],
+      "limitations": [
+        "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
+        "游戏服务的读取也可能结算时间并写状态；Architecture Explorer只读其源码。",
+        "同过程源码先后只限正常路径；重放、冲突、异常可能提前离开。",
+        "RuleError回退命令修改至settled，之前战斗和经营结算可保留。",
+        "SQLite提交、HTTP交付与客户端应用没有运行时验证。"
       ]
     }
   ],

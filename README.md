@@ -53,6 +53,7 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 ./Tools/explorer.ps1 -Task Scan                 # 手动全量扫描
 ./Tools/explorer.ps1 -Task Watch                # 无界面持续监听
 ./Tools/explorer.ps1 -Task Verify               # 缓存哈希、源码与上下文一致性校验
+./Tools/explorer.ps1 -Task Audit                # 已有快照、映射、锚点与当前证据核验
 ./Tools/explorer.ps1 -Task Test                 # 分析器、索引、安全与契约测试
 ./Tools/explorer.ps1 -Task Typecheck
 ./Tools/explorer.ps1 -Task Build
@@ -66,6 +67,8 @@ GameDemo02 的只读 HP 验收脚本为 `node node_modules/tsx/dist/cli.mjs Tool
 
 系统模型的只读复验命令为 `node node_modules/tsx/dist/cli.mjs Tools/validate-architecture.ts`（也可使用 `.tools` 中的 Node）。支持 `--config`、`--project` 和 `--worktree`；仅核对保存索引和当前授权锚点文件，不扫描、不争用服务锁，可与网站同时运行。报告写入 `.cache/validation-architecture-<项目>-<Worktree>.json`，包含模型版本、实际覆盖与未验证关系。
 
+`-Task Audit` 对已有索引及授权源码生成 `.cache/evidence-audit/<项目>-<Worktree>.json`，分别统计静态调用、推断调用、参数绑定、未知回调目标、候选归属和解释；不会批量勾选人工确认。查看[证据审计指南](docs/EVIDENCE-AUDIT.md)和[本轮源码复核记录](docs/GAME-EVIDENCE-REVIEW.md)。
+
 前端开发可另运行 `-Task Web`，地址 http://127.0.0.1:5173，API 代理到 4310。`Dev` 提供构建后的本地网站和 API；不接触游戏进程。
 
 ## 可信度与边界
@@ -74,6 +77,6 @@ GameDemo02 的只读 HP 验收脚本为 `node node_modules/tsx/dist/cli.mjs Tool
 
 缓存包含 Worktree、HEAD、工作区状态、源文件哈希、解析器/Schema 版本、配置和引用指纹。失败保留最后有效索引，源码预览验证哈希以防行号过期。大型图采用局部查询与预算限制，截断结果明确提示。
 
-当前增量能力是**按文件复用 AST/SyntaxTree、按语言复用未变结果，并保守重绑定受影响语言的语义**。每次任务仍两次读取授权文本清单核对内容哈希，尚未实现精细文件 IO 缓存和符号级失效。跨函数参数/返回值传播、自动协议映射、通用状态机与完整 Unity GUID 资源图留待下一阶段；Schema 中相应类型为扩展预留。
+当前增量能力是**按文件复用 AST/SyntaxTree、按语言复用未变结果，并保守重绑定受影响语言的语义**。每次任务仍两次读取授权文本清单核对内容哈希，尚未实现精细文件 IO 缓存和符号级失效。直接源内调用支持有限的实参表达式到声明形参绑定（`passes`）；推断目标继续标记为推断，绑定不证明跨函数对象身份、值保持或回调执行。完整跨函数值/别名传播、返回值传播、自动协议映射、通用状态机与完整 Unity GUID 资源图仍未实现。
 
 更多设计与验收见 [docs/CONTRACT.md](docs/CONTRACT.md)、[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、[docs/VALIDATION.md](docs/VALIDATION.md)。

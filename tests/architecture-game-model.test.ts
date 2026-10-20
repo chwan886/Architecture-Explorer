@@ -22,7 +22,9 @@ test('GameDemo02 seed has six independent business candidates and separate suppo
 });
 
 test('authored anchors are portable full-line source ranges confined to indexed Game/Server sources', () => {
-  assert.equal(model.anchors.length, 188);
+  const ids = new Set(model.anchors.map(anchor => anchor.id));
+  for (const id of ['auth', 'claim', 'craft', 'train', 'dig', 'persist', 'review-hit-callback', 'review-mine-work', 'review-request-guards']) assert.ok(ids.has(id), id);
+  assert.equal(ids.size, model.anchors.length, 'portable proof identities must remain unique');
   for (const anchor of model.anchors) {
     assert.match(anchor.filePath, /^(Assets\/Game\/|Server\/)/);
     assert.ok(!anchor.filePath.includes('..') && !anchor.filePath.includes('\\'));
@@ -48,8 +50,8 @@ test('multi-domain dispatch and settlement cannot become six conflicting primary
 });
 
 test('flow contracts preserve request and protocol uncertainty instead of claiming runtime sequence', () => {
-  assert.deepEqual(model.flows.map(flow => flow.id), ['claim-reserve', 'battle-start-poll-result']);
-  const transitions = model.flows.flatMap(flow => flow.transitions);
+  assert.deepEqual(model.flows.slice(0, 2).map(flow => flow.id), ['claim-reserve', 'battle-start-poll-result']);
+  const transitions = model.flows.slice(0, 2).flatMap(flow => flow.transitions);
   assert.equal(transitions.filter(transition => transition.basis === 'static-call').length, 10);
   assert.equal(transitions.filter(transition => transition.basis === 'source-order').length, 1);
   assert.equal(transitions.filter(transition => ['narrative', 'protocol-contract', 'request-boundary'].includes(transition.basis)).length, 22);
@@ -63,12 +65,14 @@ test('flow contracts preserve request and protocol uncertainty instead of claimi
       if (transition.basis === 'static-call') {
         assert.ok(steps.get(transition.source)?.selector?.qualifiedName, transition.id);
         assert.ok(steps.get(transition.target)?.selector?.qualifiedName, transition.id);
+        assert.notEqual(steps.get(transition.source)?.selector?.qualifiedName, steps.get(transition.target)?.selector?.qualifiedName,
+          'two authored phases of the same procedure are never a call from the procedure to itself');
       }
     }
   }
 });
 
-test('the sole source-order proof is two non-overlapping statements in the same selected procedure', () => {
+test('every source-order proof retains non-overlapping statements in the same selected procedure and a path condition', () => {
   const anchors = new Map(model.anchors.map(anchor => [anchor.id, anchor]));
   for (const flow of model.flows) {
     const steps = new Map(flow.steps.map(step => [step.id, step]));
