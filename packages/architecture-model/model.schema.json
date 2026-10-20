@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://architecture-explorer.local/schema/architecture-model.json",
+  "title": "Architecture Explorer curated architecture model",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "projectId", "name", "systems", "modules", "memberships", "anchors", "flows", "reviews"],
+  "properties": {
+    "schemaVersion": {"const": "1.0.0"}, "projectId": {"$ref": "#/definitions/Id"}, "name": {"$ref": "#/definitions/Text"},
+    "systems": {"type": "array", "maxItems": 256, "items": {"$ref": "#/definitions/System"}},
+    "modules": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/definitions/Module"}},
+    "memberships": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/definitions/Membership"}},
+    "anchors": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/definitions/Anchor"}},
+    "flows": {"type": "array", "maxItems": 256, "items": {"$ref": "#/definitions/Flow"}},
+    "reviews": {"type": "array", "maxItems": 32768, "items": {"$ref": "#/definitions/Review"}}
+  },
+  "definitions": {
+    "Id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"},
+    "Text": {"type": "string", "minLength": 1, "maxLength": 20000},
+    "Texts": {"type": "array", "maxItems": 256, "items": {"$ref": "#/definitions/Text"}},
+    "Ids": {"type": "array", "maxItems": 8192, "uniqueItems": true, "items": {"$ref": "#/definitions/Id"}},
+    "Path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$))[^:\u0000]+$"},
+    "Selector": {
+      "type": "object", "minProperties": 1, "additionalProperties": false,
+      "properties": {
+        "language": {"enum": ["csharp", "python", "json", "unity", "unknown"]},
+        "kinds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["project", "system", "module", "file", "class", "interface", "struct", "enum", "method", "function", "field", "property", "event", "parameter", "resource", "data"]}},
+        "qualifiedName": {"$ref": "#/definitions/Text"}, "qualifiedNamePrefix": {"$ref": "#/definitions/Text"},
+        "filePath": {"$ref": "#/definitions/Path"}, "filePathPrefix": {"$ref": "#/definitions/Path"}
+      }
+    },
+    "Anchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "filePath", "startLine", "endLine", "expectedFileHash", "quote", "description"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "filePath": {"$ref": "#/definitions/Path"}, "startLine": {"type": "integer", "minimum": 1}, "endLine": {"type": "integer", "minimum": 1}, "expectedFileHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "quote": {"$ref": "#/definitions/Text"}, "description": {"$ref": "#/definitions/Text"}}
+    },
+    "System": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "responsibility", "features", "inputs", "outputs", "keyData", "kind", "anchorIds"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "name": {"$ref": "#/definitions/Text"}, "responsibility": {"$ref": "#/definitions/Text"}, "features": {"$ref": "#/definitions/Texts"}, "inputs": {"$ref": "#/definitions/Texts"}, "outputs": {"$ref": "#/definitions/Texts"}, "keyData": {"$ref": "#/definitions/Texts"}, "kind": {"enum": ["business", "support", "legacy"]}, "anchorIds": {"$ref": "#/definitions/Ids"}}
+    },
+    "Module": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "systemId", "name", "responsibility", "inputs", "outputs", "anchorIds"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "systemId": {"$ref": "#/definitions/Id"}, "name": {"$ref": "#/definitions/Text"}, "responsibility": {"$ref": "#/definitions/Text"}, "inputs": {"$ref": "#/definitions/Texts"}, "outputs": {"$ref": "#/definitions/Texts"}, "anchorIds": {"$ref": "#/definitions/Ids"}}
+    },
+    "Membership": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "systemId", "moduleId", "selector", "role", "origin", "anchorIds"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "systemId": {"$ref": "#/definitions/Id"}, "moduleId": {"$ref": "#/definitions/Id"}, "selector": {"$ref": "#/definitions/Selector"}, "role": {"enum": ["owner", "participant", "shared"]}, "origin": {"enum": ["curated", "rule", "suggested"]}, "anchorIds": {"$ref": "#/definitions/Ids"}}
+    },
+    "Review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scopeId", "targetType", "targetId", "decision", "fingerprint", "reviewedAt"],
+      "properties": {"scopeId": {"$ref": "#/definitions/Id"}, "targetType": {"enum": ["system", "membership", "flow"]}, "targetId": {"$ref": "#/definitions/Id"}, "decision": {"enum": ["confirmed", "rejected"]}, "fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "reviewedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T.*Z$", "maxLength": 64}}
+    },
+    "Lane": {"type": "object", "additionalProperties": false, "required": ["id", "name"], "properties": {"id": {"$ref": "#/definitions/Id"}, "name": {"$ref": "#/definitions/Text"}, "systemId": {"$ref": "#/definitions/Id"}}},
+    "Step": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "laneId", "phase", "name", "description", "anchorIds", "reads", "writes"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "laneId": {"$ref": "#/definitions/Id"}, "phase": {"type": "integer", "minimum": 0, "maximum": 100000}, "name": {"$ref": "#/definitions/Text"}, "description": {"$ref": "#/definitions/Text"}, "moduleId": {"$ref": "#/definitions/Id"}, "selector": {"$ref": "#/definitions/Selector"}, "anchorIds": {"$ref": "#/definitions/Ids"}, "reads": {"$ref": "#/definitions/Texts"}, "writes": {"$ref": "#/definitions/Texts"}, "condition": {"$ref": "#/definitions/Text"}}
+    },
+    "Transition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "source", "target", "basis", "anchorIds", "limitations"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "source": {"$ref": "#/definitions/Id"}, "target": {"$ref": "#/definitions/Id"}, "basis": {"enum": ["static-call", "source-order", "protocol-contract", "request-boundary", "narrative"]}, "anchorIds": {"$ref": "#/definitions/Ids"}, "condition": {"$ref": "#/definitions/Text"}, "limitations": {"$ref": "#/definitions/Texts"}}
+    },
+    "Flow": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "description", "trigger", "systemIds", "lanes", "steps", "transitions", "limitations"],
+      "properties": {"id": {"$ref": "#/definitions/Id"}, "name": {"$ref": "#/definitions/Text"}, "description": {"$ref": "#/definitions/Text"}, "trigger": {"$ref": "#/definitions/Text"}, "systemIds": {"$ref": "#/definitions/Ids"}, "lanes": {"type": "array", "maxItems": 256, "items": {"$ref": "#/definitions/Lane"}}, "steps": {"type": "array", "maxItems": 512, "items": {"$ref": "#/definitions/Step"}}, "transitions": {"type": "array", "maxItems": 2048, "items": {"$ref": "#/definitions/Transition"}}, "limitations": {"$ref": "#/definitions/Texts"}}
+    }
+  }
+}

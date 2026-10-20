@@ -1,0 +1,11 @@
+.primary-navigation { height: 42px; min-height: 42px; display: flex; align-items: stretch; gap: 8px; padding: 0 20px; background: #13161c; border-bottom: 1px solid var(--line); }
+.primary-navigation > button { display: flex; align-items: center; gap: 7px; padding: 0 14px; color: #929bad; font-size: 12px; border-bottom: 2px solid transparent; }
+.primary-navigation > button:hover { background: #ffffff04; }
+.primary-navigation > button.active { color: #d7ddff; border-bottom-color: #a4b2fa; }
+.navigation-level-note { margin-left: auto; align-self: center; color: #747f94; font-size: 10px; }
+.return-architecture { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #354052; border-radius: 5px; padding: 5px 8px; font-size: 11px; color: #bdc7e9; }
+.ownership-link { width: 100%; display: flex; align-items: flex-start; gap: 7px; padding: 8px; margin-bottom: 5px; border: 1px solid #2d3543; border-radius: 5px; text-align: left; background: #1c2230; }
+.ownership-link > span { flex: 1; font-size: 11px; line-height: 1.5; }
+.ownership-link small { display: block; color: #bfa77d; font-size: 10px; }
+.ownership-section .warning-text, .ownership-section .muted { font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+@media (max-width: 800px) { .primary-navigation { padding: 0 8px; gap: 2px; } .primary-navigation > button { padding: 0 9px; font-size: 11px; } .navigation-level-note { display: none; } }

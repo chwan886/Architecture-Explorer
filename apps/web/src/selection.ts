@@ -1,4 +1,4 @@
-import type { ArchitectureNode } from '../../../packages/schema/src/index';
+import type { ArchitectureEdge, ArchitectureNode } from '../../../packages/schema/src/index';
 
 export interface SelectionRequest { scopeId: string; nodeId: string; sequence: number }
 
@@ -6,6 +6,11 @@ export interface SelectionRequest { scopeId: string; nodeId: string; sequence: n
 export function nodeForKeyboardActivation(key: string, nodeId: string | null, nodes: readonly ArchitectureNode[], nestedControl = false): ArchitectureNode | undefined {
   if (nestedControl || (key !== 'Enter' && key !== ' ') || !nodeId) return undefined;
   return nodes.find(node => node.id === nodeId);
+}
+
+export function edgeForKeyboardActivation(key: string, edgeId: string | null, edges: readonly ArchitectureEdge[], nestedControl = false): ArchitectureEdge | undefined {
+  if (nestedControl || (key !== 'Enter' && key !== ' ') || !edgeId) return undefined;
+  return edges.find(edge => edge.id === edgeId);
 }
 
 export function isCurrentSelectionRequest(request: SelectionRequest, current: SelectionRequest): boolean {

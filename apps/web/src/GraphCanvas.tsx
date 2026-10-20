@@ -1,12 +1,14 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Background, BackgroundVariant, BaseEdge, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, useViewport } from '@xyflow/react';
+import { Background, BackgroundVariant, BaseEdge, EdgeLabelRenderer, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, getSmoothStepPath, useEdgesState, useNodesState, useReactFlow, useViewport } from '@xyflow/react';
 import type { Edge, EdgeProps, Node, NodeProps, Viewport, XYPosition } from '@xyflow/react';
 import { Box, ChevronRight, Expand, LayoutGrid, Minus, Plus, RotateCcw } from 'lucide-react';
 import type { ArchitectureEdge, ArchitectureNode, GraphResult } from '../../../packages/schema/src/index';
 import { confidenceLabels, edgeLabels, expandableKinds, nodeLabels, shortPath } from './labels';
-import { nodeForKeyboardActivation } from './selection';
+import { edgeForKeyboardActivation, nodeForKeyboardActivation } from './selection';
 
-type ExplorerNode = Node<{ entity: ArchitectureNode; connections: number }, 'entity'>;
+export interface GraphCardPresentation { kindLabel?: string; summary?: string; badge?: string; footer?: string }
+type ExplorerNode = Node<{ entity: ArchitectureNode; connections: number; presentation?: GraphCardPresentation; size?: { width: number; height: number } }, 'entity'>;
+const DEFAULT_NODE_SIZE = { width: 258, height: 108 };
 interface CanvasSnapshot { positions: Record<string, XYPosition>; viewport: Viewport }
 // Session memory is bounded and scoped by graph identity, whose IDs include the
 // authorized worktree. It survives an empty result temporarily unmounting a graph.
@@ -20,27 +22,36 @@ const elkLoader = () => import('elkjs/lib/elk.bundled.js').then(module => new mo
 let elkPromise: ReturnType<typeof elkLoader> | undefined;
 const EntityNode = memo(function EntityNode({ data, selected }: NodeProps<ExplorerNode>) {
   const { entity } = data;
-  return <div className={`entity-card kind-${entity.kind} ${selected ? 'is-selected' : ''}`}>
+  return <div className={`entity-card kind-${entity.kind} ${selected ? 'is-selected' : ''} ${data.presentation ? 'architecture-card' : ''}`} style={{ width: data.size?.width, minHeight: data.size?.height }}>
     <Handle type="target" position={Position.Left} />
-    <div className="entity-head"><span className="entity-symbol"><Box size={15} /></span><span className="entity-kind">{nodeLabels[entity.kind]}</span><span className="entity-language">{entity.language === 'unknown' ? '目录' : entity.language === 'csharp' ? 'C#' : entity.language}</span></div>
+    <div className="entity-head"><span className="entity-symbol"><Box size={15} /></span><span className="entity-kind">{data.presentation?.kindLabel || nodeLabels[entity.kind]}</span><span className="entity-language">{data.presentation?.badge || (entity.language === 'unknown' ? '目录' : entity.language === 'csharp' ? 'C#' : entity.language)}</span></div>
     <div className="entity-name" title={entity.qualifiedName}>{entity.label}</div>
-    <div className="entity-footer"><span title={entity.filePath}>{shortPath(entity.filePath)}</span><span>{data.connections > 0 ? `${data.connections} 关系` : expandableKinds.has(entity.kind) ? <><ChevronRight size={12} />展开</> : '符号'}</span></div>
+    {data.presentation?.summary && <div className="entity-summary">{data.presentation.summary}</div>}<div className="entity-footer"><span title={entity.filePath}>{data.presentation?.footer || shortPath(entity.filePath)}</span><span>{data.connections > 0 ? `${data.connections} 关系` : expandableKinds.has(entity.kind) ? <><ChevronRight size={12} />展开</> : '符号'}</span></div>
     <Handle type="source" position={Position.Right} />
   </div>;
 });
 const nodeTypes = { entity: EntityNode };
-function ParallelEdge({ id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, style, label, labelStyle, labelBgStyle, labelBgPadding, data }: EdgeProps) {
+function EvidenceEdge({ edge, path, labelX, labelY }: { edge: EdgeProps; path: string; labelX: number; labelY: number }) {
+  const activate = edge.data?.activate;
+  return <><BaseEdge id={edge.id} path={path} markerEnd={edge.markerEnd} style={edge.style} interactionWidth={20} />{edge.label && <EdgeLabelRenderer><button type="button" className="nodrag nopan graph-edge-label" data-edge-id={edge.id} title={String(edge.data?.description || edge.label)} aria-label={String(edge.data?.description || edge.label)} onClick={event => { event.preventDefault(); event.stopPropagation(); if (typeof activate === 'function') activate(); }} style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 20, padding: '3px 6px', border: '1px solid #354354', borderRadius: 4, background: '#111923', color: '#aebdd4', fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}>{edge.label}</button></EdgeLabelRenderer>}</>;
+}
+function ReadableEdge(edge: EdgeProps) {
+  const [path, labelX, labelY] = getSmoothStepPath({ sourceX: edge.sourceX, sourceY: edge.sourceY, targetX: edge.targetX, targetY: edge.targetY, sourcePosition: edge.sourcePosition, targetPosition: edge.targetPosition });
+  return <EvidenceEdge edge={edge} path={path} labelX={labelX} labelY={labelY} />;
+}
+function ParallelEdge(edge: EdgeProps) {
+  const { source, target, sourceX, sourceY, targetX, targetY, data } = edge;
   const offset = Number(data?.offset || 0);
   const self = source === target;
   const reach = self ? 90 : Math.max(45, Math.abs(targetX - sourceX) * .45);
   const bend = self ? -145 : offset;
   const c1x = sourceX + reach, c1y = sourceY + bend, c2x = targetX - reach, c2y = targetY + bend;
   const path = `M ${sourceX} ${sourceY} C ${c1x} ${c1y} ${c2x} ${c2y} ${targetX} ${targetY}`;
-  return <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} label={label} labelX={(sourceX + 3 * c1x + 3 * c2x + targetX) / 8} labelY={(sourceY + 3 * c1y + 3 * c2y + targetY) / 8} labelStyle={labelStyle} labelBgStyle={labelBgStyle} labelBgPadding={labelBgPadding} interactionWidth={20} />;
+  return <EvidenceEdge edge={edge} path={path} labelX={(sourceX + 3 * c1x + 3 * c2x + targetX) / 8} labelY={(sourceY + 3 * c1y + 3 * c2y + targetY) / 8} />;
 }
-const edgeTypes = { parallel: ParallelEdge };
+const edgeTypes = { parallel: ParallelEdge, readable: ReadableEdge };
 
-function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layoutToken, focusRequest, onFocusHandled, view }: { graph: GraphResult; selectedId?: string; onSelect: (node: ArchitectureNode) => void; onEnter: (node: ArchitectureNode) => void; onRelation: (edge: ArchitectureEdge) => void; layoutToken: number; focusRequest?: { id: string; token: number }; onFocusHandled: (token: number) => void; view: string }) {
+function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layoutToken, focusRequest, onFocusHandled, view, cardPresentations, edgeLabelOverrides, pendingEdgeIds, nodeSize = DEFAULT_NODE_SIZE, layoutMode = 'elk' }: { graph: GraphResult; selectedId?: string; onSelect: (node: ArchitectureNode) => void; onEnter: (node: ArchitectureNode) => void; onRelation: (edge: ArchitectureEdge) => void; layoutToken: number; focusRequest?: { id: string; token: number }; onFocusHandled: (token: number) => void; view: string; cardPresentations?: Record<string, GraphCardPresentation>; edgeLabelOverrides?: Record<string, string>; pendingEdgeIds?: Set<string>; nodeSize?: { width: number; height: number }; layoutMode?: 'elk' | 'grid' }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ExplorerNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [layoutBusy, setLayoutBusy] = useState(false);
@@ -53,10 +64,12 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
   const focusRef = useRef(focusRequest);
   focusRef.current = focusRequest;
   const handledFocus = useRef(0);
+  const relationHandlerRef = useRef(onRelation); relationHandlerRef.current = onRelation;
+  const graphRef = useRef(graph); graphRef.current = graph;
   const activeGraphKey = useRef('');
   const previousLayoutToken = useRef(layoutToken);
   const graphSignature = useMemo(() => graph.nodes.map(n => n.id).sort().join('|') + ':' + graph.edges.map(e => e.id).sort().join('|'), [graph]);
-  const graphKey = `${view}:${graph.rootId || ''}:${graphSignature}`;
+  const graphKey = `${view}:${graph.rootId || ''}:${graphSignature}:${nodeSize.width}x${nodeSize.height}:${layoutMode}`;
   const saveCurrentCanvas = (moved?: ExplorerNode) => { if (activeGraphKey.current && !layoutInFlight.current) rememberCanvas(activeGraphKey.current, getNodes().map(node => moved?.id === node.id ? moved : node), getViewport()); };
   const focusHandledRef = useRef(onFocusHandled);
   focusHandledRef.current = onFocusHandled;
@@ -68,7 +81,7 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
     activeGraphKey.current = graphKey;
     const degree = new Map<string, number>();
     graph.edges.forEach(edge => { degree.set(edge.source, (degree.get(edge.source) || 0) + 1); degree.set(edge.target, (degree.get(edge.target) || 0) + 1); });
-    const nextNodes: ExplorerNode[] = graph.nodes.map(entity => ({ id: entity.id, type: 'entity', data: { entity, connections: degree.get(entity.id) || 0 }, position: { x: 0, y: 0 }, selected: entity.id === selectedId }));
+    const nextNodes: ExplorerNode[] = graph.nodes.map(entity => ({ id: entity.id, type: 'entity', data: { entity, connections: degree.get(entity.id) || 0, presentation: cardPresentations?.[entity.id], size: nodeSize }, position: { x: 0, y: 0 }, selected: entity.id === selectedId }));
     const ids = new Set(nextNodes.map(n => n.id));
     const pairKey = (source: string, target: string) => [source, target].sort().join('|');
     const pairs = new Map<string, string[]>();
@@ -76,11 +89,11 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
     const nextEdges = graph.edges.filter(e => ids.has(e.source) && ids.has(e.target)).map(edge => {
       const pair = pairs.get(pairKey(edge.source, edge.target)) || [edge.id];
       return {
-      id: edge.id, source: edge.source, target: edge.target, label: edgeLabels[edge.kind], type: pair.length > 1 || edge.source === edge.target ? 'parallel' : 'smoothstep', data: { offset: (pair.indexOf(edge.id) - (pair.length - 1) / 2) * 44 },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: edge.confidence === 'inferred' ? '#d4aa65' : '#626e86' },
-      style: { stroke: edge.confidence === 'inferred' ? '#b89155' : edge.kind === 'writes' ? '#b78386' : edge.kind === 'reads' ? '#719eaa' : '#525f78', strokeWidth: 1.3, strokeDasharray: edge.confidence === 'inferred' ? '5 4' : undefined },
+      id: edge.id, source: edge.source, target: edge.target, label: edgeLabelOverrides?.[edge.id] || edgeLabels[edge.kind], type: pair.length > 1 || edge.source === edge.target ? 'parallel' : 'readable', data: { offset: (pair.indexOf(edge.id) - (pair.length - 1) / 2) * 44, description: `${edgeLabelOverrides?.[edge.id] || edgeLabels[edge.kind]}；${confidenceLabels[edge.confidence]}；${edge.rule}`, activate: () => { const current = graphRef.current.edges.find(item => item.id === edge.id); if (current) relationHandlerRef.current(current); } },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: edge.confidence === 'inferred' || pendingEdgeIds?.has(edge.id) ? '#d4aa65' : '#626e86' },
+      style: { stroke: edge.confidence === 'inferred' || pendingEdgeIds?.has(edge.id) ? '#b89155' : edge.kind === 'writes' ? '#b78386' : edge.kind === 'reads' ? '#719eaa' : '#525f78', strokeWidth: 1.3, strokeDasharray: edge.confidence === 'inferred' || pendingEdgeIds?.has(edge.id) ? '5 4' : undefined },
       labelStyle: { fill: '#a9b0bf', fontSize: 10 }, labelBgStyle: { fill: '#11151c', fillOpacity: .96 }, labelBgPadding: [6, 3] as [number, number],
-      ariaLabel: `${edgeLabels[edge.kind]}，${confidenceLabels[edge.confidence]}，${edge.rule}`,
+      ariaLabel: `${pendingEdgeIds?.has(edge.id) ? '业务归属待复核；' : ''}${edgeLabels[edge.kind]}，${confidenceLabels[edge.confidence]}，${edge.rule}`,
     }; });
     const cached = forceLayout ? undefined : canvasSnapshots.get(graphKey);
     if (cached) {
@@ -116,7 +129,7 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
           handledFocus.current = focus.token;
           focusHandledRef.current(focus.token);
           void fitView({ nodes: [{ id: focus.id }], padding: .6, maxZoom: 1, duration: 250 });
-        } else void fitView({ padding: .12, minZoom: .85, maxZoom: 1, duration: 180 }).then(() => {
+        } else void fitView({ padding: layoutMode === 'grid' ? .08 : .12, minZoom: layoutMode === 'grid' ? .65 : .85, maxZoom: 1, duration: 180 }).then(() => {
           if (sequence !== layoutSequence.current) return;
           const targetId = nextNodes.some(node => node.id === selectedId) ? selectedId : graph.rootId;
           const target = targetId ? getNode(targetId) : undefined;
@@ -128,28 +141,28 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
           const top = target.position.y * viewport.zoom + viewport.y;
           // Keep readable cards and bring the selected entity into the viewport;
           // users can pan to explore larger neighborhoods instead of tiny text.
-          if (left < 22 || top < 42 || left + 258 * viewport.zoom > width - 22 || top + 108 * viewport.zoom > height - 50) {
-            void setCenter(target.position.x + 129, target.position.y + 54, { zoom: viewport.zoom, duration: 160 });
+          if (left < 22 || top < 42 || left + nodeSize.width * viewport.zoom > width - 22 || top + nodeSize.height * viewport.zoom > height - 50) {
+            void setCenter(target.position.x + nodeSize.width / 2, target.position.y + nodeSize.height / 2, { zoom: viewport.zoom, duration: 160 });
           }
         });
       }));
     };
-    if (graph.edges.length === 0) {
+    if (layoutMode === 'grid' || graph.edges.length === 0) {
       // Unconnected architecture groups have no direction. Pick the grid that
       // preserves the largest readable card size within the current canvas.
       const width = Math.max(250, (surfaceRef.current?.clientWidth || 750) - 48);
       const height = Math.max(150, (surfaceRef.current?.clientHeight || 400) - 76);
       const candidates = nextNodes.length <= 1 ? [1] : [2, 3].filter(columns => columns <= nextNodes.length);
-      const score = (columns: number) => Math.min(1, width / (columns * 258 + (columns - 1) * 36), height / (Math.ceil(nextNodes.length / columns) * 108 + (Math.ceil(nextNodes.length / columns) - 1) * 36));
+      const score = (columns: number) => Math.min(1, width / (columns * nodeSize.width + (columns - 1) * 36), height / (Math.ceil(nextNodes.length / columns) * nodeSize.height + (Math.ceil(nextNodes.length / columns) - 1) * 36));
       const columns = candidates.reduce((best, value) => score(value) > score(best) ? value : best, candidates[0]);
       applyLayout(nextNodes.map((node, index) => {
         const row = Math.floor(index / columns);
         const rowCount = Math.min(columns, nextNodes.length - row * columns);
-        return { ...node, position: { x: (index % columns) * 294 + (columns - rowCount) * 147, y: row * 144 } };
+        return { ...node, position: { x: (index % columns) * (nodeSize.width + 36) + (columns - rowCount) * (nodeSize.width + 36) / 2, y: row * (nodeSize.height + 36) } };
       }));
       return () => { saveCurrentCanvas(); layoutSequence.current++; };
     }
-    const layered = { id: 'root', layoutOptions: { 'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.spacing.nodeNode': '36', 'elk.layered.spacing.nodeNodeBetweenLayers': '95', 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX', 'elk.padding': '[top=30,left=30,bottom=30,right=30]' }, children: nextNodes.map(n => ({ id: n.id, width: 258, height: 108 })), edges: nextEdges.filter(e => e.source !== e.target).map(e => ({ id: e.id, sources: [e.source], targets: [e.target] })) };
+    const layered = { id: 'root', layoutOptions: { 'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.spacing.nodeNode': '36', 'elk.layered.spacing.nodeNodeBetweenLayers': '95', 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX', 'elk.padding': '[top=30,left=30,bottom=30,right=30]' }, children: nextNodes.map(n => ({ id: n.id, width: nodeSize.width, height: nodeSize.height })), edges: nextEdges.filter(e => e.source !== e.target).map(e => ({ id: e.id, sources: [e.source], targets: [e.target] })) };
     (elkPromise ??= elkLoader()).then(elk => elk.layout(layered)).then(result => {
       const positions = new Map(result.children?.map(n => [n.id, { x: n.x || 0, y: n.y || 0 }]));
       applyLayout(nextNodes.map(n => ({ ...n, position: positions.get(n.id) || n.position })));
@@ -165,8 +178,8 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
   useEffect(() => { setNodes(current => current.map(n => ({ ...n, selected: n.id === selectedId }))); }, [selectedId, setNodes]);
   useEffect(() => {
     const entities = new Map(graph.nodes.map(node => [node.id, node]));
-    setNodes(current => current.map(node => ({ ...node, data: { ...node.data, entity: entities.get(node.id) || node.data.entity } })));
-  }, [graph, setNodes]);
+    setNodes(current => current.map(node => ({ ...node, data: { ...node.data, entity: entities.get(node.id) || node.data.entity, presentation: cardPresentations?.[node.id], size: nodeSize } })));
+  }, [graph, cardPresentations, nodeSize, setNodes]);
   useEffect(() => {
     if (layoutInFlight.current || !focusRequest || focusRequest.token === handledFocus.current || !nodes.some(node => node.id === focusRequest.id)) return;
     handledFocus.current = focusRequest.token;
@@ -177,10 +190,13 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
   return <div className="canvas-surface" ref={surfaceRef} onKeyDownCapture={event => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+    const nestedControl = !!target.closest('button, input, textarea, select, a, [contenteditable="true"]');
     const nodeElement = target.closest('.react-flow__node[data-id]');
-    const node = nodeForKeyboardActivation(event.key, nodeElement?.getAttribute('data-id') || null, graph.nodes, !!target.closest('button, input, textarea, select, a, [contenteditable="true"]'));
-    if (!node) return;
-    event.preventDefault(); event.stopPropagation(); onSelect(node);
+    const node = nodeForKeyboardActivation(event.key, nodeElement?.getAttribute('data-id') || null, graph.nodes, nestedControl);
+    if (node) { event.preventDefault(); event.stopPropagation(); onSelect(node); return; }
+    const edgeElement = target.closest('.react-flow__edge[data-id]');
+    const edge = edgeForKeyboardActivation(event.key, edgeElement?.getAttribute('data-id') || null, graph.edges, nestedControl);
+    if (edge) { event.preventDefault(); event.stopPropagation(); onRelation(edge); }
   }}>
     <ReactFlow<ExplorerNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
       onNodeClick={(_, n) => onSelect(n.data.entity)} onNodeDoubleClick={(_, n) => onEnter(n.data.entity)}
@@ -190,7 +206,7 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
       defaultEdgeOptions={{ interactionWidth: 20 }} onlyRenderVisibleElements>
       <Background variant={BackgroundVariant.Dots} color="#303747" gap={22} size={1} />
     </ReactFlow>
-    <div className="canvas-legend"><span><i className="legend-line" />静态确认</span>{graph.edges.some(e => e.confidence === 'inferred') && <span><i className="legend-line inferred" />有据推断</span>}<span className="canvas-note">拖动画布查看更多节点 · 滚轮缩放</span></div>
+    <div className="canvas-legend"><span><i className="legend-line" />静态确认</span>{graph.edges.some(e => e.confidence === 'inferred') && <span><i className="legend-line inferred" />有据推断</span>}{!!pendingEdgeIds?.size && <span><i className="legend-line inferred" />业务归属待复核</span>}<span className="canvas-note">拖动画布查看更多节点 · 滚轮缩放</span></div>
     <div className="canvas-controls"><button title="缩小" aria-label="缩小" onClick={() => void zoomOut()}><Minus size={15} /></button><span>{Math.round(zoom * 100)}%</span><button title="放大" aria-label="放大" onClick={() => void zoomIn()}><Plus size={15} /></button><div className="control-separator" /><button title="适应画布" aria-label="适应画布" onClick={() => void fitView({ padding: .12, duration: 250, maxZoom: 1 })}><Expand size={16} /></button><button title="重置视图" aria-label="重置视图" onClick={() => void fitView({ padding: .12, duration: 250, maxZoom: 1 })}><RotateCcw size={14} /></button></div>
     <div className="canvas-count"><LayoutGrid size={13} /> {graph.nodes.length} 个节点<span>·</span>{graph.edges.length} 条关系</div>
     {layoutBusy && <div className="canvas-layout-status"><span className="spinner" /> 正在整理布局</div>}

@@ -1,0 +1,218 @@
+.architecture-workspace {
+  display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; background: #11151c; color: #c8d1e1; font-size: 12px;
+  & button { border-radius: 4px; }
+  & button:disabled { opacity: .35; cursor: default; }
+  & button:focus-visible, & input:focus-visible, & textarea:focus-visible, & select:focus-visible, & summary:focus-visible { outline: 2px solid #a4b6f3; outline-offset: 1px; }
+  & .arch-toolbar { height: 43px; min-height: 43px; padding: 0 19px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #283141; background: #151a23; }
+  & .arch-breadcrumbs, & .arch-breadcrumbs > span { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 11px; color: #7a8caa; }
+  & .arch-breadcrumbs button { color: #a5b4ce; white-space: nowrap; padding: 5px 3px; }
+  & .arch-breadcrumbs > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & .arch-toolbar-actions { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+  & .arch-toolbar-actions button { display: inline-flex; align-items: center; gap: 5px; padding: 5px; color: #8ea0c1; font-size: 10px; }
+  & .arch-toolbar-actions button:hover { background: #ffffff08; }
+  & .arch-perspective-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 82px; padding: 17px 25px 15px; border-bottom: 1px solid #252e3d; }
+  & .arch-eyebrow { font-size: 9px; color: #7e92b4; letter-spacing: .4px; }
+  & .arch-perspective-heading h1 { margin: 7px 0 0; color: #e0e7f4; font-size: 21px; line-height: 1.2; font-weight: 520; letter-spacing: -.4px; }
+  & .arch-header-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; color: #657c9f; font-size: 10px; }
+  & .arch-header-stats span { display: flex; align-items: center; gap: 5px; }
+  & .arch-trust-strip { display: flex; align-items: flex-start; gap: 7px; padding: 9px 23px; color: #8ca2c3; font-size: 10px; line-height: 1.65; background: #182332; border-bottom: 1px solid #2a3d55; }
+  & .arch-trust-strip > svg { margin-top: 2px; }
+  & .arch-work-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 209px minmax(0, 1fr) 334px; overflow: hidden; }
+  & .arch-work-grid.is-stale { opacity: .6; pointer-events: none; }
+  & .arch-navigation { border-right: 1px solid #2c3749; display: flex; flex-direction: column; background: #151b25; min-height: 0; overflow: hidden; }
+  & .arch-navigation-title { color: #8ca0c0; font-weight: 500; font-size: 10px; padding: 17px 17px 12px; }
+  & .arch-nav-search { display: flex; align-items: center; gap: 6px; margin: 0 15px 10px; padding: 5px 0 10px; border-bottom: 1px solid #2a374c; color: #627c9f; }
+  & .arch-nav-search input { width: 100%; font-size: 10px; }
+  & .arch-navigation nav { flex: 1; min-height: 0; overflow: auto; padding: 0 8px 18px; }
+  & .arch-navigation nav h3 { font-size: 9px; font-weight: 450; color: #5d7597; margin: 18px 8px 8px; }
+  & .arch-navigation nav section:first-child h3 { margin-top: 6px; }
+  & .arch-navigation nav button { display: flex; align-items: center; width: 100%; padding: 10px 8px; gap: 7px; text-align: left; color: #a1b3cf; margin-bottom: 2px; }
+  & .arch-navigation nav button:hover, & .arch-navigation nav button.active { background: #a6baf00c; }
+  & .arch-navigation nav button > span { flex: 1; min-width: 0; font-size: 11px; }
+  & .arch-navigation nav button > svg { color: #718cb4; }
+  & .arch-navigation nav button small { display: block; color: #5e7a9e; font-size: 9px; margin-top: 5px; }
+  & .arch-nav-foot { display: flex; gap: 8px; padding: 14px 15px; border-top: 1px solid #29364a; color: #7a96b9; font-size: 9px; }
+  & .arch-nav-foot > svg { color: #689482; }
+  & .arch-nav-foot small { color: #4f6e94; display: block; font-size: 8px; margin-top: 4px; }
+  & .arch-main { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  & .arch-graph-tools { display: flex; height: 40px; min-height: 40px; align-items: center; gap: 12px; padding: 0 17px; border-bottom: 1px solid #263449; }
+  & .arch-graph-tools > span { display: flex; align-items: center; gap: 6px; color: #869ec2; font-size: 10px; flex: 1; }
+  & .arch-graph-tools label { display: flex; align-items: center; gap: 5px; border: 1px solid #344969; border-radius: 4px; padding: 4px 7px; color: #849dc2; font-size: 9px; }
+  & .arch-graph-tools select { font-size: 9px; max-width: 105px; }
+  & .arch-graph-tools > button { display: flex; padding: 5px; color: #819bc0; }
+  & .arch-overview-toggle { display: flex; align-items: center; border: 1px solid #354a68; border-radius: 4px; padding: 2px; gap: 2px; }
+  & .arch-overview-toggle button { font-size: 9px; color: #7796bf; padding: 4px 6px; white-space: nowrap; }
+  & .arch-overview-toggle button.active { background: #a4bdeb19; color: #b6cae9; }
+  & .arch-summary-note { display: flex; align-items: flex-start; gap: 6px; padding: 7px 16px; border-bottom: 1px solid #2a3b52; color: #6e8eb9; background: #172336; font-size: 9px; line-height: 1.65; }
+  & .arch-summary-note svg { margin-top: 2px; }
+  & .arch-main-content { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  & .arch-main-content .canvas-surface { background: #101720; }
+  & .arch-main-content .entity-card.architecture-card { background: #1b2738; border-color: #3d5276; display: flex; flex-direction: column; padding: 13px 15px; }
+  & .entity-card.architecture-card:hover { background: #203049; border-color: #718bb6; }
+  & .entity-card.architecture-card.is-selected { border-color: #afc4ff; background: #263a58; }
+  & .architecture-card .entity-name { font-size: 14px; margin: 9px 0 6px; color: #e0e9fa; }
+  & .architecture-card .entity-language { color: #bea778; background: #c2ab6b0a; font-size: 9px; }
+  & .architecture-card .entity-summary { color: #91a8cc; font-size: 10px; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
+  & .architecture-card .entity-footer { margin-top: auto; padding-top: 7px; border-top: 1px solid #425b7a55; font-size: 9px; }
+  & .architecture-card[style*="132px"] { padding: 10px 12px !important; }
+  & .architecture-card[style*="132px"] .entity-name { margin: 6px 0 5px; }
+  & .architecture-card[style*="132px"] .entity-summary { margin-bottom: 6px; line-height: 1.55; }
+  & .arch-view-foot { min-height: 29px; display: flex; align-items: center; gap: 13px; justify-content: space-between; font-size: 8px; color: #506f97; border-top: 1px solid #263750; padding: 0 14px; }
+  & .arch-view-foot span { display: flex; align-items: center; gap: 4px; }
+  & .arch-view-foot button { color: #8e9eaf; font-size: 8px; }
+  & .arch-inspector { border-left: 1px solid #2e3b50; background: #151e2b; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  & .arch-inspector > header { min-height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; border-bottom: 1px solid #293a53; font-size: 10px; color: #94aacd; }
+  & .arch-inspector > header > span { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  & .arch-inspector > header button { display: flex; color: #819aba; }
+  & .arch-inspector-scroll { flex: 1; min-height: 0; overflow: auto; }
+  & .arch-inspector section { padding: 17px 19px; border-bottom: 1px solid #293951; }
+  & .arch-inspector h3 { font-size: 10px; font-weight: 550; color: #a1b4d1; display: flex; align-items: center; gap: 7px; margin: 0 0 11px; }
+  & .arch-inspector h3 > span { color: #5c7fa9; font-size: 9px; }
+  & .arch-inspector p { font-size: 11px; line-height: 1.85; color: #8da4c8; margin: 7px 0; overflow-wrap: anywhere; }
+  & .arch-inspector-overview { padding: 21px 19px 17px; border-bottom: 1px solid #2b3c55; }
+  & .arch-inspector-overview > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  & .arch-inspector-overview h2 { color: #d6e4fa; font-size: 19px; font-weight: 500; line-height: 1.5; margin: 11px 0 9px; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; overflow-wrap: anywhere; }
+  & .arch-review { display: inline-flex; align-items: center; font-size: 8px; padding: 3px 5px; border: 1px solid #6c5735; color: #c0ab81; background: #bba2690b; border-radius: 3px; white-space: nowrap; }
+  & .arch-review.confirmed { border-color: #3e6a58; color: #94bca8; background: #78a0870b; }
+  & .arch-review.rejected { border-color: #754853; color: #c68e9c; background: #b879890b; }
+  & .arch-review.needs-review { border-color: #84613e; color: #dbb582; }
+  & .arch-resolution { display: inline-block; font-size: 9px; color: #7ca69c; }
+  & .arch-resolution.changed, & .arch-resolution.ambiguous, & .arch-resolution.conflict, & .arch-resolution.missing { color: #c6a16f; }
+  & .arch-review-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  & .arch-review-actions button { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; padding: 5px 7px; border: 1px solid #405b7e; color: #a4bcdf; background: #203049; }
+  & .arch-inspector p.arch-review-explainer { color: #6684ac; font-size: 9px; line-height: 1.8; }
+  & .arch-inspector-enter { display: flex; align-items: center; gap: 7px; padding: 9px 10px; margin-top: 15px; width: 100%; border: 1px solid #48658d; color: #b5ccef; background: #8dafed0a; font-size: 10px; }
+  & .arch-inspector-enter > svg:last-child { margin-left: auto; }
+  & .arch-text-list { margin: 0; padding-left: 14px; font-size: 11px; line-height: 1.85; color: #91aacd; }
+  & .arch-text-list li + li { margin-top: 4px; }
+  & .arch-muted { color: #6482aa !important; font-size: 10px !important; line-height: 1.8; }
+  & .arch-io { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  & .arch-membership { border: 1px solid #344b6a; border-radius: 5px; background: #111c2b; margin-bottom: 8px; padding: 9px; }
+  & .arch-membership summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; font-size: 9px; }
+  & .arch-membership summary strong { color: #a7bbd8; font-size: 10px; font-weight: 450; }
+  & .arch-membership summary > span:nth-last-child(2) { margin-left: auto; color: #5c7fab; white-space: nowrap; }
+  & .arch-membership code { display: block; font: 9px/1.8 Consolas, monospace; color: #8eabd3; white-space: pre-wrap; overflow-wrap: anywhere; padding: 6px 0; }
+  & .arch-details-disclosure > summary { display: flex; align-items: center; gap: 7px; list-style: none; cursor: pointer; font-size: 10px; color: #a1b4d1; }
+  & .arch-details-disclosure > summary > span { color: #668ab6; font-size: 9px; }
+  & .arch-details-disclosure > summary > small { color: #5d7fa9; font-size: 9px; margin-left: auto; }
+  & .arch-details-disclosure > summary > svg:last-child { margin-left: auto; color: #607fa7; }
+  & .arch-details-disclosure[open] > summary { margin-bottom: 13px; }
+  & .arch-show-more { display: block; width: 100%; padding: 8px; border: 1px solid #365477; background: #739bd40a; color: #92b2df; font-size: 10px; margin-top: 8px; }
+  & .arch-module-link, & .arch-code-link { display: flex; align-items: flex-start; gap: 7px; width: 100%; padding: 9px 0; text-align: left; color: #a7bddf; font-size: 11px; }
+  & .arch-module-link > span, & .arch-code-link > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  & .arch-module-link small, & .arch-code-link small { display: block; margin-top: 4px; color: #5f81ad; font-size: 9px; line-height: 1.6; }
+  & .arch-module-link > svg, & .arch-code-link > svg { margin-top: 2px; color: #708eb8; }
+  & .arch-evidence-list > button { width: 100%; display: flex; align-items: flex-start; gap: 7px; padding: 9px 7px; margin-bottom: 4px; border: 1px solid transparent; font-size: 10px; text-align: left; color: #9cb5d8; }
+  & .arch-evidence-list > button.active { border-color: #46638a; background: #a3c2f809; }
+  & .arch-evidence-list > button > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  & .arch-evidence-list small { display: block; color: #597eac; font-size: 8px; line-height: 1.7; margin-top: 5px; }
+  & .arch-evidence-list svg { margin-top: 2px; }
+  & .arch-confidence-counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 5px; }
+  & .arch-confidence-counts span { font-size: 8px; color: #7595bd; border: 1px solid #334e70; border-radius: 3px; padding: 5px; }
+  & .arch-confidence-counts b { color: #b4c9e8; font-weight: 500; margin-left: 3px; }
+  & .arch-member-edge { padding: 9px; border: 1px solid #2c4565; border-radius: 5px; margin-bottom: 8px; background: #111c2b; }
+  & .arch-member-edge.active { border-color: #7d9ac7; }
+  & .arch-member-edge > button { text-align: left; width: 100%; }
+  & .arch-member-edge > button > span { display: flex; align-items: center; gap: 9px; font-size: 9px; color: #b0c7e8; }
+  & .arch-member-edge em { font-size: 8px; font-style: normal; color: #86ad9e; }
+  & .arch-member-edge strong { font-size: 10px; font-weight: 450; color: #94aed3; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; overflow-wrap: anywhere; }
+  & .arch-member-edge small { color: #577da9; font-size: 8px; display: block; margin-top: 5px; line-height: 1.7; overflow-wrap: anywhere; }
+  & .arch-member-edge > div { display: flex; gap: 13px; margin-top: 9px; border-top: 1px solid #273e5a; padding-top: 8px; }
+  & .arch-member-edge > div button { display: flex; align-items: center; gap: 3px; color: #8dadde; font-size: 9px; }
+  & .arch-pagination { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 13px; color: #6789b5; font-size: 9px; }
+  & .arch-pagination button { display: inline-flex; align-items: center; gap: 3px; color: #9db8df; }
+  & .arch-inspector-empty { display: flex; flex-direction: column; align-items: center; padding: 55px 30px 35px; text-align: center; }
+  & .arch-inspector-empty > div { width: 59px; height: 59px; display: grid; place-items: center; background: #20314c; border: 1px solid #405b81; border-radius: 13px; color: #91b0da; }
+  & .arch-inspector-empty h3 { font-size: 13px; font-weight: 500; color: #b0c6e7; margin: 22px 0 4px; }
+  & .arch-inspector-empty p { font-size: 11px; color: #6486b3; line-height: 1.9; margin-bottom: 24px; }
+  & .arch-inspector-empty > span { display: flex; align-items: center; gap: 7px; margin-top: 14px; color: #577eaf; font-size: 10px; }
+  & .arch-inline-loading { padding: 17px; display: flex; align-items: center; gap: 7px; color: #8ca8cd; font-size: 10px; }
+  & .arch-error { display: flex; align-items: flex-start; gap: 8px; padding: 11px 16px; background: #b58b4c10; border-bottom: 1px solid #7f633b; color: #c2a572; font-size: 10px; line-height: 1.7; }
+  & .arch-error > svg { margin-top: 2px; }
+  & .arch-error > div { min-width: 0; flex: 1; overflow-wrap: anywhere; max-height: 140px; overflow: auto; }
+  & .arch-error button { color: #d3ba85; border: 1px solid #7d6848; padding: 5px 7px; font-size: 9px; white-space: nowrap; }
+  & .arch-error summary { cursor: pointer; margin-top: 6px; }
+  & .arch-error pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 10px/1.8 Consolas, monospace; }
+  & .arch-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; color: #718fb7; background-image: radial-gradient(#38506c88 .6px, transparent .6px); background-size: 22px 22px; }
+  & .arch-empty > svg { margin-bottom: 8px; }
+  & .arch-empty h2 { font-size: 17px; font-weight: 500; color: #bed0ec; margin: 10px 0; }
+  & .arch-empty p { font-size: 11px; line-height: 1.9; color: #7898c2; max-width: 420px; margin: 2px 0 17px; }
+  & .arch-empty button { color: #b1c9ef; font-size: 11px; border: 1px solid #456891; padding: 7px 11px; background: #8eafea0b; }
+  & .arch-warning-text { color: #c3a775 !important; font-size: 10px; }
+  & .arch-diagnostic { display: flex; align-items: flex-start; gap: 6px; padding: 8px 0; border-bottom: 1px solid #283f5b; font-size: 9px; color: #7999c2; line-height: 1.8; }
+  & .arch-diagnostic svg { margin-top: 3px; }
+  & .arch-diagnostic strong { display: block; font-weight: 450; color: #a9bad3; }
+  & .arch-diagnostic.warning { color: #b79b70; }
+  & .arch-diagnostic.error { color: #c89595; }
+  & .arch-source-panel { height: 207px; min-height: 207px; display: flex; flex-direction: column; border-top: 1px solid #344d70; background: #121b29; }
+  & .arch-source-panel > header { display: flex; align-items: center; gap: 15px; padding: 0 19px; min-height: 35px; border-bottom: 1px solid #2c4361; color: #9fb6d7; font-size: 10px; }
+  & .arch-source-panel > header > span { display: flex; align-items: center; gap: 7px; }
+  & .arch-source-panel > header small { color: #587dab; font-size: 8px; }
+  & .arch-source-panel > header > span.arch-source-readonly { margin-left: auto; font-size: 9px; color: #688dbb; }
+  & .arch-source-panel > header > button { display: flex; color: #8ba8cf; }
+  & .arch-source-content { flex: 1; min-height: 0; overflow: auto; }
+  & .arch-source-empty { height: 100%; display: flex; align-items: center; justify-content: center; padding: 25px; gap: 9px; color: #668ab9; font-size: 11px; text-align: center; line-height: 1.8; }
+  & .arch-source-content .source-location { background: #172437; }
+  & .arch-source-content .source-code { font-size: 12px; line-height: 22px; }
+  & .arch-flow-board { height: 100%; overflow: auto; }
+  & .arch-flow-intro { padding: 23px 24px 17px; }
+  & .arch-flow-intro h2 { margin: 9px 0; font-size: 22px; font-weight: 500; color: #d5e2f5; }
+  & .arch-flow-intro p { margin: 0 0 12px; color: #7d9bc3; font-size: 11px; line-height: 1.85; max-width: 750px; }
+  & .arch-flow-intro > div { display: flex; flex-wrap: wrap; gap: 13px; align-items: center; }
+  & .arch-flow-intro > div > span:last-child { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #8da7cc; }
+  & .arch-boundary-note { display: flex; gap: 7px; font-size: 10px; color: #a08c65; padding: 11px 24px; background: #9c81500b; line-height: 1.8; border-top: 1px solid #69553655; border-bottom: 1px solid #69553655; }
+  & .arch-boundary-note svg { margin-top: 3px; }
+  & .arch-swimlane-scroll { padding: 21px 24px; overflow: auto; }
+  & .arch-swimlanes { display: grid; min-width: max-content; border: 1px solid #2e486a; border-radius: 7px; overflow: hidden; background: #121d2c; }
+  & .arch-swimlane-row { display: contents; }
+  & .arch-lane-corner { background: #192a41; font-size: 10px; padding: 16px; color: #7697c2; }
+  & .arch-phase-heading { background: #192a41; color: #b2caec; font-size: 11px; padding: 14px 16px; border-left: 1px solid #2e486a; display: flex; gap: 10px; align-items: center; }
+  & .arch-phase-heading > span { color: #6085b2; font-size: 12px; }
+  & .arch-lane-heading { padding: 20px 14px; background: #15243a; border-top: 1px solid #2c4567; font-size: 11px; color: #a6c0e3; display: flex; gap: 7px; align-items: flex-start; line-height: 1.8; }
+  & .arch-lane-dot { margin-top: 7px; width: 5px; height: 5px; border-radius: 50%; background: #82a4cf; flex-shrink: 0; }
+  & .arch-lane-cell { border-top: 1px solid #2c4567; border-left: 1px solid #2c4567; min-height: 150px; padding: 13px; }
+  & .arch-flow-step { background: #1b2c44; border: 1px solid #3a5a82; border-radius: 6px; width: 215px; margin-bottom: 10px; overflow: hidden; }
+  & .arch-flow-step.active { border-color: #aac7fb; box-shadow: 0 0 0 2px #aac7fb10; }
+  & .arch-flow-step-main { display: block; width: 100%; padding: 13px; text-align: left; }
+  & .arch-step-position { color: #668dbd; font-size: 9px; }
+  & .arch-flow-step h3 { font-size: 12px; color: #cadaef; font-weight: 500; line-height: 1.5; margin: 7px 0; }
+  & .arch-flow-step p { font-size: 10px; color: #7e9ec8; line-height: 1.8; margin: 0 0 9px; }
+  & .arch-step-condition { display: block; font-size: 9px; color: #b4a274; line-height: 1.6; margin-top: 7px; }
+  & .arch-step-code { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid #355171; color: #a6c2ec; width: 100%; font-size: 9px; }
+  & .arch-step-code > span { color: #5d84b3; margin-left: auto; font-size: 8px; }
+  & .arch-transitions { padding: 3px 24px 22px; }
+  & .arch-section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  & .arch-section-heading h3 { color: #b2c7e6; font-weight: 500; font-size: 12px; margin: 0; }
+  & .arch-section-heading > span { color: #557ba9; font-size: 9px; }
+  & .arch-transition { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px; border: 1px solid #365477; border-left: 3px solid #729a8a; border-radius: 5px; margin-top: 8px; background: #152237; color: #93b0d6; }
+  & .arch-transition strong { color: #acc5e6; font-size: 10px; font-weight: 450; }
+  & .arch-transition.unverified { border-left-color: #ae9362; border-style: dashed; }
+  & .arch-transition.source-supported { border-left-color: #819ac7; }
+  & .arch-transition.active { background: #213653; border-color: #8ba9d5; }
+  & .arch-transition-basis { margin-left: auto; font-size: 9px; color: #5f87b8; white-space: nowrap; }
+  & .arch-verification { font-size: 8px; color: #a99470; white-space: nowrap; }
+  & .arch-transition.static-confirmed .arch-verification { color: #7ba596; }
+  & .arch-transition-status { color: #b09a71; font-size: 10px; padding: 5px 7px; border: 1px solid #65583e; border-radius: 4px; display: inline-block; }
+  & .arch-transition-status.static-confirmed { color: #88b5a0; border-color: #3d6858; }
+  & .arch-flow-limits { display: flex; align-items: flex-start; gap: 8px; margin: 0 24px 23px; color: #6c8eb9; border: 1px solid #344b69; border-radius: 5px; padding: 12px; }
+  & .arch-flow-limits p { font-size: 10px; line-height: 1.8; margin: 0 0 4px; }
+  & .arch-editor-overlay { position: fixed; inset: 0; z-index: 150; padding: 5vh 6vw; background: #080d16cc; display: flex; align-items: center; justify-content: center; }
+  & .arch-model-editor { width: 1050px; max-width: 100%; height: 83vh; display: flex; flex-direction: column; background: #141f30; border: 1px solid #59759b; border-radius: 10px; box-shadow: 0 20px 70px #00000088; overflow: hidden; }
+  & .arch-model-editor > header { min-height: 53px; padding: 0 21px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #354e70; color: #c1d4f0; }
+  & .arch-model-editor > header > span { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  & .arch-editor-save-state { color: #6e9e8e; font-size: 9px; margin-left: 6px; }
+  & .arch-editor-save-state.dirty { color: #c2a570; }
+  & .arch-editor-note { padding: 12px 21px; font-size: 10px; line-height: 1.8; color: #7c9dc8; background: #182a42; }
+  & .arch-model-editor textarea { flex: 1; min-height: 0; resize: none; border: 0; border-radius: 0; padding: 17px 22px; color: #b0c6e5; background: #101b2c; font: 12px/1.8 Consolas, 'Cascadia Code', monospace; tab-size: 2; white-space: pre; overflow: auto; }
+  & .arch-model-editor > footer { min-height: 53px; display: flex; align-items: center; gap: 13px; padding: 9px 21px; border-top: 1px solid #354e70; }
+  & .arch-model-editor > footer > span { margin-right: auto; color: #5c83b5; font-size: 9px; }
+  & .arch-model-editor > footer > button { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #92b3df; }
+  & .arch-primary { background: #a4bce9 !important; color: #152238 !important; border: 1px solid #b3caf0 !important; padding: 7px 10px !important; }
+  & .arch-editor-error { display: flex; gap: 8px; padding: 10px 21px; background: #8e653a1a; color: #c2a06e; max-height: 155px; overflow: auto; }
+  & .arch-editor-error > svg { margin-top: 2px; }
+  & .arch-editor-error pre { margin: 0; font: 10px/1.8 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  & .arch-editor-success { display: flex; gap: 7px; padding: 10px 21px; color: #89b2a0; font-size: 10px; }
+  @media (max-width: 1400px) { & .arch-work-grid { grid-template-columns: 186px minmax(0, 1fr) 304px; } & .arch-perspective-heading { padding-left: 20px; } & .arch-inspector-overview, & .arch-inspector section { padding-left: 15px; padding-right: 15px; } }
+  @media (max-width: 1100px) { & .arch-work-grid { grid-template-columns: 165px minmax(0, 1fr) 270px; } & .arch-navigation nav button { font-size: 10px; padding: 9px 6px; } & .arch-navigation nav button > span { font-size: 10px; } & .arch-header-stats > span:last-child { display: none; } & .arch-transition { flex-wrap: wrap; } & .arch-transition-basis { margin-left: 0; } & .arch-model-editor > footer { flex-wrap: wrap; } }
+  @media (max-width: 850px) { & .arch-work-grid { grid-template-columns: minmax(0, 1fr) 270px; } & .arch-navigation { display: none; } & .arch-perspective-heading h1 { font-size: 18px; } & .arch-header-stats { display: none; } & .arch-perspective-heading { min-height: 72px; } & .arch-source-panel { height: 190px; min-height: 190px; } & .arch-toolbar { padding: 0 11px; } & .arch-breadcrumbs { font-size: 10px; } & .arch-source-readonly { display: none !important; } }
+}

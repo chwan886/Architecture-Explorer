@@ -5,6 +5,7 @@ import { graph, nodeDetail, search, IndexManager } from '../../../packages/index
 import { AccessError, authorizedFile } from '../../../packages/indexer/src/security.ts';
 import type { Confidence, EdgeKind, IndexStatus } from '../../../packages/schema/src/index.ts';
 import type { ServerResponse } from 'node:http';
+import { registerArchitectureRoutes } from './architecture.ts';
 
 const kinds = new Set<EdgeKind>(['contains', 'inherits', 'implements', 'references', 'imports', 'calls', 'reads', 'writes', 'initializes', 'passes', 'returns', 'subscribes', 'unsubscribes', 'publishes', 'contract-mapping']);
 const confidences = new Set<Confidence>(['static-confirmed', 'runtime-verified', 'inferred']);
@@ -43,7 +44,7 @@ export async function createServer(manager: IndexManager) {
     if (!hosts.has((request.headers.host ?? '').toLowerCase())) throw new AccessError('仅接受明确的本机 Host，拒绝远程 Host／DNS 重绑定');
     const origin = request.headers.origin;
     if (origin && !origins.has(origin)) throw new AccessError('此请求的 Origin 未授权');
-    if (request.method === 'POST' && (!origin || !(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json'))) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && (!origin || !(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json'))) {
       throw new AccessError('写入索引操作必须来自本机网站并使用 application/json');
     }
     reply.header('X-Content-Type-Options', 'nosniff').header('X-Frame-Options', 'DENY').header('Referrer-Policy', 'no-referrer');
@@ -59,6 +60,7 @@ export async function createServer(manager: IndexManager) {
     if (!runtime.index) throw Object.assign(new Error(runtime.status.state === 'failed' ? runtime.status.message : '索引尚未就绪，请等待扫描完成'), { statusCode: 409 });
     return runtime.index;
   };
+  registerArchitectureRoutes(app, manager);
 
   app.get('/api/projects', async () => ({ projects: manager.config.projects.map(project => ({ id: project.id, name: project.name, root: project.root })) }));
   app.get<{ Params: { projectId: string } }>('/api/projects/:projectId/worktrees', async request => {
@@ -99,9 +101,13 @@ export async function createServer(manager: IndexManager) {
       if (status.scopeId === runtime.id && !reply.raw.destroyed) reply.raw.write(`data: ${JSON.stringify(status)}\n\n`);
     };
     manager.on('status', listener);
+    const modelListener = (value: { projectId: string; modelRevision: string }) => {
+      if (value.projectId === runtime.project.id && !reply.raw.destroyed) reply.raw.write(`event: architecture-model\ndata: ${JSON.stringify({ ...value, scopeId: runtime.id })}\n\n`);
+    };
+    manager.on('architecture-model', modelListener);
     const heartbeat = setInterval(() => { if (!reply.raw.destroyed) reply.raw.write(': keepalive\n\n'); }, 25000);
     heartbeat.unref();
-    const cleanup = () => { clearInterval(heartbeat); manager.off('status', listener); streams.delete(reply.raw); };
+    const cleanup = () => { clearInterval(heartbeat); manager.off('status', listener); manager.off('architecture-model', modelListener); streams.delete(reply.raw); };
     request.raw.on('aborted', cleanup); reply.raw.on('close', cleanup);
   });
   const staticRoot = path.join(manager.config.toolRoot, 'dist');

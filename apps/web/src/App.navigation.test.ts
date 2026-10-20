@@ -65,7 +65,7 @@ function sourcePayload(id: string, currentRevision = revision) {
 }
 
 async function mountApp() {
-  const browser = new Window({ url: 'http://127.0.0.1:4310' });
+  const browser = new Window({ url: 'http://127.0.0.1:4310/?page=code' });
   const descriptors = new Map<string, PropertyDescriptor | undefined>();
   const install = (key: string, value: unknown) => {
     descriptors.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
@@ -97,6 +97,7 @@ async function mountApp() {
     const path = decodeURIComponent(url.pathname);
     if (path === '/api/projects') return response({ projects: [{ id: 'fixture', name: '测试项目', root: 'C:/read-only-fixture' }] });
     if (path === '/api/projects/fixture/worktrees') return response({ worktrees: [{ id: 'main', path: 'C:/read-only-fixture', branch: 'main', head: 'abc123', authorized: true }] });
+    if (path === '/api/architecture/ownership') return response({ metadata: { scopeId: scope, sourceRevision: currentRevision }, nodeId: url.searchParams.get('nodeId'), owners: [], flowIds: [] });
     if (path === '/api/status') return response({ scopeId: scope, state: 'synced', message: '测试夹具已同步', revision: currentRevision });
     if (path === '/api/summary') return response({ rootId: fixture.project, counts: { files: 3, nodes: entities.length, edges: 1 }, diagnostics: [], metadata: { scopeId: scope, projectId: 'fixture', projectName: '测试项目', worktreeId: 'main', rootPath: 'C:/read-only-fixture', gitBranch: 'main', gitHead: 'abc123', gitDirty: false, generatedAt: '2026-10-20T12:00:00Z', revision: currentRevision, coverage: { languages: ['csharp', 'python'], limitations: ['显式导航测试夹具'] } } });
     if (path === '/api/graph') {
