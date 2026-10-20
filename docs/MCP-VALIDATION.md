@@ -20,7 +20,7 @@
 
 ## 自动化与构建
 
-最终完整测试 **167/167 通过，0失败、0跳过**。使用原生本机 socket 和 NTFS权限运行，未跳过安全用例。TypeScript检查及 Vite生产构建通过。Vite仍提示既有ELK大块及依赖的 `use client` 指令；本次MCP SDK仅在Node侧，未打包进网页。
+最终完整测试 **168/168 通过，0失败、0跳过**。使用原生本机 socket 和 NTFS权限运行，未跳过安全用例。TypeScript检查及 Vite生产构建通过。Vite仍提示既有ELK大块及依赖的 `use client` 指令；本次MCP SDK仅在Node侧，未打包进网页。
 
 覆盖：参数Schema与未知字段、越界源码、快照与模型竞态、Worktree隔离、注册路径与推断可信度、显示预算、many-to-many焦点往返、真实stdio、Host/Origin/Bearer/CSRF、Windows SID+SYSTEM ACL、NTFS Junction拒绝、SSE持续推送与关闭、活实例凭据不覆盖、幂等与持久队列回滚、离线/重启、最终呈现ACK，以及原有系统/代码/语义/源码导航回归。
 
@@ -60,3 +60,5 @@ GameDemo02验收前后均只读检查；HEAD未变化，Git工作区为空。安
 `E:\Projects\Architecture-Explorer` 在核对 main 干净且可快进后集成；锁定依赖安装、类型检查及生产构建成功。4310服务已启动，实际stdio客户端读取该安装目录入口与配置。浏览器已收到系统展示的 `presented`，源版本 `da7c48f918b52bc52c549c6d`；后台校验后已同步2190文件、changedFiles=0。系统搜索实际只预览12/2035条证据，Inspector首次24条、点击加载后48条。
 
 启动期间重新发布索引会使先前分析句柄失效，即使内容revision保持不变。安装复验观察到该过期回执，补充了独立回归：服务返回expired、没有新源码revision事件时，页面也必须清除旧高亮并显示原因。重新开始分析即可使用已同步索引，不能静默用新句柄代替旧分析。安装日志位于 `test-results/mcp/installed-service.*.log`。
+
+同时修复了既有系统/语义投影缓存：同revision的新索引对象发布后，缓存须重新绑定该对象，不能持续返回旧对象使新分析永久报过期。真实fixture执行一次无变更扫描，验证旧句柄拒绝、新句柄可建立、两类投影与新索引相同且代码展示可解析。

@@ -99,6 +99,19 @@ test('registered directed call paths preserve every raw hop and cannot be forged
   } finally { await f.close(); }
 });
 
+test('an unchanged scan invalidates old handles but new analysis rebuilds projections against the newly published index object', async () => {
+  const f = await fixture(); try {
+    const first = await f.begin(), previous = f.primary.index!;
+    await f.manager.requestScan(f.primary.id);
+    assert.notEqual(f.primary.index, previous); assert.equal(f.primary.index!.metadata.revision, first.indexSnapshotId);
+    await assert.rejects(f.query.dispatch('get_node_details', { snapshotId: first.snapshotId, ref: { layer: 'code', id: f.node('entry').id } }), errorCode('STALE_SNAPSHOT'));
+    const second = await f.begin(); assert.notEqual(second.snapshotId, first.snapshotId); assert.equal(second.indexSnapshotId, first.indexSnapshotId);
+    assert.equal((await f.architectureService.current(f.primary)).index, f.primary.index);
+    assert.equal((await f.semanticService.current(f.primary)).index, f.primary.index);
+    const resolved = await f.query.resolve(f.presentation(second)); assert.ok(resolved.codeGraph?.nodes.some(node => node.id === f.node('entry').id));
+  } finally { await f.close(); }
+});
+
 test('presentation targets retain logical IDs, reject hidden mixed layers, and support code with no predefined flow', async () => {
   const f = await fixture(); try {
     const snapshot = await f.begin(), value = f.presentation(snapshot); value.focusNodeId = { layer: 'code', id: f.node('orphan').id };

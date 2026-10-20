@@ -64,7 +64,13 @@ export class SemanticService {
     const [architecture, envelope] = await Promise.all([this.architecture.model(scope.project.id), this.store.read(scope.project.id, scope.id)]);
     this.checkSnapshot(scope, { index });
     const key = [scope.id, index.metadata.revision, architecture.modelRevision, envelope.definitionRevision, envelope.overlayRevision].join('|');
-    if (!force && this.pending.has(key)) return this.pending.get(key)!;
+    const cached = this.pending.get(key);
+    if (!force && cached) {
+      const context = await cached;
+      if (context.index === index) return context;
+      if (this.pending.get(key) === cached) this.pending.delete(key);
+      return this.current(scope);
+    }
     for (const id of this.pending.keys()) if (id.startsWith(scope.id + '|')) this.pending.delete(id);
     const task = (async () => {
       const texts = await this.sourceTexts(scope, index, architecture.model, envelope);

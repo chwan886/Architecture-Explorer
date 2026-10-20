@@ -38,7 +38,13 @@ export class ArchitectureService {
     if (!index) throw failure('源码索引尚未就绪', 409);
     const envelope = await this.model(scope.project.id);
     const key = `${scope.id}|${index.metadata.revision}|${envelope.modelRevision}`;
-    const cached = this.projections.get(key); if (cached) return cached;
+    const cached = this.projections.get(key);
+    if (cached) {
+      const context = await cached;
+      if (context.index === index) return context;
+      if (this.projections.get(key) === cached) this.projections.delete(key);
+      return this.current(scope);
+    }
     // Keep the latest projection per worktree; completed older requests retain
     // their own snapshot without keeping many full source indexes alive here.
     for (const previous of this.projections.keys()) if (previous.startsWith(`${scope.id}|`)) this.projections.delete(previous);
@@ -63,7 +69,7 @@ export class ArchitectureService {
       return { index, model: envelope.model, projection };
     })();
     this.projections.set(key, pending);
-    pending.catch(() => { this.projections.delete(key); });
+    pending.catch(() => { if (this.projections.get(key) === pending) this.projections.delete(key); });
     while (this.projections.size > 16) this.projections.delete(this.projections.keys().next().value!);
     return pending;
   }
