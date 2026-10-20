@@ -6,6 +6,8 @@ async function main() {
   const manager = new IndexManager(config); await manager.initialize();
   const app = await createServer(manager);
   await app.listen({ host: '127.0.0.1', port: config.port ?? 4310 });
+  try { await app.bridgeBroker.publishRuntime(); }
+  catch (error) { await app.close(); throw error; }
   console.log(`Architecture Explorer API：http://127.0.0.1:${config.port ?? 4310}（目标项目只读）`);
   const close = () => { void app.close().then(() => process.exit(0)); };
   process.once('SIGINT', close); process.once('SIGTERM', close);

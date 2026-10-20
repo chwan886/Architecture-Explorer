@@ -1,0 +1,426 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://architecture-explorer.local/schema/analysis-presentation.json",
+  "title": "Pinned analysis presentation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "presentationId",
+    "projectId",
+    "worktreeId",
+    "indexSnapshotId",
+    "snapshotId",
+    "title",
+    "summary",
+    "targetView",
+    "viewMode",
+    "semanticGranularity",
+    "highlightedNodeIds",
+    "highlightedEdgeIds",
+    "orderedSteps",
+    "evidenceIds",
+    "warnings",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "presentationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "worktreeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "indexSnapshotId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "snapshotId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "targetView": {
+      "enum": [
+        "systems",
+        "technical",
+        "flow",
+        "code"
+      ]
+    },
+    "viewMode": {
+      "enum": [
+        "explanation",
+        "code",
+        "compare"
+      ]
+    },
+    "semanticGranularity": {
+      "enum": [
+        "simple",
+        "detailed"
+      ]
+    },
+    "focusNodeId": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layer",
+            "id"
+          ],
+          "properties": {
+            "layer": {
+              "const": "code"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layer",
+            "id"
+          ],
+          "properties": {
+            "layer": {
+              "const": "architecture"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layer",
+            "id",
+            "flowId"
+          ],
+          "properties": {
+            "layer": {
+              "const": "semantic"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "flowId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      ]
+    },
+    "highlightedNodeIds": {
+      "type": "array",
+      "maxItems": 80,
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id"
+            ],
+            "properties": {
+              "layer": {
+                "const": "code"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id"
+            ],
+            "properties": {
+              "layer": {
+                "const": "architecture"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id",
+              "flowId"
+            ],
+            "properties": {
+              "layer": {
+                "const": "semantic"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "flowId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        ]
+      }
+    },
+    "highlightedEdgeIds": {
+      "type": "array",
+      "maxItems": 200,
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id"
+            ],
+            "properties": {
+              "layer": {
+                "const": "code"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id"
+            ],
+            "properties": {
+              "layer": {
+                "const": "architecture"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layer",
+              "id",
+              "flowId"
+            ],
+            "properties": {
+              "layer": {
+                "const": "semantic"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "flowId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        ]
+      }
+    },
+    "flowId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "orderedSteps": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "codeNodeIds",
+          "codeEdgeIds",
+          "inputs",
+          "outputs",
+          "evidenceIds",
+          "verification",
+          "orderBasis"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "codeNodeIds": {
+            "type": "array",
+            "maxItems": 80,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "codeEdgeIds": {
+            "type": "array",
+            "maxItems": 200,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "pathId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "semanticNodeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "inputs": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "evidenceIds": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "verification": {
+            "enum": [
+              "static-confirmed",
+              "source-supported",
+              "inferred",
+              "unverified"
+            ]
+          },
+          "orderBasis": {
+            "enum": [
+              "reading-order",
+              "call-path",
+              "source-supported",
+              "unverified"
+            ]
+          }
+        }
+      }
+    },
+    "evidenceIds": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
+}

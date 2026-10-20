@@ -10,6 +10,10 @@ import { applySelectionResponse, isCurrentSelectionRequest } from './selection';
 import type { SelectionRequest } from './selection';
 import type { ArchitectureRoute, OpenCodeRequest, OwnershipResult } from '../../../packages/architecture-model/src/types';
 import type { SemanticLocation, SemanticReverseResult } from '../../../packages/semantic-model/src/types';
+import type { ControlCommand } from '../../../packages/control-protocol/src/types';
+import useLinkController from './control/useLinkController';
+import LinkBar from './control/LinkBar';
+const IntegrationWorkspace = lazy(() => import('./control/IntegrationWorkspace'));
 const GraphCanvas = lazy(() => import('./GraphCanvas'));
 const ArchitectureWorkspace = lazy(() => import('./architecture/ArchitectureWorkspace'));
 const SemanticWorkspace = lazy(() => import('./semantics/SemanticWorkspace'));
@@ -124,6 +128,10 @@ export default function App() {
   const [scanPending, setScanPending] = useState(false);
   const [scanError, setScanError] = useState('');
   const [notice, setNotice] = useState('');
+  const [controlPresentation, setControlPresentation] = useState<ControlCommand>();
+  const [controlHighlights, setControlHighlights] = useState(false), [controlStale, setControlStale] = useState('');
+  const controlledProject = useRef<{ projectId: string; worktreeId: string; worktrees: WorktreeInfo[] } | undefined>(undefined);
+  const gesture = useRef<{ at: number; kind: string; target: EventTarget | null }>({ at: 0, kind: '', target: null });
   const searchRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const scope = projectId && worktreeId ? `${projectId}:${worktreeId}` : '';
@@ -154,6 +162,22 @@ export default function App() {
   const favorite = !!selected && favorites.some(n => n.id === selected.id);
   const diagnostics = summary?.diagnostics || [];
   const ownerLinks = owners?.owners.filter((owner, index, list) => list.findIndex(item => item.systemId === owner.systemId && item.moduleId === owner.moduleId && item.role === owner.role && item.reviewState === owner.reviewState && item.resolution === owner.resolution) === index) || [];
+  const bridge = useLinkController({ scopeId: scope, label: `${currentProject?.name || 'Architecture Explorer'} · ${currentWorktree?.branch || currentWorktree?.id || '本机页面'}`,
+    onClear: message => { setControlHighlights(false); if (/过期|更新|失效/.test(message)) setControlStale(message); },
+    onApply: async (command, isCurrent) => {
+      const { projectId: targetProject, worktreeId: targetWorktree, scopeId: targetScope } = command.resolved.snapshot;
+      if (targetScope !== `${targetProject}:${targetWorktree}`) throw new Error('联动目标作用域不一致。');
+      const available = projects.length ? projects : (await request<{ projects: Project[] }>('/projects')).projects;
+      if (!available.some(project => project.id === targetProject)) throw new Error('联动目标项目未授权。');
+      const target = await request<{ worktrees: WorktreeInfo[] }>(`/projects/${encodeURIComponent(targetProject)}/worktrees`);
+      if (!target.worktrees.some(worktree => worktree.id === targetWorktree && worktree.authorized)) throw new Error('联动目标 Worktree 未授权。');
+      if (!isCurrent()) return;
+      if (projectId !== targetProject) controlledProject.current = { projectId: targetProject, worktreeId: targetWorktree, worktrees: target.worktrees };
+      navigationSequence.current++; setCodeNavigationPending(false); setProjects(available); setProjectId(targetProject); setWorktrees(target.worktrees); setWorktreeId(targetWorktree);
+      setPrimaryPage(command.resolved.presentation.targetView === 'flow' ? 'flows' : command.resolved.presentation.targetView === 'systems' ? 'overview' : command.resolved.presentation.targetView === 'technical' ? 'technical' : 'code');
+      setControlPresentation(command); setControlHighlights(true); setControlStale(''); setSearchOpen(false);
+    },
+  });
 
   useEffect(() => {
     let alive = true;
@@ -163,6 +187,8 @@ export default function App() {
 
   useEffect(() => {
     if (!projectId) return;
+    const requested = controlledProject.current;
+    if (requested?.projectId === projectId) { controlledProject.current = undefined; setWorktrees(requested.worktrees); setWorktreeId(requested.worktreeId); setBootstrapError(''); return; }
     let alive = true; setWorktreeId(''); setWorktrees([]); setSummary(undefined); setStatus(undefined);
     request<{ worktrees: WorktreeInfo[] }>(`/projects/${encodeURIComponent(projectId)}/worktrees`).then(result => { if (!alive) return; setWorktrees(result.worktrees); setWorktreeId(result.worktrees.find(w => w.authorized)?.id || ''); setBootstrapError(''); }).catch(error => { if (alive) setBootstrapError(errorMessage(error)); });
     return () => { alive = false; };
@@ -177,10 +203,10 @@ export default function App() {
     let alive = true;
     request<IndexStatus>('/status', scope).then(value => { if (alive) setStatus(value); }).catch(error => { if (alive) setBootstrapError(errorMessage(error)); });
     const stream = new EventSource(`/api/events?scope=${encodeURIComponent(scope)}`);
-    stream.addEventListener?.('architecture-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; modelRevision: string }; if (alive && value.scopeId === scope) setModelRefresh(value.modelRevision); } catch { /* malformed architecture refresh */ } });
-    stream.addEventListener?.('semantic-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; overlayRevision: string }; if (alive && value.scopeId === scope) setSemanticRefresh(value.overlayRevision); } catch { /* malformed semantic refresh */ } });
+    stream.addEventListener?.('architecture-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; modelRevision: string }; if (alive && value.scopeId === scope) { setModelRefresh(value.modelRevision); bridge.invalidate(scope, 'architecture', value.modelRevision); } } catch { /* malformed architecture refresh */ } });
+    stream.addEventListener?.('semantic-model', event => { try { const value = JSON.parse((event as MessageEvent).data) as { scopeId: string; overlayRevision: string }; if (alive && value.scopeId === scope) { setSemanticRefresh(value.overlayRevision); bridge.invalidate(scope, 'semantic', value.overlayRevision); } } catch { /* malformed semantic refresh */ } });
     stream.onopen = () => { if (alive) setConnectionLost(false); };
-    stream.onmessage = event => { try { const value = JSON.parse(event.data) as IndexStatus; if (alive && value.scopeId === scope) { setStatus(value); setConnectionLost(false); } } catch { /* ignore malformed event; HTTP state remains available */ } };
+    stream.onmessage = event => { try { const value = JSON.parse(event.data) as IndexStatus; if (alive && value.scopeId === scope) { setStatus(value); setConnectionLost(false); bridge.invalidate(scope, 'index', value.revision); } } catch { /* ignore malformed event; HTTP state remains available */ } };
     stream.onerror = () => { if (alive) setConnectionLost(true); };
     return () => { alive = false; stream.close(); };
   }, [scope]);
@@ -336,6 +362,7 @@ export default function App() {
     }).catch(error => { if (scopeRef.current === requestedScope && navigationSequence.current === sequence) { setCodeNavigationPending(false); setNotice(errorMessage(error)); } });
   };
   const changePrimaryPage = (page: PrimaryPage) => {
+    setControlPresentation(undefined);
     navigationSequence.current++; setCodeNavigationPending(false); setPrimaryPage(page); setSearchOpen(false);
     if (page !== 'code') setArchitectureRoute(current => ({ ...current, perspective: page === 'overview' ? 'business' : page === 'technical' ? 'technical' : 'flows', rootId: undefined }));
   };
@@ -367,7 +394,15 @@ export default function App() {
   const branch = summary?.metadata.gitBranch || currentWorktree?.branch || '非 Git 项目';
   const revision = summary?.metadata.revision;
 
-  return <div className={`explorer-app has-primary-navigation ${sidebarOpen ? '' : 'sidebar-hidden'} ${inspectorOpen ? '' : 'inspector-hidden'}`} style={appStyle}>
+  const userInteraction = (target: EventTarget | null, kind: 'pointer' | 'click' | 'key' | 'wheel' | 'input' | 'drag') => {
+    if (target instanceof Element && target.closest('[data-control-automatic="true"]')) return;
+    const identity = target instanceof Element ? target.closest('button,input,textarea,select,a') || target.closest('.canvas-surface,.semantic-canvas') || target : target;
+    const now = Date.now(), previous = gesture.current, same = previous.target === identity;
+    if (same && ((kind === 'click' && previous.kind === 'pointer' && now - previous.at < 500) || (kind === 'input' && previous.kind === 'key' && now - previous.at < 80) || ((kind === 'wheel' || kind === 'drag') && previous.kind === kind && now - previous.at < 120))) return;
+    gesture.current = { at: now, kind, target: identity }; bridge.markUserAction();
+  };
+  const controlledPage = controlPresentation && controlPresentation.resolved.snapshot.scopeId === scope && (controlPresentation.resolved.presentation.targetView === 'flow' ? 'flows' : controlPresentation.resolved.presentation.targetView === 'systems' ? 'overview' : controlPresentation.resolved.presentation.targetView === 'technical' ? 'technical' : 'code') === primaryPage;
+  return <div className={`explorer-app has-primary-navigation ${sidebarOpen ? '' : 'sidebar-hidden'} ${inspectorOpen ? '' : 'inspector-hidden'}`} style={appStyle} onPointerDownCapture={event => userInteraction(event.target, 'pointer')} onPointerMoveCapture={event => { if (event.buttons) userInteraction(event.target, 'drag'); }} onClickCapture={event => userInteraction(event.target, 'click')} onKeyDownCapture={event => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) userInteraction(event.target, 'key'); }} onInputCapture={event => userInteraction(event.target, 'input')} onWheelCapture={event => userInteraction(event.target, 'wheel')}>
     <header className="topbar">
       <a className="brand" href="#" onClick={e => { e.preventDefault(); changePrimaryPage('overview'); }} aria-label="Architecture Explorer 首页"><span className="brand-mark"><Layers3 size={21} strokeWidth={1.7} /></span><span>Architecture<span className="brand-secondary">Explorer</span></span></a>
       <div className="topbar-divider" />
@@ -380,9 +415,11 @@ export default function App() {
       <button className="icon-button scan-button" title="重新完整扫描当前工作区" aria-label="重新完整扫描" disabled={!scope || scanPending || state === 'analyzing'} onClick={() => void scan(true)}><RefreshCw size={15} className={scanPending || state === 'analyzing' ? 'spin' : ''} /></button>
     </header>
 
+    <LinkBar controller={bridge} highlightsEnabled={controlHighlights && !!controlledPage} staleMessage={controlStale} />
+
     <nav className="primary-navigation" aria-label="主导航">{([{id:'overview',label:'系统总览',icon:Layers3},{id:'technical',label:'技术架构',icon:LayoutGrid},{id:'flows',label:'业务流程',icon:Workflow},{id:'code',label:'代码地图',icon:Code2}] as const).map(item => <button key={item.id} className={primaryPage === item.id ? 'active' : ''} aria-current={primaryPage === item.id ? 'page' : undefined} onClick={() => changePrimaryPage(item.id)}><item.icon size={14}/>{item.label}</button>)}<span className="navigation-level-note">{primaryPage === 'code' ? 'L3 组件 · L4 方法与源码' : primaryPage === 'flows' ? '解释 · 实现 · 源码证据' : 'L1 系统 · L2 模块'}</span></nav>
-    {primaryPage === 'flows' && <div className="flow-origin-toggle"><span>同一源码快照 · 解释与实现双向关联</span><button aria-pressed={legacyFlows} onClick={() => { if (!legacyFlows) setArchitectureRoute(current => ({ ...current, perspective: 'flows', flowId: semanticLocation.flowId || current.flowId })); setLegacyFlows(current => !current); }}>{legacyFlows ? '返回双层语义图' : '原始流程证据'}</button></div>}
-    {primaryPage === 'code' ? <div className="workbench">
+    {primaryPage === 'flows' && !controlledPage && <div className="flow-origin-toggle"><span>同一源码快照 · 解释与实现双向关联</span><button aria-pressed={legacyFlows} onClick={() => { if (!legacyFlows) setArchitectureRoute(current => ({ ...current, perspective: 'flows', flowId: semanticLocation.flowId || current.flowId })); setLegacyFlows(current => !current); }}>{legacyFlows ? '返回双层语义图' : '原始流程证据'}</button></div>}
+    {controlledPage && controlPresentation ? <Suspense fallback={<StateCard title="正在准备分析展示" description="校验同一快照中的图、焦点与源码证据。" busy />}><IntegrationWorkspace key={`${scope}:${controlPresentation.resolved.presentation.targetView}:${controlPresentation.resolved.presentation.flowId || ""}`} command={controlPresentation} highlightsEnabled={controlHighlights} staleMessage={controlStale} rootPath={summary?.metadata.rootPath || currentWorktree?.path || ''} onPresented={(id, actual) => void bridge.presented(id, actual)} onFailed={bridge.failed} onOpenArchitecture={rootId => { setControlPresentation(undefined); changeArchitectureRoute({ perspective: "business", rootId }); }} onReturn={() => setControlPresentation(undefined)} onOpenCode={(nodeId, evidenceId) => { setControlPresentation(undefined); openArchitectureCode({ nodeId, evidenceId, mode: 'symbol' }); }} /></Suspense> : primaryPage === 'code' ? <div className="workbench">
       <aside className="sidebar" aria-label="项目导航">
         <div className="sidebar-heading"><span>项目浏览器</span><button className="icon-button" aria-label="收起导航" title="收起导航" onClick={() => setSidebarOpen(false)}><PanelLeftClose size={15} /></button></div>
         <button className={`project-tree-root ${!location.root && location.view === 'architecture' ? 'active' : ''}`} onClick={() => navigate({ view: 'architecture' })}><span className="project-avatar"><Layers3 size={17} /></span><span><strong>{currentProject?.name || 'Architecture Explorer'}</strong><small>{summary ? `${summary.counts.files.toLocaleString()} 个文件 · ${summary.counts.nodes.toLocaleString()} 个实体` : '等待建立源码索引'}</small></span></button>

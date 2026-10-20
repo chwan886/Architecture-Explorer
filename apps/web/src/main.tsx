@@ -6,5 +6,6 @@ import './styles.css';
 import './workspace-navigation.css';
 import './architecture/architecture.css';
 import './semantics/semantic.css';
+import './control/control.css';
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

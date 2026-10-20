@@ -9,15 +9,17 @@
   "scripts": {
     "dev": "tsx apps/server/src/main.ts",
     "web": "vite --config apps/web/vite.config.ts",
+    "mcp": "tsx apps/mcp/src/main.ts",
     "scan": "tsx apps/server/src/cli.ts scan",
     "watch": "tsx apps/server/src/cli.ts watch",
     "verify-index": "tsx apps/server/src/cli.ts verify",
     "verify-semantics": "tsx Tools/verify-semantics.ts",
-    "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts apps/web/src/semantics/*.test.ts",
+    "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts apps/web/src/semantics/*.test.ts apps/web/src/control/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "vite build --config apps/web/vite.config.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@xyflow/react": "12.12.0",
     "ajv": "8.20.0",
     "chokidar": "5.0.0",

@@ -1,0 +1,56 @@
+# 本地 MCP 联动验收记录
+
+日期：2026-10-20。基线：60f560b。目标 GameDemo02 HEAD：`4ea5d3d25b86d57a6b022faca23008f8351dea47`。
+
+## 已验证的范围
+
+- 官方 SDK Client 通过真实 STDIO 初始化、发现22个工具并调用本地服务；不是只模拟 MCP handler。
+- 服务以 HMAC/nonce 先验身份，再接收 Bearer 请求；错误服务、端口、重定向均不能取得令牌。
+- 真实 GameDemo02 查询：已授权项目与 primary Worktree、当前快照、代码/业务系统搜索、调用路径、静态字段读写、语义流程和源码证据。
+- 真实浏览器由 MCP 指令切换并返回 `presented`。分别检查焦点、图中实体、源码证据 ID 和分析快照；`pending`、`received` 单独记录，未当成成功。
+- 领取驻守收益：简洁六阶段、局部详细展开、代码和对照；固定步/战斗结果：详细对照、原始调用与源码。解释仍为待复核，未验证连线保持原状态。
+- 飞剑命中局部路径：`projectile_hit → apply_hit → damage`，三实体、两条静态调用；命中调用证据在 `Server/sect_combat.py:296`，伤害调用在205，伤害函数183–190。没有把动态 `on_hit` 或 HTTP/UI缺口补成确定路径。
+- 伤害静态数据邻域查询返回16条读取、6条写入，包含局部所有者的 `a['hp']`、护盾与防御访问。没有称为完整运行时数据流。
+- 点击调用连线后源码切到205；返回后恢复原节点与296证据，避免详情/源码错位。
+- 人工操作后以旧 userRevision 提交定位，得到 `CONTROL_CONFLICT`；错误 indexSnapshotId 和 Worktree 均得到 `STALE_SNAPSHOT`，未应用。
+- 两个实际标签页具有不同文档会话；无目标绑定时得到 `AMBIGUOUS_SESSION`。退出后旧心跳不能重新启用。
+- 无允许页面时保存最新请求；明确允许并 attach 后重新核验、投递并收到真实浏览器 `presented`。
+- 人工缩放后仅更新高亮，实际 viewport transform 完全保持；语义焦点通过 DOM边界确认位于画布可见范围。
+- 系统“进入内部结构”进入原有L2/L3模块架构，使用逻辑实体ID，未误请求原始代码节点。
+
+## 自动化与构建
+
+最终完整测试 **166/166 通过，0失败、0跳过**。使用原生本机 socket 和 NTFS权限运行，未跳过安全用例。TypeScript检查及 Vite生产构建通过。Vite仍提示既有ELK大块及依赖的 `use client` 指令；本次MCP SDK仅在Node侧，未打包进网页。
+
+覆盖：参数Schema与未知字段、越界源码、快照与模型竞态、Worktree隔离、注册路径与推断可信度、显示预算、many-to-many焦点往返、真实stdio、Host/Origin/Bearer/CSRF、Windows SID+SYSTEM ACL、NTFS Junction拒绝、SSE持续推送与关闭、活实例凭据不覆盖、幂等与持久队列回滚、离线/重启、最终呈现ACK，以及原有系统/代码/语义/源码导航回归。
+
+可重复执行：
+
+```powershell
+.\Tools\explorer.ps1 -Task Typecheck
+.\Tools\explorer.ps1 -Task Test
+.\Tools\explorer.ps1 -Task Build
+```
+
+完整日志：`test-results/mcp/test.log`、`build.log`；实际MCP请求与结构化回执：`browser-transcript.ndjson`。这些本机验收产物默认忽略，不提交游戏或工具Git。
+
+## 视觉验收
+
+实际运行页面，在1920×1080、1280×800、1024×768检查布局、面板、连线、缩放、源码及横向溢出。中窄窗口对照改为上下排列，Inspector独立滚动；没有页面级横向溢出。显式焦点会定位，纯高亮更新保持镜头。大范围图仍需平移/缩放；ACK中的可见ID集合指当前层级的Canvas实体，并非所有实体同时出现在屏幕像素内。
+
+验收发现并修复：详细摘要未展开、详细切回简洁未折叠、命令重挂载导致镜头重置、语义逻辑焦点未进入实际视口、业务系统误用代码ID钻取。系统搜索每命中仅预览12个证据并给总数/截断标记；Inspector证据按24项分批加载，避免大量成员证据淹没界面。
+
+主要截图（本机）：
+
+- `test-results/mcp/projectile-path-1920.png`
+- `test-results/mcp/battle-compare-1920.png`
+- `test-results/mcp/claim-simple-1280-final.png`
+- `test-results/mcp/claim-simple-1024.png`
+
+## 未完成的外部验收与边界
+
+**未修改用户级 Codex 配置，未宣称 Codex App 已发现或实际调用该新MCP服务。** 当前完成的是官方SDK真实stdio客户端 → 本机服务 → 实际浏览器的联动验收。现有Codex对话工具发现列表没有该新服务；需用户审查 `docs/CODEX-CONFIG-PENDING.diff` 并批准新增配置，再按App提示重载/开启新对话进行实际工具调用。`codex mcp list` 或注册成功均不能代替该验证。
+
+不接入模型API，不提供网页聊天、Shell、注册任意路径、修改游戏或人工语义模型的MCP工具。完整飞剑专属语义流程、动态回调、完整过程间数据流及运行时顺序尚未实现。服务重启不保留旧快照句柄；需重新查询、允许并绑定。人工历史/布局仅当前文档内保持。待呈现最长5分钟，快照10分钟，租约120秒，过期明确拒绝。
+
+GameDemo02验收前后均只读检查；HEAD未变化，Git工作区为空。安装目录与开发工作树使用独立服务端口与固定配置，不能跨缓存复用快照句柄。

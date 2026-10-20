@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, BackgroundVariant, BaseEdge, EdgeLabelRenderer, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, getSmoothStepPath, useEdgesState, useNodesState, useReactFlow, useViewport } from '@xyflow/react';
 import type { Edge, EdgeProps, Node, NodeProps, Viewport, XYPosition } from '@xyflow/react';
 import { Box, ChevronRight, Expand, LayoutGrid, Minus, Plus, RotateCcw } from 'lucide-react';
@@ -7,6 +7,7 @@ import { confidenceLabels, edgeLabels, expandableKinds, nodeLabels, shortPath } 
 import { edgeForKeyboardActivation, nodeForKeyboardActivation } from './selection';
 
 export interface GraphCardPresentation { kindLabel?: string; summary?: string; badge?: string; footer?: string }
+export interface CanvasSettlement { nodeIds: string[]; edgeIds: string[]; error?: string; focusToken?: number }
 type ExplorerNode = Node<{ entity: ArchitectureNode; connections: number; presentation?: GraphCardPresentation; highlighted?: boolean; size?: { width: number; height: number } }, 'entity'>;
 const DEFAULT_NODE_SIZE = { width: 258, height: 108 };
 interface CanvasSnapshot { positions: Record<string, XYPosition>; viewport: Viewport }
@@ -22,7 +23,7 @@ const elkLoader = () => import('elkjs/lib/elk.bundled.js').then(module => new mo
 let elkPromise: ReturnType<typeof elkLoader> | undefined;
 const EntityNode = memo(function EntityNode({ data, selected }: NodeProps<ExplorerNode>) {
   const { entity } = data;
-  return <div className={`entity-card kind-${entity.kind} ${selected ? 'is-selected' : ''} ${data.presentation ? 'architecture-card' : ''}`} style={{ width: data.size?.width, minHeight: data.size?.height, opacity: data.highlighted === false ? .3 : 1, outline: data.highlighted ? '2px solid #77a7c7' : undefined, outlineOffset: data.highlighted ? 3 : undefined }}>
+  return <div className={`entity-card kind-${entity.kind} ${selected ? 'is-selected' : ''} ${data.presentation ? 'architecture-card' : ''}`} style={{ width: data.size?.width, minHeight: data.size?.height, opacity: data.highlighted === false && !selected ? 'var(--canvas-muted-opacity, .3)' : 1, outline: data.highlighted ? '2px solid #77a7c7' : undefined, outlineOffset: data.highlighted ? 3 : undefined }}>
     <Handle type="target" position={Position.Left} />
     <div className="entity-head"><span className="entity-symbol"><Box size={15} /></span><span className="entity-kind">{data.presentation?.kindLabel || nodeLabels[entity.kind]}</span><span className="entity-language">{data.presentation?.badge || (entity.language === 'unknown' ? '目录' : entity.language === 'csharp' ? 'C#' : entity.language)}</span></div>
     <div className="entity-name" title={entity.qualifiedName}>{entity.label}</div>
@@ -90,12 +91,17 @@ export function observeCanvasResize(element: HTMLElement, isReady: () => boolean
   return () => { disposed = true; clearTimeout(timer); observer.disconnect(); };
 }
 
-function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layoutToken, focusRequest, batchFocusRequest, onFocusHandled, view, cardPresentations, edgeLabelOverrides, pendingEdgeIds, highlightedNodeIds, highlightedEdgeIds, preserveFocusOnResize = false, nodeSize = DEFAULT_NODE_SIZE, layoutMode = 'elk' }: { graph: GraphResult; selectedId?: string; onSelect: (node: ArchitectureNode) => void; onEnter: (node: ArchitectureNode) => void; onRelation: (edge: ArchitectureEdge) => void; layoutToken: number; focusRequest?: { id: string; token: number }; batchFocusRequest?: { ids: string[]; token: number }; onFocusHandled: (token: number) => void; view: string; cardPresentations?: Record<string, GraphCardPresentation>; edgeLabelOverrides?: Record<string, string>; pendingEdgeIds?: Set<string>; highlightedNodeIds?: Set<string>; highlightedEdgeIds?: Set<string>; preserveFocusOnResize?: boolean; nodeSize?: { width: number; height: number }; layoutMode?: 'elk' | 'grid' }) {
+function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layoutToken, focusRequest, batchFocusRequest, onFocusHandled, view, cardPresentations, edgeLabelOverrides, pendingEdgeIds, highlightedNodeIds, highlightedEdgeIds, preserveFocusOnResize = false, presentationToken, onSettled, nodeSize = DEFAULT_NODE_SIZE, layoutMode = 'elk' }: { graph: GraphResult; selectedId?: string; onSelect: (node: ArchitectureNode) => void; onEnter: (node: ArchitectureNode) => void; onRelation: (edge: ArchitectureEdge) => void; layoutToken: number; focusRequest?: { id: string; token: number }; batchFocusRequest?: { ids: string[]; token: number }; onFocusHandled: (token: number) => void; view: string; cardPresentations?: Record<string, GraphCardPresentation>; edgeLabelOverrides?: Record<string, string>; pendingEdgeIds?: Set<string>; highlightedNodeIds?: Set<string>; highlightedEdgeIds?: Set<string>; preserveFocusOnResize?: boolean; presentationToken?: string; onSettled?: (token: string, result: CanvasSettlement) => void; nodeSize?: { width: number; height: number }; layoutMode?: 'elk' | 'grid' }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<ExplorerNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState('');
-  const { fitView, zoomIn, zoomOut, getViewport, getNode, getNodes, setCenter, setViewport } = useReactFlow<ExplorerNode>();
+  const { fitView: rawFitView, zoomIn, zoomOut, getViewport, getNode, getNodes, setCenter: rawSetCenter, setViewport: rawSetViewport } = useReactFlow<ExplorerNode>();
+  const cameraPending = useRef(0), cameraError = useRef('');
+  const trackViewport = useCallback(<T,>(operation: Promise<T>) => { cameraPending.current++; return operation.catch(error => { cameraError.current = error instanceof Error ? error.message : String(error); }).finally(() => { cameraPending.current--; }); }, []);
+  const fitView = useCallback((...args: Parameters<typeof rawFitView>) => trackViewport(rawFitView(...args)), [rawFitView, trackViewport]);
+  const setCenter = useCallback((...args: Parameters<typeof rawSetCenter>) => trackViewport(rawSetCenter(...args)), [rawSetCenter, trackViewport]);
+  const setViewport = useCallback((...args: Parameters<typeof rawSetViewport>) => trackViewport(rawSetViewport(...args)), [rawSetViewport, trackViewport]);
   const { zoom } = useViewport();
   const surfaceRef = useRef<HTMLDivElement>(null);
   const layoutSequence = useRef(0);
@@ -115,9 +121,12 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
   const saveCurrentCanvas = (moved?: ExplorerNode) => { if (activeGraphKey.current && !layoutInFlight.current) rememberCanvas(activeGraphKey.current, getNodes().map(node => moved?.id === node.id ? moved : node), getViewport()); };
   const focusHandledRef = useRef(onFocusHandled);
   focusHandledRef.current = onFocusHandled;
+  const settledRef = useRef(onSettled); settledRef.current = onSettled;
+  const settledToken = useRef('');
 
   useEffect(() => {
     const sequence = ++layoutSequence.current;
+    cameraError.current = '';
     const forceLayout = previousLayoutToken.current !== layoutToken;
     previousLayoutToken.current = layoutToken;
     activeGraphKey.current = graphKey;
@@ -254,6 +263,18 @@ function CanvasContent({ graph, selectedId, onSelect, onEnter, onRelation, layou
       void fitView({ nodes: canvasResizeTargets(current, display.selectedId, display.highlightedNodeIds), padding: .14, maxZoom: 1, duration: 0 });
     });
   }, [preserveFocusOnResize, fitView, getNodes]);
+  useEffect(() => {
+    if (!presentationToken || settledToken.current === `${presentationToken}:${graphKey}`) return;
+    let cancelled = false, frame = 0, quietFrames = 0;
+    const finish = () => {
+      if (cancelled) return;
+      if (layoutInFlight.current || cameraPending.current || getNodes().length !== graph.nodes.length) { quietFrames = 0; frame = requestAnimationFrame(finish); return; }
+      if (++quietFrames < 2) { frame = requestAnimationFrame(finish); return; }
+      settledToken.current = `${presentationToken}:${graphKey}`;
+      settledRef.current?.(presentationToken, { nodeIds: getNodes().map(node => node.id), edgeIds: graph.edges.map(edge => edge.id), ...(cameraError.current ? { error: cameraError.current } : {}) });
+    };
+    frame = requestAnimationFrame(finish); return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [presentationToken, graphKey, graph, nodes, getNodes]);
   const labels = { 'node.a11yDescription.default': '按 Enter 选择节点，双击进入下一层，方向键移动节点，Escape 清除选择。', 'edge.a11yDescription.default': '关系，按 Enter 选择查看。', 'controls.zoomIn.ariaLabel': '放大', 'controls.zoomOut.ariaLabel': '缩小', 'controls.fitView.ariaLabel': '适应画布' };
   return <div className="canvas-surface" ref={surfaceRef} onKeyDownCapture={event => {
     const target = event.target;

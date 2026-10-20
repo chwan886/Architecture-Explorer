@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, BaseEdge, EdgeLabelRenderer, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, getSmoothStepPath, useEdgesState, useNodesState, useReactFlow, useViewport } from '@xyflow/react';
 import type { Edge, EdgeProps, Node, NodeProps, Viewport, XYPosition } from '@xyflow/react';
 import { Expand, Layers3, Minus, Plus } from 'lucide-react';
@@ -6,6 +6,7 @@ import type { SemanticEdge, SemanticNode } from '../../../../packages/semantic-m
 import { reviewLabels, statusLabels, verificationLabels } from './labels';
 import { semanticEdgeShortLabel } from './graph';
 import { canvasResizeTargets, observeCanvasResize } from '../GraphCanvas';
+import type { CanvasSettlement } from '../GraphCanvas';
 
 type SemanticGraphNode = Node<{ value: SemanticNode; expand: (id: string) => void; highlighted?: boolean }, 'semantic'>;
 type SemanticGraphEdge = Edge<{ value: SemanticEdge; activate: () => void }, 'semantic'>;
@@ -14,7 +15,7 @@ const snapshots = new Map<string, Snapshot>();
 const CARD = { width: 216, height: 125 };
 const SemanticCard = memo(function SemanticCard({ data, selected }: NodeProps<SemanticGraphNode>) {
   const value = data.value;
-  return <div className={`semantic-card ${value.level} ${selected ? 'selected' : ''} ${value.status !== 'current' ? 'needs-review' : ''}`} style={{ opacity: data.highlighted === false ? .3 : 1, outline: data.highlighted ? '2px solid #7cabb8' : undefined }}>
+  return <div className={`semantic-card ${value.level} ${selected ? 'selected' : ''} ${value.status !== 'current' ? 'needs-review' : ''}`} style={{ opacity: data.highlighted === false && !selected ? 'var(--canvas-muted-opacity, .3)' : 1, outline: data.highlighted ? '2px solid #7cabb8' : undefined }}>
     <Handle type="target" position={Position.Left} />
     <div className="semantic-card-top"><span>{value.level === 'summary' ? '业务阶段' : '实现说明'}</span><span className={`semantic-pill ${value.reviewState}`}>{reviewLabels[value.reviewState]}</span></div>
     <strong title={value.title}>{value.title}</strong><p title={value.summary}>{value.summary}</p>
@@ -41,20 +42,26 @@ export interface SemanticCanvasProps {
   identity: string; nodes: SemanticNode[]; edges: SemanticEdge[]; selectedId?: string;
   highlightedNodeIds?: Set<string>; highlightedEdgeIds?: Set<string>; layoutToken: number;
   batchFocusRequest?: { ids: string[]; token: number }; onFocusHandled?: (token: number) => void;
+  presentationToken?: string; onSettled?: (token: string, result: CanvasSettlement) => void;
   onNode: (node: SemanticNode) => void; onEdge: (edge: SemanticEdge) => void; onExpand: (id: string) => void;
 }
-function Canvas({ identity, nodes: values, edges: relations, selectedId, highlightedNodeIds, highlightedEdgeIds, layoutToken, batchFocusRequest, onFocusHandled, onNode, onEdge, onExpand }: SemanticCanvasProps) {
+function Canvas({ identity, nodes: values, edges: relations, selectedId, highlightedNodeIds, highlightedEdgeIds, layoutToken, batchFocusRequest, onFocusHandled, presentationToken, onSettled, onNode, onEdge, onExpand }: SemanticCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<SemanticGraphNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<SemanticGraphEdge>([]);
   const [busy, setBusy] = useState(false);
   const surface = useRef<HTMLDivElement>(null), sequence = useRef(0), layingOut = useRef(false);
-  const { fitView, getNodes, getViewport, setViewport, zoomIn, zoomOut } = useReactFlow<SemanticGraphNode, SemanticGraphEdge>();
+  const { fitView: rawFitView, getNodes, getViewport, setViewport: rawSetViewport, zoomIn, zoomOut } = useReactFlow<SemanticGraphNode, SemanticGraphEdge>();
+  const cameraPending = useRef(0), cameraError = useRef('');
+  const trackViewport = useCallback(<T,>(operation: Promise<T>) => { cameraPending.current++; return operation.catch(error => { cameraError.current = error instanceof Error ? error.message : String(error); }).finally(() => { cameraPending.current--; }); }, []);
+  const fitView = useCallback((...args: Parameters<typeof rawFitView>) => trackViewport(rawFitView(...args)), [rawFitView, trackViewport]);
+  const setViewport = useCallback((...args: Parameters<typeof rawSetViewport>) => trackViewport(rawSetViewport(...args)), [rawSetViewport, trackViewport]);
   const { zoom } = useViewport();
   const callbacks = useRef({ onNode, onEdge, onExpand, values, relations }); callbacks.current = { onNode, onEdge, onExpand, values, relations };
   const displayRef = useRef({ selectedId, highlightedNodeIds, highlightedEdgeIds }); displayRef.current = { selectedId, highlightedNodeIds, highlightedEdgeIds };
   const signature = useMemo(() => `${identity}:${values.map(node => node.id).sort().join('|')}:${relations.map(edge => edge.id).sort().join('|')}`, [identity, values, relations]);
   const activeKey = useRef(''), previousLayout = useRef(layoutToken);
   const handledFocus = useRef(0), focusHandled = useRef(onFocusHandled); focusHandled.current = onFocusHandled;
+  const settledRef = useRef(onSettled); settledRef.current = onSettled; const settledToken = useRef('');
   const save = () => {
     if (!activeKey.current || layingOut.current) return;
     snapshots.delete(activeKey.current); snapshots.set(activeKey.current, { positions: Object.fromEntries(getNodes().map(node => [node.id, node.position])), viewport: getViewport() });
@@ -62,6 +69,7 @@ function Canvas({ identity, nodes: values, edges: relations, selectedId, highlig
   };
   useEffect(() => {
     const current = ++sequence.current, forced = previousLayout.current !== layoutToken; previousLayout.current = layoutToken; activeKey.current = signature;
+    cameraError.current = '';
     const active = !!(highlightedNodeIds?.size || highlightedEdgeIds?.size);
     const nextNodes: SemanticGraphNode[] = values.map(value => ({ id: value.id, type: 'semantic', position: { x: 0, y: 0 }, selected: value.id === selectedId, data: { value, highlighted: active ? highlightedNodeIds?.has(value.id) || false : undefined, expand: id => callbacks.current.onExpand(id) } }));
     const nextEdges: SemanticGraphEdge[] = relations.map(value => refreshSemanticEdgeMetadata({ id: value.id, source: value.source, target: value.target, type: 'semantic', data: { value, activate: () => { const edge = callbacks.current.relations.find(item => item.id === value.id); if (edge) callbacks.current.onEdge(edge); } } }, value, { highlightActive: active, highlighted: highlightedEdgeIds?.has(value.id) }));
@@ -117,7 +125,20 @@ function Canvas({ identity, nodes: values, edges: relations, selectedId, highlig
       void fitView({ nodes: canvasResizeTargets(current, display.selectedId, display.highlightedNodeIds), padding: .14, maxZoom: 1, duration: 0 });
     });
   }, [fitView, getNodes]);
-  return <div className="semantic-canvas" ref={surface} onKeyDownCapture={event => {
+  useEffect(() => {
+    const expected = `${presentationToken}:${signature}:${batchFocusRequest?.token || 0}`;
+    if (!presentationToken || settledToken.current === expected) return;
+    let cancelled = false, frame = 0, quietFrames = 0;
+    const finish = () => {
+      if (cancelled) return;
+      const waitingForFocus = !!batchFocusRequest?.ids.some(id => getNodes().some(node => node.id === id)) && handledFocus.current !== batchFocusRequest?.token;
+      if (layingOut.current || cameraPending.current || waitingForFocus || getNodes().length !== values.length) { quietFrames = 0; frame = requestAnimationFrame(finish); return; }
+      if (++quietFrames < 2) { frame = requestAnimationFrame(finish); return; }
+      settledToken.current = expected; settledRef.current?.(presentationToken, { nodeIds: getNodes().map(node => node.id), edgeIds: relations.map(edge => edge.id), focusToken: handledFocus.current, ...(cameraError.current ? { error: cameraError.current } : {}) });
+    };
+    frame = requestAnimationFrame(finish); return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [presentationToken, signature, batchFocusRequest, values, relations, nodes, getNodes]);
+  return <div className="semantic-canvas" ref={surface} data-focus-request-ids={batchFocusRequest?.ids.join(',') || ''} data-focus-request-token={batchFocusRequest?.token || 0} onKeyDownCapture={event => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const target = event.target; if (!(target instanceof Element) || target.closest('button,input,textarea,select,a')) return;
     const id = target.closest('.react-flow__node[data-id]')?.getAttribute('data-id'), edgeId = target.closest('.react-flow__edge[data-id]')?.getAttribute('data-id');

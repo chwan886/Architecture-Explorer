@@ -1,0 +1,9 @@
+--- C:/Users/chwan/.codex/config.toml (现有文件保持不变)
++++ C:/Users/chwan/.codex/config.toml (待用户确认后仅新增)
+@@ 仅追加此独立块；现有 node_repl 等配置完整保留 @@
++[mcp_servers.architecture_explorer]
++command = 'E:\Projects\Architecture-Explorer\.tools\node-v24.22.0-win-x64\node.exe'
++args = ['E:\Projects\Architecture-Explorer\node_modules\tsx\dist\cli.mjs', 'E:\Projects\Architecture-Explorer\apps\mcp\src\main.ts', '--config', 'E:\Projects\Architecture-Explorer\config\local.json']
++cwd = 'E:\Projects\Architecture-Explorer'
++startup_timeout_sec = 20
++tool_timeout_sec = 60

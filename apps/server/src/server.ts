@@ -7,6 +7,10 @@ import type { Confidence, EdgeKind, IndexStatus } from '../../../packages/schema
 import type { ServerResponse } from 'node:http';
 import { registerArchitectureRoutes } from './architecture.ts';
 import { registerSemanticRoutes } from './semantics.ts';
+import { BridgeQueryService } from './bridge-query.ts';
+import { registerBridgeRoutes, type BridgeBroker } from './bridge-control.ts';
+
+declare module 'fastify' { interface FastifyInstance { bridgeBroker: BridgeBroker } }
 
 const kinds = new Set<EdgeKind>(['contains', 'inherits', 'implements', 'references', 'imports', 'calls', 'reads', 'writes', 'initializes', 'passes', 'returns', 'subscribes', 'unsubscribes', 'publishes', 'contract-mapping']);
 const confidences = new Set<Confidence>(['static-confirmed', 'runtime-verified', 'inferred']);
@@ -45,15 +49,16 @@ export async function createServer(manager: IndexManager) {
     if (!hosts.has((request.headers.host ?? '').toLowerCase())) throw new AccessError('仅接受明确的本机 Host，拒绝远程 Host／DNS 重绑定');
     const origin = request.headers.origin;
     if (origin && !origins.has(origin)) throw new AccessError('此请求的 Origin 未授权');
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && (!origin || !(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json'))) {
+    const privateBridge = request.url.split('?')[0].startsWith('/api/bridge/private/');
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) && ((!origin && !privateBridge) || !(request.headers['content-type'] ?? '').toLowerCase().startsWith('application/json'))) {
       throw new AccessError('写入索引操作必须来自本机网站并使用 application/json');
     }
     reply.header('X-Content-Type-Options', 'nosniff').header('X-Frame-Options', 'DENY').header('Referrer-Policy', 'no-referrer');
   });
   app.setErrorHandler((error, _request, reply) => {
-    const failure = error as { statusCode?: number; message?: string };
+    const failure = error as { statusCode?: number; message?: string; code?: string };
     const status = typeof failure.statusCode === 'number' ? failure.statusCode : 500;
-    reply.code(status >= 400 && status <= 599 ? status : 500).send({ error: failure.message || '本地服务处理失败' });
+    reply.code(status >= 400 && status <= 599 ? status : 500).send({ error: failure.message || '本地服务处理失败', ...(failure.code ? { code: failure.code } : {}) });
   });
   const scope = (request: FastifyRequest) => manager.scope(parameter(request, 'scope'));
   const index = (request: FastifyRequest) => {
@@ -62,7 +67,9 @@ export async function createServer(manager: IndexManager) {
     return runtime.index;
   };
   const architecture = registerArchitectureRoutes(app, manager);
-  registerSemanticRoutes(app, manager, architecture);
+  const semantic = registerSemanticRoutes(app, manager, architecture);
+  const bridgeBroker = await registerBridgeRoutes(app, manager, new BridgeQueryService(manager, architecture, semantic));
+  app.decorate('bridgeBroker', bridgeBroker);
 
   app.get('/api/projects', async () => ({ projects: manager.config.projects.map(project => ({ id: project.id, name: project.name, root: project.root })) }));
   app.get<{ Params: { projectId: string } }>('/api/projects/:projectId/worktrees', async request => {
@@ -136,5 +143,5 @@ export async function createServer(manager: IndexManager) {
     }
   });
   app.addHook('onClose', async () => { await manager.close(); });
-  return app;
+  return app as typeof app & { bridgeBroker: typeof bridgeBroker };
 }
