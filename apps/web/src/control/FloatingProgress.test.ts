@@ -119,6 +119,12 @@ test('semantic focus explains public purpose and preserves multiple real impleme
   value.resolved.semantic = { metadata: { scopeId: 'fixture:main', projectId: 'fixture', sourceRevision: 'index-1', architectureRevision: 'architecture-1', definitionRevision: 'definition-1', overlayRevision: 'overlay-1', viewRevision: 'semantic-1', generatorVersion: 'fixture', projectionVersion: '1' }, flows: [], flow: { id: 'flow-1', sourceFlowId: 'flow-1', title: '测试流程', description: '', summaryNodes: [semanticNode], detailNodes: [], summaryEdges: [], detailEdges: [], codeGraph: { ...value.resolved.codeGraph!, nodes: [one, two], totalNodes: 2 }, codeNodes: [one, two], codeEdges: [], evidence: [], reviewState: 'pending', fingerprint: 'fixture', diagnostics: [], limitations: [], reverseNodes: { 'method-1': ['semantic-step'], 'method-2': ['semantic-step'] }, reverseEdges: {}, changes: { unchangedNodeIds: [], changedNodeIds: [], removedNodeIds: [], unchangedEdgeIds: [], changedEdgeIds: [], removedEdgeIds: [] } } };
   const app = await mount({ command: value, receipt: receipt(), allowControl: true }); try {
     await app.click('展开演示进度');
+    const explanation = app.container.querySelector('.floating-progress-explanation') as unknown as HTMLDetailsElement;
+    assert.equal(explanation.open, false, 'full explanation starts collapsed so actual operations remain prominent');
+    const summary = app.container.querySelector('.floating-progress-explanation > summary')!;
+    assert.equal(summary.textContent, '步骤说明');
+    await act(async () => summary.dispatchEvent(new app.browser.MouseEvent('click', { bubbles: true })));
+    assert.equal(explanation.open, true);
     for (const expected of ['测试语义说明', '测试业务目的', '测试输入', '测试输出', '测试状态变化', '测试分支条件保留', '待人工确认']) assert.ok(app.container.textContent?.includes(expected), expected);
     assert.equal(app.container.querySelectorAll('[data-progress-code-id]').length, 2);
     await act(async () => app.container.querySelector('[data-progress-code-id="method-2"]')!.dispatchEvent(new app.browser.MouseEvent('click', { bubbles: true })));
