@@ -46,6 +46,21 @@ test('integration workspace rejects a late source response after the reader sele
     await app.click('.control-reading > button:nth-of-type(2)'); await app.waitFor(() => assert.equal(delayed.requested, true), 'delayed second source'); await app.click('.control-reading > button:nth-of-type(1)'); await app.stamp('one', 'e:one'); await act(async () => delayed.resolve(json(source('e:two')))); await app.stamp('one', 'e:one');
   } finally { await app.dispose(); }
 });
+test('a new external focus command restores its resolved source after the previous evidence effect is replaced', async () => {
+  const app = await mount(); try {
+    await app.stamp('one', 'e:one');
+    const next = fixture('focus-two'); next.resolved.presentation.focusNodeId = { layer: 'code', id: 'two' }; next.resolved.presentation.highlightedNodeIds = [{ layer: 'code', id: 'two' }]; next.resolved.highlights.codeNodeIds = ['two'];
+    next.resolved.presentation.evidenceIds = ['e:one', 'e:two']; next.resolved.evidence = source('e:two');
+    await app.render(next); await app.stamp('two', 'e:two');
+    await app.waitFor(() => assert.ok(app.container.querySelector('.react-flow__node.selected[data-id="two"]')), 'new command canvas selection');
+    assert.equal(app.container.querySelector('.control-source [data-node-id]')?.getAttribute('data-node-id'), 'two');
+    assert.equal(app.container.querySelector('.control-inspector h2')?.textContent, 'Method_two');
+    assert.ok(app.container.querySelector('.control-source')?.textContent?.includes('SOURCE_e:two'));
+    assert.equal(app.container.querySelector('.control-source')?.textContent?.includes('正在核验'), false);
+    assert.deepEqual(app.failed, []);
+  } finally { await app.dispose(); }
+});
+
 test('integration workspace fails mixed-version evidence instead of displaying it under the analysis snapshot', async () => {
   const app = await mount(); try {
     let resolve!: (value: Response) => void; const delayed = { promise: new Promise<Response>(done => { resolve = done; }), resolve: (value: Response) => resolve(value), requested: false }; app.held.set('e:two', delayed); await app.click('.control-reading > button:nth-of-type(2)'); await app.waitFor(() => assert.equal(delayed.requested, true), 'evidence requested'); await act(async () => delayed.resolve(json(source('e:two', 'source-2')))); await app.waitFor(() => assert.ok(app.failed.some(message => message.includes('版本'))), 'snapshot evidence rejected'); assert.equal(app.container.querySelector('.control-source .source-code'), null);

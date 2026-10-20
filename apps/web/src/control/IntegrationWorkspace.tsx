@@ -130,7 +130,7 @@ export default function IntegrationWorkspace({ command, highlightsEnabled, stale
   useEffect(() => {
     const request = ++sourceSequence.current; if (staleMessage) { setSource(undefined); setSourceBusy(false); return; }
     if (!evidenceId) { setSource(undefined); setSourceBusy(false); return; }
-    if (sourceEpoch === 0 && resolved.evidence?.evidence.id === evidenceId) { if (resolved.evidence.revision !== snapshot.indexSnapshotId || resolved.evidence.stale) { setSource(undefined); setSourceError('分析证据与当前快照不一致。'); callbacks.current.onFailed(command.commandId, '分析证据与当前快照不一致。'); } return; }
+    if (sourceEpoch === 0 && resolved.evidence?.evidence.id === evidenceId) { setSourceBusy(false); if (resolved.evidence.revision !== snapshot.indexSnapshotId || resolved.evidence.stale) { setSource(undefined); setSourceError('分析证据与当前快照不一致。'); callbacks.current.onFailed(command.commandId, '分析证据与当前快照不一致。'); } else { setSource(resolved.evidence); } return; }
     const controller = new AbortController(), stamp = selectedRef.current; setSource(undefined); setSourceBusy(true); setSourceError('');
     const prefix = flow ? '/api/semantics/evidence/' : architecture ? '/api/architecture/evidence/' : '/api/evidence/';
     const url = new URL(`${prefix}${encodeURIComponent(evidenceId)}`, window.location.origin); url.searchParams.set('scope', snapshot.scopeId); if (flow && resolved.semantic) url.searchParams.set('viewRevision', resolved.semantic.metadata.viewRevision); else if (architecture) url.searchParams.set('viewRevision', architecture.metadata.viewRevision);
