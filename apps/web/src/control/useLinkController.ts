@@ -46,6 +46,10 @@ export default function useLinkController(options: Options) {
       if (current.session.serverEpoch !== boot.serverEpoch) throw new BrowserControlError(409, '服务实例已更换，请重新允许联动。', 'SERVER_CHANGED');
       setConnected(true);
       if (current.pending) setReceipt(current.pending);
+      if (!current.command && current.pending?.status === 'expired' && (active.current?.commandId === current.pending.commandId || pending.current?.commandId === current.pending.commandId)) {
+        completed.current.add(current.pending.commandId); active.current = undefined; pending.current = undefined; awaitingAck.current = undefined;
+        handlers.current.onClear(current.pending.message || '服务端分析快照已失效，请重新分析。'); return;
+      }
       if (current.pending?.status === 'presented' && awaitingAck.current?.command.commandId === current.pending.commandId) { completed.current.add(current.pending.commandId); pending.current = undefined; awaitingAck.current = undefined; }
       if (!current.command && current.pending?.action === 'clear' && current.session.controlRevision > local.current.controlRevision) {
         pending.current = undefined; awaitingAck.current = undefined; local.current = { ...local.current, controlRevision: current.session.controlRevision }; publish(); handlers.current.onClear('联动高亮已清除。'); return;
