@@ -1,0 +1,4 @@
+storeDir: .tools/pnpm-store
+packageImportMethod: copy
+allowBuilds:
+  esbuild: true

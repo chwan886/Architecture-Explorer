@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.cache/
+.tools/
+.tmp/
+config/local.json
+**/bin/
+**/obj/
+test-results/
+*.log

@@ -1,0 +1,18 @@
+{
+  "port": 4310,
+  "cacheDir": "../.cache",
+  "dotnet": "../.tools/dotnet/dotnet.exe",
+  "python": "python",
+  "projects": [
+    {
+      "id": "my-project",
+      "name": "我的项目",
+      "root": "C:/path/to/your/project",
+      "worktrees": [],
+      "include": ["src", "Assets/Game", "Server"],
+      "exclude": ["Library", "artifacts", "Art", "Logs", "UserSettings", "work", ".git", "node_modules", "__pycache__", "bin", "obj", "**/Tests/**", "**/Editor/**", "**/test_*.py"],
+      "defines": [],
+      "references": []
+    }
+  ]
+}

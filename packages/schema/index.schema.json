@@ -1,0 +1,494 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://architecture-explorer.local/schema/index.json",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "$ref": "#/definitions/Metadata"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Edge"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Evidence"
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Diagnostic"
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Flow"
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/File"
+      }
+    }
+  },
+  "required": [
+    "metadata",
+    "nodes",
+    "edges",
+    "evidence",
+    "diagnostics",
+    "flows",
+    "files"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "startColumn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endColumn": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fileHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excerpt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "filePath",
+        "startLine",
+        "startColumn",
+        "endLine",
+        "endColumn",
+        "fileHash",
+        "rule"
+      ],
+      "additionalProperties": false
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "project",
+            "system",
+            "module",
+            "file",
+            "class",
+            "interface",
+            "struct",
+            "enum",
+            "method",
+            "function",
+            "field",
+            "property",
+            "event",
+            "parameter",
+            "resource",
+            "data"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "qualifiedName": {
+          "type": "string"
+        },
+        "language": {
+          "enum": [
+            "csharp",
+            "python",
+            "json",
+            "unity",
+            "unknown"
+          ]
+        },
+        "parentId": {
+          "type": "string"
+        },
+        "moduleId": {
+          "type": "string"
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "qualifiedName",
+        "language",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "contains",
+            "inherits",
+            "implements",
+            "references",
+            "imports",
+            "calls",
+            "reads",
+            "writes",
+            "initializes",
+            "passes",
+            "returns",
+            "subscribes",
+            "unsubscribes",
+            "publishes",
+            "contract-mapping"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "static-confirmed",
+            "runtime-verified",
+            "inferred"
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dispatch": {
+          "type": "string"
+        },
+        "condition": {
+          "type": "string"
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "kind",
+        "confidence",
+        "evidenceIds",
+        "rule"
+      ],
+      "additionalProperties": false
+    },
+    "Diagnostic": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filePath": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "severity",
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Flow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "enum": [
+            "static-access",
+            "intra-procedural",
+            "contract-mapping"
+          ]
+        },
+        "nodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "edgeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "scope",
+        "nodeIds",
+        "edgeIds",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "File": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "language": {
+          "enum": [
+            "csharp",
+            "python",
+            "json",
+            "unity",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "hash",
+        "size",
+        "language"
+      ],
+      "additionalProperties": false
+    },
+    "Metadata": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "analyzerVersion": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectName": {
+          "type": "string"
+        },
+        "worktreeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gitHead": {
+          "type": "string"
+        },
+        "gitBranch": {
+          "type": "string"
+        },
+        "gitDirty": {
+          "type": "boolean"
+        },
+        "gitStatusHash": {
+          "type": "string"
+        },
+        "generatedAt": {
+          "type": "string"
+        },
+        "configFingerprint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compilationFingerprint": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "changedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reusedFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "languages",
+            "limitations"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "analyzerVersion",
+        "projectId",
+        "projectName",
+        "worktreeId",
+        "scopeId",
+        "rootPath",
+        "gitHead",
+        "gitBranch",
+        "gitDirty",
+        "gitStatusHash",
+        "generatedAt",
+        "configFingerprint",
+        "compilationFingerprint",
+        "revision",
+        "fileCount",
+        "durationMs",
+        "changedFiles",
+        "reusedFiles",
+        "coverage"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
