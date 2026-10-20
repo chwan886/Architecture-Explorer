@@ -47,6 +47,7 @@ Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；�
 
 - `code` ID 来自原始索引；`architecture` ID 来自当前投影；`semantic` 引用必须加 `flowId`。不可猜 ID。
 - `orderedSteps` 支持一对多代码映射，记录输入/输出、证据、代码边、服务器注册的 pathId、verification 与 orderBasis。
+- `evidenceIds` 是整份分析的证明集合，首项不代表固定源码预览。指定焦点时，预览优先使用该节点自身或以它为起点的代码关系证据；定位到另一个节点会切换到对应源码，原分析证明仍完整保留。无自身证据的节点不会继承不相关旧源码。
 - `reading-order` 只是说明的阅读顺序。`call-path` 必须来自本快照查询注册路径，仍不等于完整运行时顺序。未证明步骤标为 `unverified`。
 - 引用不存在、跨工作区、隐藏不可呈现、超过预算或源快照过期都会拒绝，不能静默忽略。
 - 搜索每条命中最多预览12个证据ID，同时给出 `evidenceCount` / `evidenceTruncated`；系统的大量成员证据通过详情进一步查看，搜索不会倾倒整套证据。明确调用路径展示仅保留请求端点及真实边；无明确边时邻域默认16节点，明确请求仍受80节点硬预算约束。
