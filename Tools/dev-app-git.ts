@@ -32,6 +32,32 @@ export interface TaskPushProof {
   secretRecorded: false;
   failureCode?: string;
   exitCode?: number;
+  diagnosticCode?: TaskPushGitDiagnostic;
+  diagnosticStage?: 'initialization' | 'push' | 'remote-head-check';
+  diagnosticExitCode?: number;
+  diagnosticTruncated?: boolean;
+}
+export type TaskPushGitDiagnostic = 'TLS_CERTIFICATE_VALIDATION_FAILED' | 'TLS_BACKEND_UNAVAILABLE' |
+  'CREDENTIAL_HELPER_FAILED' | 'AUTHENTICATION_REJECTED' | 'WORKFLOW_PERMISSION_REJECTED' |
+  'PUSH_NON_FAST_FORWARD' | 'PUSH_REMOTE_RULE_REJECTED' | 'GIT_CONFIGURATION_REJECTED' |
+  'OBJECT_DATABASE_UNAVAILABLE' | 'NETWORK_DNS_FAILED' | 'NETWORK_CONNECTION_FAILED' |
+  'GIT_PROCESS_START_FAILED' | 'GIT_PROCESS_TIMEOUT' | 'GIT_OUTPUT_LIMIT_REACHED' |
+  'REMOTE_HEAD_MISMATCH' | 'UNCLASSIFIED_GIT_FAILURE';
+
+/** Maps bounded in-memory diagnostics to constants. No original text, URL, header or credential is returned. */
+export function classifyTaskPushGitFailure(text: string): TaskPushGitDiagnostic {
+  if (/unsupported ssl backend/i.test(text)) return 'TLS_BACKEND_UNAVAILABLE';
+  if (/ssl certificate problem|certificate verif(?:y|ication) failed|server certificate verification failed|unable to get (?:local )?issuer certificate|self[- ]signed certificate|sec_e_untrusted_root|cert_trust_is_untrusted_root|error setting certificate (?:verify )?locations|problem with the ssl ca cert|schannel:.*(?:cert|trust|revocation)/i.test(text)) return 'TLS_CERTIFICATE_VALIDATION_FAILED';
+  if (/could not read (?:username|password)|unable to get password|terminal prompts disabled|credential.*(?:failed|not found)|unable to read askpass|waitpid for|ntcreatedirectoryobject|err_module_not_found|cannot (?:spawn|run).*credential/i.test(text)) return 'CREDENTIAL_HELPER_FAILED';
+  if (/refusing to allow.*(?:github app|personal access token).*workflow|workflows? (?:permission|scope)|without.*workflow.*(?:permission|scope)/i.test(text)) return 'WORKFLOW_PERMISSION_REJECTED';
+  if (/non-fast-forward|\[rejected\].*(?:fetch first|stale info)|updates were rejected because/i.test(text)) return 'PUSH_NON_FAST_FORWARD';
+  if (/gh013|gh006|protected branch|repository rule violations|pre-receive hook declined|hook declined/i.test(text)) return 'PUSH_REMOTE_RULE_REJECTED';
+  if (/authentication failed|invalid username or (?:password|token)|http basic: access denied|returned error: (?:401|403)|permission .* denied|write access .*not granted|resource not accessible by integration|repository not found/i.test(text)) return 'AUTHENTICATION_REJECTED';
+  if (/bad config|invalid (?:value|boolean|number).*config|bad (?:boolean|numeric) config|unable to parse config|unknown (?:option|value for http\.)|unsupported value for config|invalid value for /i.test(text)) return 'GIT_CONFIGURATION_REJECTED';
+  if (/bad object|not a valid object name|invalid object|unable to read (?:object|sha1 file)|could not read [a-f0-9]{40}|object directory .*does not exist|invalid sha1 pointer|did not receive expected object|missing (?:blob|commit|tree)|unable to find.*object|unable to read object/i.test(text)) return 'OBJECT_DATABASE_UNAVAILABLE';
+  if (/could not resolve (?:host|proxy)|name or service not known/i.test(text)) return 'NETWORK_DNS_FAILED';
+  if (/failed to connect|connection (?:refused|timed out|was reset|reset by peer)|operation timed out|could not connect|ssl connect error/i.test(text)) return 'NETWORK_CONNECTION_FAILED';
+  return 'UNCLASSIFIED_GIT_FAILURE';
 }
 class GitFailure extends Error { constructor(readonly code: string) { super(code); } }
 function need(value: unknown, code: string): asserts value { if (!value) throw new GitFailure(code); }
@@ -83,19 +109,32 @@ export function taskPushGitArguments(hooks: string, helper?: string): string[] {
   const config = ['credential.helper=', 'credential.useHttpPath=true', 'credential.interactive=false',
     'core.askPass=', `core.hooksPath=${hooks}`, 'core.fsmonitor=false', 'core.untrackedCache=false',
     'protocol.allow=never', 'protocol.https.allow=always', 'http.extraHeader=', 'http.proxy=',
-    'http.followRedirects=false', 'http.sslVerify=true', 'http.cookieFile=', 'http.saveCookies=false',
+    'http.followRedirects=false', 'http.sslVerify=true', 'http.sslBackend=schannel', 'http.schannelCheckRevoke=true',
+    'http.cookieFile=', 'http.saveCookies=false',
     'http.emptyAuth=false', 'http.proactiveAuth=basic', 'http.delegation=none', 'http.maxRetries=0',
     'gc.auto=0', 'maintenance.auto=false'];
   if (helper) config.push(`credential.helper=!${shellQuote(process.execPath)} ${shellQuote(helper)}`);
   return ['--no-pager', ...config.flatMap(value => ['-c', value])];
 }
-type GitResult = { code: number; output: string; failed: boolean };
+type GitResult = { code: number; output: string; failed: boolean; diagnosticCode?: TaskPushGitDiagnostic; diagnosticTruncated: boolean };
 async function git(args: string[], env: NodeJS.ProcessEnv, cwd: string, capture = true, timeout = 30000): Promise<GitResult> {
-  // Child output is never surfaced. Even Git's fatal errors can echo a secret-bearing server response.
+  // Child diagnostics are bounded in memory and reduced to constants, never logged or saved.
   return await new Promise(resolve => {
     let output = '', failed = false, settled = false, stopped = false;
-    const child = spawn(gitExecutable, args, { cwd, env, windowsHide: true, stdio: ['ignore', capture ? 'pipe' : 'ignore', 'ignore'] });
-    const finish = (code: number) => { if (!settled) { settled = true; clearTimeout(timer); resolve({ code, output, failed }); } };
+    let errors = '', diagnosticOutput = '', diagnosticTruncated = false, processDiagnostic: TaskPushGitDiagnostic | undefined;
+    const appendDiagnostic = (current: string, chunk: Buffer) => {
+      const remaining = Math.max(0, 65536 - Buffer.byteLength(current));
+      if (chunk.length > remaining) diagnosticTruncated = true;
+      return current + chunk.subarray(0, remaining).toString('utf8');
+    };
+    const child = spawn(gitExecutable, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const finish = (code: number) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      const diagnosticCode = code === 0 && !failed ? undefined : processDiagnostic ?? classifyTaskPushGitFailure(`${errors}\n${diagnosticOutput}`);
+      errors = ''; diagnosticOutput = '';
+      resolve({ code, output, failed, diagnosticCode, diagnosticTruncated });
+    };
     const stop = () => {
       if (stopped) return;
       stopped = true;
@@ -106,9 +145,14 @@ async function git(args: string[], env: NodeJS.ProcessEnv, cwd: string, capture 
       killer.on('error', () => child.kill());
       killer.on('close', code => { if (code !== 0) child.kill(); });
     };
-    const timer = setTimeout(stop, timeout);
-    child.stdout?.on('data', data => { output += data.toString('utf8'); if (Buffer.byteLength(output) > 4 * 1024 * 1024) stop(); });
-    child.on('error', () => { failed = true; finish(-1); });
+    const timer = setTimeout(() => { processDiagnostic = 'GIT_PROCESS_TIMEOUT'; stop(); }, timeout);
+    child.stdout?.on('data', (data: Buffer) => {
+      if (!capture) { diagnosticOutput = appendDiagnostic(diagnosticOutput, data); return; }
+      output += data.toString('utf8');
+      if (Buffer.byteLength(output) > 4 * 1024 * 1024) { processDiagnostic = 'GIT_OUTPUT_LIMIT_REACHED'; stop(); }
+    });
+    child.stderr?.on('data', (data: Buffer) => { errors = appendDiagnostic(errors, data); });
+    child.on('error', () => { failed = true; processDiagnostic = 'GIT_PROCESS_START_FAILED'; finish(-1); });
     child.on('close', code => finish(code ?? -1));
   });
 }
@@ -214,6 +258,10 @@ export async function runTaskPush(plan: TaskPushPlan, token: string): Promise<Ta
     const isolated = path.join(temporary.root, 'transport.git');
     const baseEnv = taskPushEnvironment();
     const init = await git([...taskPushGitArguments(temporary.hooks), 'init', '--bare', '--template=', isolated], baseEnv, temporary.root);
+    if (init.code !== 0 || init.failed) {
+      proof.diagnosticCode = init.diagnosticCode; proof.diagnosticStage = 'initialization';
+      proof.diagnosticExitCode = init.code; proof.diagnosticTruncated = init.diagnosticTruncated;
+    }
     need(init.code === 0 && !init.failed, 'ISOLATED_GIT_INIT_FAILED');
     const helper = path.join(temporary.root, 'credential-helper.mjs');
     await writeFile(helper, taskPushCredentialHelper, { flag: 'wx', mode: 0o600 });
@@ -227,9 +275,17 @@ export async function runTaskPush(plan: TaskPushPlan, token: string): Promise<Ta
     const pushed = await git([...prefix, 'push', '--no-verify', '--porcelain', '--no-follow-tags', plan.origin,
       `${plan.expectedHead}:refs/heads/${plan.branch}`], env, temporary.root, false, 120000);
     proof.exitCode = pushed.code;
+    if (pushed.code !== 0 || pushed.failed) {
+      proof.diagnosticCode = pushed.diagnosticCode; proof.diagnosticStage = 'push';
+      proof.diagnosticExitCode = pushed.code; proof.diagnosticTruncated = pushed.diagnosticTruncated;
+    }
     need(pushed.code === 0 && !pushed.failed, 'TASK_PUSH_UNCONFIRMED');
     proof.pushOutcome = 'succeeded';
     const remote = await git([...prefix, 'ls-remote', '--exit-code', plan.origin, `refs/heads/${plan.branch}`], env, temporary.root);
+    if (remote.code !== 0 || remote.failed || remote.output.trim() !== `${plan.expectedHead}\trefs/heads/${plan.branch}`) {
+      proof.diagnosticCode = remote.diagnosticCode ?? 'REMOTE_HEAD_MISMATCH'; proof.diagnosticStage = 'remote-head-check';
+      proof.diagnosticExitCode = remote.code; proof.diagnosticTruncated = remote.diagnosticTruncated;
+    }
     need(remote.code === 0 && !remote.failed && remote.output.trim() === `${plan.expectedHead}\trefs/heads/${plan.branch}`, 'PUSHED_HEAD_NOT_CONFIRMED');
     proof.remoteHeadVerified = true;
     proof.outcome = 'passed';

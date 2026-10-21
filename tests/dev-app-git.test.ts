@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { createSmokeDirectory, removeSmokeDirectory } from '../Tools/ci-smoke-directories.ts';
-import { prepareTaskPush, runTaskPush, taskPushCredentialHelper, taskPushEnvironment, taskPushGitArguments } from '../Tools/dev-app-git.ts';
+import { classifyTaskPushGitFailure, prepareTaskPush, runTaskPush, taskPushCredentialHelper, taskPushEnvironment, taskPushGitArguments } from '../Tools/dev-app-git.ts';
 
 const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
 const repository = 'chwan886/Architecture-Explorer';
@@ -168,9 +168,59 @@ test('Git credential helper reset blocks owner fallback and all child settings e
   assert.equal(env.GIT_NO_LAZY_FETCH, '1');
   assert.equal(env.CURL_CA_BUNDLE, undefined);
   assert.ok(!args.join(' ').includes(secret));
-  for (const key of ['core.hooksPath', 'http.followRedirects', 'http.sslVerify', 'protocol.allow', 'protocol.https.allow']) {
+  for (const key of ['core.hooksPath', 'http.followRedirects', 'http.sslVerify', 'http.sslBackend', 'http.schannelCheckRevoke', 'protocol.allow', 'protocol.https.allow']) {
     const value = await execute(gitExe, [...args, 'config', '--get', key], f.root);
     assert.equal(value.code, 0);
-    assert.equal(value.output.trim(), ({ 'core.hooksPath': hooks, 'http.followRedirects': 'false', 'http.sslVerify': 'true', 'protocol.allow': 'never', 'protocol.https.allow': 'always' } as Record<string, string>)[key]);
+    assert.equal(value.output.trim(), ({ 'core.hooksPath': hooks, 'http.followRedirects': 'false', 'http.sslVerify': 'true', 'http.sslBackend': 'schannel',
+      'http.schannelCheckRevoke': 'true', 'protocol.allow': 'never', 'protocol.https.allow': 'always' } as Record<string, string>)[key]);
   }
+}));
+
+test('Git diagnostics return only fixed categories even when raw errors contain credentials, URLs or headers', () => {
+  const cases = [
+    ['SSL certificate problem: unable to get local issuer certificate', 'TLS_CERTIFICATE_VALIDATION_FAILED'],
+    ['schannel: next InitializeSecurityContext failed: SEC_E_UNTRUSTED_ROOT', 'TLS_CERTIFICATE_VALIDATION_FAILED'],
+    ["Unsupported SSL backend 'fixture'. Supported SSL backends: schannel, openssl", 'TLS_BACKEND_UNAVAILABLE'],
+    ['fatal: could not read Password for https://github.com: terminal prompts disabled', 'CREDENTIAL_HELPER_FAILED'],
+    ['sh.exe: fatal error - NtCreateDirectoryObject: 0xC0000022; waitpid for node failed', 'CREDENTIAL_HELPER_FAILED'],
+    ['fatal: Authentication failed for https://github.com/chwan886/Architecture-Explorer.git', 'AUTHENTICATION_REJECTED'],
+    ['fatal: The requested URL returned error: 403', 'AUTHENTICATION_REJECTED'],
+    ['refusing to allow a GitHub App to create or update workflow without workflows permission', 'WORKFLOW_PERMISSION_REJECTED'],
+    ['! refs/heads/codex/fixture [rejected] (non-fast-forward)', 'PUSH_NON_FAST_FORWARD'],
+    ['remote: GH013: Repository rule violations found', 'PUSH_REMOTE_RULE_REJECTED'],
+    ['fatal: bad boolean config value for core.fsmonitor', 'GIT_CONFIGURATION_REJECTED'],
+    ['fatal: bad object deadbeef', 'OBJECT_DATABASE_UNAVAILABLE'],
+    ['error: object directory E:/fixture/objects does not exist', 'OBJECT_DATABASE_UNAVAILABLE'],
+    ['fatal: Could not resolve host: github.com', 'NETWORK_DNS_FAILED'],
+    ['fatal: Failed to connect to github.com port 443', 'NETWORK_CONNECTION_FAILED'],
+    ['server response containing otherwise unknown failure', 'UNCLASSIFIED_GIT_FAILURE'],
+  ];
+  for (const [message, expected] of cases) {
+    const raw = `${message}\nAuthorization: Bearer ${secret}\nhttps://owner:${secret}@example.invalid/private?secret=${secret}\n`;
+    const diagnostic = classifyTaskPushGitFailure(raw);
+    assert.equal(diagnostic, expected);
+    assert.ok(!diagnostic.includes(secret) && !diagnostic.includes('https:') && !diagnostic.includes('Authorization'));
+    assert.match(diagnostic, /^[A-Z_]+$/);
+  }
+  assert.equal(classifyTaskPushGitFailure(secret), 'UNCLASSIFIED_GIT_FAILURE');
+});
+
+test('isolated bare Git resolves the exact fixture SHA through alternates and keeps non-fast-forward protection', { skip }, async () => fixture(async f => {
+  const isolated = path.join(f.root, 'transport.git'), target = path.join(f.root, 'target.git'), hooks = path.join(f.root, 'empty-hooks');
+  await mkdir(hooks);
+  for (const directory of [isolated, target]) assert.equal((await execute(gitExe, ['init', '--bare', '--template=', directory], f.root)).code, 0);
+  const env = { ...taskPushEnvironment(), GIT_ALTERNATE_OBJECT_DIRECTORIES: path.join(f.cwd, '.git', 'objects') };
+  const args = [...taskPushGitArguments(hooks), '-c', `safe.directory=${isolated}`, '--git-dir', isolated];
+  const object = await execute(gitExe, [...args, 'cat-file', '-t', f.input.expectedHead], f.root, '', env);
+  assert.equal(object.code, 0); assert.equal(object.output.trim(), 'commit');
+  // Only this offline fixture enables file transport; production only permits HTTPS.
+  const push = async (sha: string) => await execute(gitExe, [...args, '-c', 'protocol.file.allow=always', 'push', '--no-verify', '--porcelain', '--no-follow-tags',
+    target, `${sha}:refs/heads/${f.input.branch}`], f.root, '', env);
+  assert.equal((await push(f.input.expectedHead)).code, 0);
+  const first = f.input.expectedHead;
+  await f.git('commit', '--allow-empty', '-m', 'next fixture commit');
+  assert.equal((await push(await f.git('rev-parse', 'HEAD'))).code, 0);
+  const rejected = await push(first);
+  assert.notEqual(rejected.code, 0);
+  assert.equal(classifyTaskPushGitFailure(`${rejected.errors}\n${rejected.output}`), 'PUSH_NON_FAST_FORWARD');
 }));

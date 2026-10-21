@@ -1,6 +1,6 @@
 # 两仓共享开发 App 入口
 
-状态：**共享入口正在实现和测试整合；真实工具和游戏单仓 Verify 已通过。** 已核实 App ID `5417611`、Client ID `Iv23lil3cvGyWUbx4yfS`、slug `chwan-dev-agent`、Installation ID `173913073`，以及两仓属于该 selected 安装。工具 PR/CI 的真实结果以本机回交报告为准；本文不把功能实现等同于远端写入或 CI 通过。
+状态：**共享入口已实现并通过本地验证；真实工具和游戏单仓 Verify 已通过。** 已核实 App ID `5417611`、Client ID `Iv23lil3cvGyWUbx4yfS`、slug `chwan-dev-agent`、Installation ID `173913073`，以及两仓属于该 selected 安装。工具 PR/CI 的真实结果以本机回交报告为准；本文不把功能实现等同于远端写入或 CI 通过。
 
 本轮用户已授权使用 App **只推送 Architecture-Explorer 本次任务分支并创建以 main 为 base 的 PR**，不合并；游戏侧本轮仅执行只读 Verify。共享入口交给游戏主控后，游戏推送/PR 仍由其取得对应授权再使用；工具主控不直接推游戏。`chwan886` 保留最终独立批准，自动发送继续关闭。
 
@@ -32,7 +32,7 @@ App 注册和安装的已核实权限仍恰为 Contents、Pull requests、Workfl
 
 `-ExpectedHead` 必须为已核实的完整 40 位 SHA。`-BodyFile` 必须是工具根内普通 UTF-8 文件，不经过链接，大小不超过 64 KiB，并拒绝 PEM 内容；不得包含凭据。PR 创建用 `POST /pulls`，更新仅 `PATCH /pulls/{n}` 的 `title/body`，禁止修改 base、head、state 或启用 auto-merge。操作前后核验同仓 head 分支/准确 SHA、base=`main`、PR 状态及作者；作者须为 `chwan-dev-agent[bot]`、`type=Bot`，并与公开 `/users/chwan-dev-agent%5Bbot%5D` 取得的 bot numeric ID 一致，不能把 App ID 当 bot ID。[PR REST](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10)、[官方 bot ID 示例](https://github.com/actions/create-github-app-token#create-a-git-committer-string-for-an-app-installation)
 
-以下是接口命令模板，待共享入口整合验证后执行。先替换真实任务分支、准确 SHA 和已准备正文路径；每次 `-ReceiptPath` 必须使用工具独立子目录内全新绝对 `.json` 路径，父目录已存在且不经过链接。示例名不代表已有回执，也不授权执行游戏写入。
+以下是已验证接口的命令模板。先替换真实任务分支、准确 SHA 和已准备正文路径；每次 `-ReceiptPath` 必须使用工具独立子目录内全新绝对 `.json` 路径，父目录已存在且不经过链接。示例名不代表已有回执，也不授权执行游戏写入。
 
 ```powershell
 $entry = 'E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1'
@@ -57,7 +57,7 @@ PowerShell 包装器先检查目录/文件 ACL 和路径链，拒绝链接/repar
 
 Push 使用工具侧隔离的 bare Git 传输目录和受控 alternates 读取已核实源仓对象；不在源游戏目录执行写入、hooks 或借用源仓/Owner 配置。远端 URL 和完整 refspec 固定到所选仓库及 `refs/heads/codex/...`，禁止 main、tag、force、删除、`--all`、`--mirror`。传输进程清除继承 helper、askpass、HTTP extraheader 和全局/系统配置来源，只把本次内存 token 给专用 Git/helper 子进程环境；静态 helper 仅回应固定 HTTPS GitHub host/path，文件本身不含秘密。此令牌传递不进入源码 hooks、Setup、包管理器、测试、分析器、MCP、UI 或游戏进程。
 
-不会修改原 origin、本机 global Git/GCM/CLI 配置或持久化凭据；JWT/token/Authorization 不进入 URL、命令行、配置、回执或日志。待推历史的 workflow 判定采取保守策略，不能声称只按最终 diff 精确取到最少权限。Git/HTTP trace、`GH_DEBUG`、transcription 等不得暴露秘密。保留已有 commit author/committer 与历史，不为制造 App 作者而重写提交。
+不会修改原 origin、本机 global Git/GCM/CLI 配置或持久化凭据；JWT/token/Authorization 不进入 URL、命令行、配置、回执或日志。Git显式使用Windows Schannel信任、证书及吊销校验，不载整份系统配置；受限原始诊断只在内存映射固定错误分类，不输出原始 stderr/响应。待推历史的 workflow 判定采取保守策略，不能声称只按最终 diff 精确取到最少权限。Git/HTTP trace、`GH_DEBUG`、transcription 等不得暴露秘密。保留已有 commit author/committer 与历史，不为制造 App 作者而重写提交。
 
 每次取得 token 后，无论动作成功或失败都在 `finally` 撤销：原 token `DELETE /installation/token` 必须 204，再以原 token 只读探测必须取得 401；未确认就不能报告整体通过。探测有界退避，401 立即停止，403/429 停止并报告未确认；签发与 DELETE 不自动重试。no-store/no-cache 只是排查措施，不宣称 GitHub 保证生效时限。回执分别记录实际远端动作和清理结果；最后 failed 不表示已经发生的推送/PR 被撤销，必须先核对真实回执，不能盲目重试。
 
@@ -87,7 +87,7 @@ App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真�
 | --- | --- |
 | App 与旧工具只读认证 | 已核实上述身份和安装归属；首失败及第二次通过回执保留 |
 | 安装精确范围 | 待 UI 证明恰好两仓，没有第三仓 |
-| 共享四模式入口 | 实现/测试整合中；待新权限、单仓范围、隔离传输、PR 作者及禁止操作验证 |
+| 共享四模式入口 | 本地344项完整回归及29项收尾针对验证通过；另9项Git诊断/alternates/nonff测试通过。真实写入以本机回交报告为准 |
 | 游戏 Verify | 真实游戏单仓只读验证已通过，见已入库脱敏回执；不直接推游戏 |
 | 工具 Push / PR | 本轮已授权仅本次工具任务分支和 main PR；准确 SHA、App 作者 PR URL 和实际操作结果以本机回交报告/回执为准 |
 | Status / 远端 CI | Actions read 配置选择待用户答复；准确 head 的真实结果与可读范围以本机报告为准，无法读取则明确缺项 |

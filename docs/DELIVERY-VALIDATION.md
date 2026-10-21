@@ -70,3 +70,5 @@ PR 链接实际打开固定的 `https://github.com/chwan886/GameDemo02/pulls`。
 [游戏只读真实回执](evidence/dev-app/shared-game-verify-2026-10-21.json)验证 `GameDemo02` main `f2761432cfa68140b7b095112cc5e0ee2fda3cd4`，IAT 只含该仓 Contents read 与 Metadata read，撤销 204 后原 token 最终 401；没有扫描或修改游戏工作目录。
 
 本轮用户授权工具本次任务分支推送并创建 base=main PR；这些动作的实际 PR/head/App 作者/远端 CI，由本机回交报告 `.tmp/shared-app-handoff-20261021.txt` 及其脱敏 JSON 记录，不把本地通过当远端结果。自动发送保持关闭，禁止 Owner 回退、直推 main、强推、自动批准或合并；未扩大生产 CI 的凭据权限。
+
+首次真实工具推送退出128，未确认成功；原IAT已撤销204+401，回执保留 `.tmp/shared-tool-push-1.json`。后续新增Git固定脱敏诊断、显式Schannel证书/吊销检查，**9/9** 无网络Git夹具及Typecheck通过，包含实际alternates精确SHA推送和非快进拒绝。旧失败原因未知，不将TLS配置差异直接写成已证实原因，也不恢复Owner凭据或降低TLS检查。
