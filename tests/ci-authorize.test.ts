@@ -22,6 +22,7 @@ const approval = {
   id: 101, state: 'APPROVED', commit_id: headSha, submitted_at: '2026-10-21T09:00:00Z',
   user: { id: 3, login: 'reviewer', type: 'User' },
 };
+const secondApproval = { ...approval, id: 102, user: { id: 4, login: 'second-reviewer', type: 'User' } };
 const pullsEndpoint = `/commits/${sha}/pulls?per_page=100&page=1`;
 const reviewsEndpoint = '/pulls/31/reviews?per_page=100&page=1';
 const reviewRule = { type: 'pull_request', parameters: { required_approving_review_count: 1, require_code_owner_review: true, dismiss_stale_reviews_on_push: true, require_last_push_approval: true, required_review_thread_resolution: true } };
@@ -80,6 +81,82 @@ test('combines required contexts across active rulesets instead of accepting any
   await assert.rejects(authorizeDelivery(env, api({ [`${tool}/rules/branches/main`]: [reviewRule, statusRule('Unrelated check')] })), /Tool main requires a readable Ruleset/);
 });
 
+test('combines effective PR review counts and flags across rulesets regardless of response order', async () => {
+  const gamePolicies = [
+    { type: 'pull_request', parameters: { required_approving_review_count: 2 } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_code_owner_review: true } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 1, dismiss_stale_reviews_on_push: true } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_last_push_approval: true, required_review_thread_resolution: true } },
+    statusRule('Fast check'), statusRule('Tools check'),
+  ];
+  const toolPolicies = [
+    { type: 'pull_request', parameters: { required_approving_review_count: 1 } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 3 } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_code_owner_review: true } },
+    statusRule('Tool / typecheck, tests and builds'),
+  ];
+  for (const reverse of [false, true]) {
+    const result = await authorizeDelivery(env, api({
+      [`${game}/rules/branches/main`]: reverse ? [...gamePolicies].reverse() : gamePolicies,
+      [`${tool}/rules/branches/main`]: reverse ? [...toolPolicies].reverse() : toolPolicies,
+      [reviewsEndpoint]: [approval, secondApproval],
+    }));
+    assert.equal(result.gameProtection.type, 'ruleset');
+    assert.equal(result.gameProtection.requiredApprovingReviewCount, 2);
+    assert.equal(result.toolProtection.type, 'ruleset');
+    assert.equal(result.toolProtection.requiredApprovingReviewCount, 3);
+  }
+});
+
+test('the exact game merge must satisfy the effective approval count with distinct independent Users', async () => {
+  const requireTwo = { ...reviewRule, parameters: { ...reviewRule.parameters, required_approving_review_count: 2 } };
+  const policies = [
+    { [`${game}/rules/branches/main`]: [requireTwo, statusRule('Fast check', 'Tools check')] },
+    { [`${game}/rules/branches/main`]: [], '/branches/main/protection': {
+      ...classic, required_pull_request_reviews: { ...classic.required_pull_request_reviews, required_approving_review_count: 2 },
+    } },
+  ];
+  for (const policy of policies) {
+    for (const insufficient of [
+      [approval],
+      [approval, { ...approval, id: 102, submitted_at: '2026-10-21T09:30:00Z' }],
+      [approval, { ...secondApproval, user: pull.user }],
+      [approval, { ...secondApproval, commit_id: 'd'.repeat(40) }],
+    ]) {
+      await assert.rejects(authorizeDelivery(env, api({ ...policy, [reviewsEndpoint]: insufficient })), /do not meet the effective required count \(2\)/);
+    }
+    const result = await authorizeDelivery(env, api({ ...policy, [reviewsEndpoint]: [approval, secondApproval] }));
+    assert.equal(result.gameProtection.requiredApprovingReviewCount, 2);
+    assert.equal(new Set(result.mergedPr.approvals.map(review => review.reviewerId)).size, 2);
+  }
+});
+
+test('combined rules still require a positive approval count, Code Owner and every game review flag', async () => {
+  const complete = [
+    { type: 'pull_request', parameters: { required_approving_review_count: 1 } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_code_owner_review: true } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, dismiss_stale_reviews_on_push: true } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, require_last_push_approval: true } },
+    { type: 'pull_request', parameters: { required_approving_review_count: 0, required_review_thread_resolution: true } },
+  ];
+  for (let missing = 0; missing < complete.length; missing++) {
+    const incomplete = complete.filter((_, index) => index !== missing);
+    await assert.rejects(authorizeDelivery(env, api({
+      [`${game}/rules/branches/main`]: [...incomplete, statusRule('Fast check', 'Tools check')],
+      '/branches/main/protection': new Error('Incomplete effective rules have no valid classic fallback'),
+    })), /no valid classic fallback/);
+  }
+  await assert.rejects(authorizeDelivery(env, api({
+    [`${tool}/rules/branches/main`]: [complete[1], statusRule('Tool / typecheck, tests and builds')],
+  })), /Code Owner review/);
+});
+
+test('unreadable review counts cannot be merged into an apparently valid effective policy', async () => {
+  await assert.rejects(authorizeDelivery(env, api({
+    [`${game}/rules/branches/main`]: [reviewRule, { type: 'pull_request', parameters: { required_approving_review_count: '2' } }, statusRule('Fast check', 'Tools check')],
+  })), /Effective review count is unreadable/);
+});
+
 test('game classic protection must enforce administrators and cover all confirmed contexts', async () => {
   const base = { [`${game}/rules/branches/main`]: [], '/branches/main/protection': classic };
   const result = await authorizeDelivery(env, api(base));
@@ -91,6 +168,11 @@ test('game main enforces phase-one Code Owner, latest-push review and strict up-
   const weakRules = [{ ...reviewRule, parameters: { ...reviewRule.parameters, require_code_owner_review: false } }, statusRule('Fast check', 'Tools check')];
   const weakClassic = { ...classic, required_pull_request_reviews: { ...classic.required_pull_request_reviews, require_code_owner_reviews: false } };
   await assert.rejects(authorizeDelivery(env, api({ [`${game}/rules/branches/main`]: weakRules, '/branches/main/protection': weakClassic })), /require_code_owner_reviews/);
+});
+
+test('tool main must enforce its CODEOWNERS instead of merely storing the file', async () => {
+  const weak = { ...reviewRule, parameters: { ...reviewRule.parameters, require_code_owner_review: false } };
+  await assert.rejects(authorizeDelivery(env, api({ [`${tool}/rules/branches/main`]: [weak, statusRule('Tool / typecheck, tests and builds')] })), /Code Owner review/);
 });
 
 test('protection, associated PR and Review API failures block authorization', async () => {

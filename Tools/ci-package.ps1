@@ -14,7 +14,7 @@ if($run -notmatch '^(local|[1-9][0-9]*)$' -or $attempt -notmatch '^[1-9][0-9]*$'
 $output=Join-Path $root ('.ci-output/tool-'+$sha+'-'+$run+'-'+$attempt)
 if(Test-Path -LiteralPath $output){throw 'Package already exists; never overwrite an artifact'}
 New-Item -ItemType Directory -Path $output | Out-Null
-# Allowlist runtime inputs; no config/local.json, game, caches, Git, or credentials.
+# Allowlist runtime inputs. architecture/docs retain game source quotes; treat the whole package as source-sensitive.
 foreach($part in @('dist','apps/server','apps/mcp','packages','architecture','docs','Tools','analyzers/python','analyzers/csharp/bin/Release/net10.0')) {
   $source=Join-Path $root $part
   if(!(Test-Path -LiteralPath $source)){throw "Missing package input: $part"}
@@ -61,10 +61,14 @@ MCP: ./Tools/explorer.ps1 -Task Mcp
 Full node_modules includes tsx and developer tools because the backend runs TypeScript.
 Dependencies were restored offline from the frozen lock into a hoisted layout with regular files;
 the package does not depend on pnpm symlinks, the source checkout or its package store.
-No machine config, Git credentials, game source, caches, or Unity DLLs are included.
+This package includes game source excerpts in maintained architecture models, source anchors
+(architecture/models/game-demo-02/model.json: anchors[].quote), semantic explanations and docs.
+The tool Git repository, Actions logs/reports and this package must stay within the game repository's
+approved reader audience. A private repository alone does not establish matching access.
+No complete game checkout, machine config, Git credentials, caches, or Unity DLLs are included.
 Game CI snapshot evidence is a separate artifact, not a local cache installation package.
 Use the source checkout for Setup, tests or rebuilding the C# project; this package contains its built worker.
 '@ | Set-Content -LiteralPath (Join-Path $output 'RUNNING.md') -Encoding utf8
-@{schemaVersion=1;toolSha=$sha;sourceDirty=$sourceDirty;execution=$(if($env:GITHUB_ACTIONS -eq 'true'){'github-actions'}else{'local-check'});runId=$run;attempt=$attempt;runUrl=$(if($env:GITHUB_ACTIONS -eq 'true' -and $env:GITHUB_RUN_ID){'https://github.com/chwan886/Architecture-Explorer/actions/runs/'+$run+'/attempts/'+$attempt}else{$null});toolchain=$lock;kind='windows-source-runtime-build';dependencyLayout='offline-frozen-hoisted-copy';prerequisites=@('Git CLI','Python >=3.11','.NET 10 runtime');limitations=@('No installer','No local index import','No Unity DLL distribution')} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $output 'build-manifest.json') -Encoding utf8
+@{schemaVersion=1;toolSha=$sha;sourceDirty=$sourceDirty;execution=$(if($env:GITHUB_ACTIONS -eq 'true'){'github-actions'}else{'local-check'});runId=$run;attempt=$attempt;runUrl=$(if($env:GITHUB_ACTIONS -eq 'true' -and $env:GITHUB_RUN_ID){'https://github.com/chwan886/Architecture-Explorer/actions/runs/'+$run+'/attempts/'+$attempt}else{$null});toolchain=$lock;kind='windows-source-runtime-build';dependencyLayout='offline-frozen-hoisted-copy';containsGameSourceExcerpts=$true;sourceExcerptLocations=@('architecture/models/game-demo-02/model.json: anchors[].quote','architecture/semantics/game-demo-02/','docs/');access='Tool repository, logs, reports and artifacts must remain within the approved game reader audience';prerequisites=@('Git CLI','Python >=3.11','.NET 10 runtime');limitations=@('No installer','No local index import','No Unity DLL distribution')} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $output 'build-manifest.json') -Encoding utf8
 if($env:GITHUB_OUTPUT){'path='+$output | Add-Content $env:GITHUB_OUTPUT}
 Write-Host "Tool package: $output"

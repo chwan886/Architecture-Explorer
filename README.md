@@ -1,6 +1,6 @@
 # Architecture Explorer
 
-本地运行的中文架构探索工具。系统职责与模块协作、技术分层、多粒度业务解释与代码双层对照、React Flow 代码画布、源码证据、C#/Python 静态分析及文件监听。分析目标默认只读，源代码不会上传。
+本地运行的中文架构探索工具。系统职责与模块协作、技术分层、多粒度业务解释与代码双层对照、React Flow 代码画布、源码证据、C#/Python 静态分析及文件监听。分析目标默认只读，普通本地扫描不上传目标源码。显式启用的 GitHub 工具包保留人工模型/文档中的游戏源码摘录，索引证据包也可能包含源码上下文；工具仓库、日志和产物均须遵循游戏的访问范围。
 
 支持 Codex 本地 STDIO MCP 查询与网页联动：[连接和使用指南](docs/MCP-GUIDE.md)。新增服务不会修改用户级 Codex 配置；网页明确允许后才接受控制，指令与实体绑定到同一索引快照。
 
@@ -58,6 +58,10 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 两仓当前 main 尚未保护，自动触发尚未启用。正式接入遵循用户确定的六步顺序：游戏第一阶段交接 → 工具接收端 → 工具 main 合入并手动验证 → 游戏发送初始关闭 → 用户配置并启用 → 真实 feature 联调。接口、最小游戏补丁、Unity 元数据引用供应、App / Environment / Secrets 与规则手动清单见 [开发交付合同](docs/DEVELOPMENT-DELIVERY.md)；本地验证见 [本轮交付验证](docs/DELIVERY-VALIDATION.md)。
 
 ## 本地命令
+
+工具自身 [CODEOWNERS](.github/CODEOWNERS) 保护 CI、依赖、读取/分析边界和交付证据；需由 main Ruleset 启用 Code Owner review 才强制生效，作者不能自批。工具包与索引均须经过受保护环境的读者范围审核才能上传。[Unity 引用供应方案](docs/UNITY-REFERENCE-SUPPLY.md)已准备，真实版本、许可、私有 ZIP 与指纹仍待维护者交付；首次手测使用 Secret 短期 URL，自动发送保持关闭。
+
+开发身份采用尚未创建的 `chwan-dev-agent` App，按[创建、安装及本机认证清单](docs/DEV-APP-SETUP.md)配置后再推任务分支和建 PR；由 `chwan886` 独立批准，不回退使用 Owner 身份推送。
 
 ```powershell
 ./Tools/explorer.ps1 -Task Scan                 # 手动全量扫描

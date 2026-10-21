@@ -36,7 +36,7 @@ function fixtureZip(entries: ZipEntry[]): Buffer {
   return Buffer.concat([...chunks, central, end]);
 }
 
-async function referencesFixture(entries: ZipEntry[], suppliedHash?: string) {
+async function referencesFixture(entries: ZipEntry[], suppliedHash?: string, download?: { url: string; error: string }) {
   await mkdir(path.join(TOOL_ROOT, '.tmp'), { recursive: true });
   const directory = await mkdtemp(path.join(TOOL_ROOT, '.tmp', 'ci-references-test-'));
   const root = path.join(directory, 'tool'), script = path.join(root, 'Tools/ci-references.ps1');
@@ -45,13 +45,15 @@ async function referencesFixture(entries: ZipEntry[], suppliedHash?: string) {
   const run = () => execute('pwsh', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', `
     $ErrorActionPreference='Stop'
     function Invoke-WebRequest {
-      param([Uri]$Uri,[string]$OutFile,[int]$MaximumRedirection)
-      if($Uri.AbsoluteUri -cne 'https://metadata.example.invalid/unity.zip' -or $MaximumRedirection -ne 0){throw 'Unexpected network request or redirect policy'}
+      param([Uri]$Uri,[string]$OutFile,[int]$MaximumRedirection,[int]$TimeoutSec,$ErrorAction)
+      if($Uri.AbsoluteUri -cne $env:CI_REFERENCE_FIXTURE_URL -or $MaximumRedirection -ne 0 -or $TimeoutSec -ne 120){throw 'Unexpected network request, redirect or timeout policy'}
+      if($env:CI_REFERENCE_DOWNLOAD_ERROR){throw $env:CI_REFERENCE_DOWNLOAD_ERROR}
       Copy-Item -LiteralPath $env:CI_REFERENCE_FIXTURE_ZIP -Destination $OutFile
     }
     & $env:CI_REFERENCE_FIXTURE_SCRIPT
   `], { cwd: root, windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024,
-    env: { ...process.env, UNITY_REFERENCES_URL: 'https://metadata.example.invalid/unity.zip', UNITY_REFERENCES_SHA256: suppliedHash ?? contentHash(zip),
+    env: { ...process.env, UNITY_REFERENCES_URL: download?.url ?? 'https://metadata.example.invalid/unity.zip', UNITY_REFERENCES_SHA256: suppliedHash ?? contentHash(zip),
+      CI_REFERENCE_FIXTURE_URL: download?.url ?? 'https://metadata.example.invalid/unity.zip', CI_REFERENCE_DOWNLOAD_ERROR: download?.error ?? '',
       CI_REFERENCE_FIXTURE_ZIP: archive, CI_REFERENCE_FIXTURE_SCRIPT: script } });
   return { directory, root, run, cleanup: () => rm(directory, { recursive: true, force: true }) };
 }
@@ -99,4 +101,18 @@ test('metadata ZIP rejects slash and backslash directory entries consistently be
     try { await assert.rejects(f.run(), /directory|only accepts root/i); await assert.rejects(access(path.join(f.root, '.ci-references/references.json'))); }
     finally { await f.cleanup(); }
   }
+});
+
+test('expired private metadata URLs fail without disclosing URL or signature in diagnostics', async () => {
+  const url = 'https://metadata.example.invalid/unity.zip?signature=fixture-secret-token';
+  const f = await referencesFixture(referenceEntries, undefined, { url, error: `403 download failed for ${url}` });
+  try {
+    await assert.rejects(f.run(), error => {
+      const diagnostic = `${(error as Error).message}\n${(error as { stderr?: string }).stderr ?? ''}\n${(error as { stdout?: string }).stdout ?? ''}`;
+      assert.match(diagnostic, /Unity metadata download failed/);
+      assert.ok(!diagnostic.includes('fixture-secret-token') && !diagnostic.includes('https://metadata.example.invalid'));
+      return true;
+    });
+    await assert.rejects(access(path.join(f.root, '.ci-references/references.json')));
+  } finally { await f.cleanup(); }
 });

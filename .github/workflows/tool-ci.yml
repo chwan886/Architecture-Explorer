@@ -31,20 +31,62 @@ jobs:
           git diff --cached --exit-code
           if ($LASTEXITCODE -ne 0) { throw 'CI changed the Git index' }
           if (Test-Path config/local.json) { throw 'CI must not create or copy local config' }
-      - name: Package complete tool runtime sources and build
-        id: package
-        if: github.event_name == 'push'
-        shell: pwsh
-        run: ./Tools/ci-package.ps1
+      # Failed assertions may include committed game quotes. Repository/log/report readers
+      # must remain within the game's reader audience; PR checks receive no production secrets.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always()
+        if: always() && github.event.repository.private
         with:
           name: tool-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/
           retention-days: 14
           if-no-files-found: warn
+  tool-package:
+    name: Tool / protected package delivery
+    needs: tool-checks
+    if: github.event_name == 'push' && github.repository == 'chwan886/Architecture-Explorer' && github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: architecture-delivery
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version-file: .python-version
+      - name: Prepare locked package toolchain and C# worker
+        shell: pwsh
+        run: ./Tools/explorer.ps1 -Task Setup -SkipLocalConfig
+      - name: Verify private repository and approved game reader boundary
+        id: artifact-access
+        shell: pwsh
+        env:
+          TOOL_ARTIFACT_READ_TOKEN: ${{ github.token }}
+          INDEX_ACCESS_APPROVED: ${{ vars.INDEX_ACCESS_APPROVED }}
+        run: |
+          & ./.tools/node-v24.22.0-win-x64/node.exe node_modules/tsx/dist/cli.mjs Tools/ci-artifact-access.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Tool package audience authorization failed' }
+      - name: Build frontend for the exact checked tool commit
+        if: steps.artifact-access.outputs.artifact_access == 'allowed'
+        shell: pwsh
+        run: ./Tools/explorer.ps1 -Task Build
+      - name: Package complete tool runtime including curated game excerpts
+        id: package
+        if: steps.artifact-access.outputs.artifact_access == 'allowed'
+        shell: pwsh
+        run: ./Tools/ci-package.ps1
+      - name: Verify packaged runtime and retained source excerpt disclosure
+        id: package-runtime
+        if: steps.artifact-access.outputs.artifact_access == 'allowed'
+        shell: pwsh
+        env:
+          CI_PACKAGE_ROOT: ${{ steps.package.outputs.path }}
+        run: |
+          & ./.tools/node-v24.22.0-win-x64/node.exe node_modules/tsx/dist/cli.mjs Tools/ci-package-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged runtime verification failed' }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: success() && github.event_name == 'push'
+        if: success() && steps.artifact-access.outputs.artifact_access == 'allowed'
         with:
           name: tool-build-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.package.outputs.path }}

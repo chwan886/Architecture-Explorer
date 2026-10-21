@@ -89,6 +89,13 @@ jobs:
       - name: Package tool separately from game evidence
         id: package
         run: ./Tools/ci-package.ps1
+      - name: Verify packaged runtime and retained source excerpt disclosure
+        id: package-runtime
+        env:
+          CI_PACKAGE_ROOT: ${{ steps.package.outputs.path }}
+        run: |
+          & ./.tools/node-v24.22.0-win-x64/node.exe node_modules/tsx/dist/cli.mjs Tools/ci-package-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged runtime verification failed' }
       - name: Restricted game read token
         id: game-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
@@ -127,7 +134,7 @@ jobs:
           submodules: false
       - name: Prepare pinned Unity metadata references on tool side
         env:
-          UNITY_REFERENCES_URL: ${{ vars.UNITY_REFERENCES_URL }}
+          UNITY_REFERENCES_URL: ${{ secrets.UNITY_REFERENCES_URL }}
           UNITY_REFERENCES_SHA256: ${{ vars.UNITY_REFERENCES_SHA256 }}
         run: ./Tools/ci-references.ps1
       - name: Scan, Verify, Audit and attest read-only game SHA
@@ -143,6 +150,7 @@ jobs:
         env:
           CHECK_OUTCOME: ${{ steps.checks.outcome }}
           PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          PACKAGE_RUNTIME_OUTCOME: ${{ steps.package-runtime.outcome }}
           AUTHORIZE_OUTCOME: ${{ steps.authorize.outcome }}
           INDEX_OUTCOME: ${{ steps.snapshot.outcome }}
         run: |
@@ -151,16 +159,16 @@ jobs:
           if ($env:AUTHORIZE_OUTCOME -eq 'success') {
             $source=@{repository=$env:CI_SOURCE_REPO;ref=$env:CI_SOURCE_REF;sha=$env:CI_SOURCE_SHA;runId=$env:CI_SOURCE_RUN_ID;attempt=$env:CI_SOURCE_RUN_ATTEMPT;url=$env:CI_SOURCE_RUN_URL}
           }
-          @{schemaVersion=1;contractVersion='1';toolSha=$env:GITHUB_SHA;source=$source;targetRunUrl=('https://github.com/chwan886/Architecture-Explorer/actions/runs/'+$env:GITHUB_RUN_ID+'/attempts/'+$env:GITHUB_RUN_ATTEMPT);checksOutcome=$env:CHECK_OUTCOME;toolBuildCompleted=($env:CHECK_OUTCOME -eq 'success' -and $env:PACKAGE_OUTCOME -eq 'success');packageOutcome=$env:PACKAGE_OUTCOME;authorizationOutcome=$env:AUTHORIZE_OUTCOME;indexOutcome=$env:INDEX_OUTCOME;indexVerified=($env:INDEX_OUTCOME -eq 'success')} | ConvertTo-Json -Depth 5 | Set-Content test-results/delivery-result.json -Encoding utf8
+          @{schemaVersion=1;contractVersion='1';toolSha=$env:GITHUB_SHA;source=$source;targetRunUrl=('https://github.com/chwan886/Architecture-Explorer/actions/runs/'+$env:GITHUB_RUN_ID+'/attempts/'+$env:GITHUB_RUN_ATTEMPT);checksOutcome=$env:CHECK_OUTCOME;toolBuildCompleted=($env:CHECK_OUTCOME -eq 'success' -and $env:PACKAGE_OUTCOME -eq 'success' -and $env:PACKAGE_RUNTIME_OUTCOME -eq 'success');packageOutcome=$env:PACKAGE_OUTCOME;packageRuntimeOutcome=$env:PACKAGE_RUNTIME_OUTCOME;authorizationOutcome=$env:AUTHORIZE_OUTCOME;indexOutcome=$env:INDEX_OUTCOME;indexVerified=($env:INDEX_OUTCOME -eq 'success')} | ConvertTo-Json -Depth 5 | Set-Content test-results/delivery-result.json -Encoding utf8
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always()
+        if: always() && github.event.repository.private
         with:
           name: tool-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: tool/test-results/
           retention-days: 14
           if-no-files-found: warn
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always() && steps.package.outcome == 'success'
+        if: always() && steps.package.outcome == 'success' && steps.authorize.outputs.index_access == 'allowed'
         id: tool-artifact
         with:
           name: tool-build-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}

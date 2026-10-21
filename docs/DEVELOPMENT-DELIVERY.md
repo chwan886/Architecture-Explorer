@@ -24,6 +24,10 @@
 
 最新工具侧交接统一见 [receiver-handoff-v1.txt](ReviewEvidence/receiver-handoff-v1.txt)，绝对路径为 `E:/Codex/worktrees/cd84/Architecture-Explorer/docs/ReviewEvidence/receiver-handoff-v1.txt`。其中分别记录接收端 ready 状态、实际检查、缺少项和真实远端证据；没有执行的 run 不填写虚构链接。上表是本轮开始时的核实快照，不能代替最新就绪材料。
 
+收尾时重新只读用户指定的同一游戏交接文档：其已确认游戏本地和远端 main 同为 `f2761432cfa68140b7b095112cc5e0ee2fda3cd4`，既有 13 提交的同步待办已完成并取消。此结论来自游戏主控的新交接材料，不表示第一阶段 CI 或发送端已经合入 main，也不表示保护/远端检查已通过。
+
+工具自身 [CODEOWNERS](../.github/CODEOWNERS) 已补齐，唯一所有者为 `@chwan886`。敏感路径包括工作流、依赖/工具链、读取/分析/协议边界、源码锚点和交付证据，普通 UI/CSS 不全仓加门禁。必须在 main Ruleset 启用 Code Owner review；首次引入时 base 尚无该文件，仍须独立人工审阅，且本人不能批准自己作者的 PR。依据[GitHub CODEOWNERS 文档](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)。
+
 ## 人工与自动阶段
 
 | 阶段 | 责任、输入与输出 | 通过条件、阻塞及失败处理 |
@@ -59,9 +63,9 @@
 
 发送时来源 run 整体可能仍在运行。接收端读取精确 `/actions/runs/<id>/attempts/<attempt>` 及其 jobs，核对本次 `fast-gate` 内 Fast/tools 已成功；不要求包含发送 job 的整个来源 run 已完成，也不读取 latest attempt 顶替。来源必须是 `push`、`main`、相同 SHA、约定工作流。`source_run_url` 始终为基础 run URL，回执另派生 `sourceAttemptUrl = <source_run_url>/attempts/<source_run_attempt>`。游戏 SHA 必须是允许的远端 main 历史祖先。main 保护及独立 Review 是平台前提，不能靠调用者自称。
 
-`Tools/ci-authorize.ts` 在 checkout 游戏前通过只读 GitHub API 核对双方仓库、默认分支、有效 main 规则、游戏/工具 SHA 历史、来源 run 和必需 jobs。任何 Git/API 权限读取失败都阻塞；403/404 不能当作保护存在。工具 `GITHUB_TOKEN` 仅 `contents: read`，因此工具 main 要采用可通过有效规则接口读取的 **Ruleset**，含至少一位 PR 审阅者及准确的 `Tool / typecheck, tests and builds` 必需检查；仅 classic protection 时接收端失败关闭。游戏读 App 有 Administration read，可兼容 classic protection；classic 还需对管理员强制生效。接收端聚合有效规则中的状态检查，必须覆盖主控确认的 `GAME_REQUIRED_CHECK_CONTEXTS`，不能用任意无关检查代替 Fast/tools 的 PR 门禁。
+`Tools/ci-authorize.ts` 在 checkout 游戏前通过只读 GitHub API 核对双方仓库、默认分支、有效 main 规则、游戏/工具 SHA 历史、来源 run 和必需 jobs。任何 Git/API 权限读取失败都阻塞；403/404 不能当作保护存在。工具 `GITHUB_TOKEN` 仅 `contents: read`，因此工具 main 要采用可通过有效规则接口读取的 **Ruleset**，含至少一位 PR 审阅者、Code Owner review 及准确的 `Tool / typecheck, tests and builds` 必需检查；仅 classic protection 时接收端失败关闭。游戏读 App 有 Administration read，可兼容 classic protection；classic 还需对管理员强制生效。接收端聚合全部有效 Ruleset 的审批数量（最大值）、各布尔门禁（任一要求即生效）和状态检查，必须覆盖主控确认的 `GAME_REQUIRED_CHECK_CONTEXTS`，不能把规则顺序或任意无关检查代替门禁。
 
-接收端还检查该游戏 SHA 对应的真实已合并 PR：`merge_commit_sha` 必须等于输入 SHA，base 为固定游戏仓库的 main。分页读取 Review，以每位审阅者合并前的最新决定为准（普通 `COMMENTED` 不撤销批准），至少一位 GitHub 类型为 `User` 的非 PR 作者、非 bot 审阅者，必须对准确 PR head SHA 提交 `APPROVED`，且发生在合并之前；已驳回、已撤销、过期 head、自审或合并后补审均不能通过。游戏保护还必须启用 Code Owner 审阅、新 push 撤销旧批准、最近 push 的独立批准、严格保持最新检查与讨论解决；不会给普通游戏文件扩大 CODEOWNERS 范围。回执保存 PR 与审阅证据。main 上的直接 push 或找不到精确合并 PR 的旧 SHA 不满足此接入合同，不能以 `reviewed=true` 绕过。API 依据[关联 PR](https://docs.github.com/en/rest/commits/commits?apiVersion=2026-03-10#list-pull-requests-associated-with-a-commit)与[PR Review](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2026-03-10#list-reviews-for-a-pull-request)官方合同。
+接收端还检查该游戏 SHA 对应的真实已合并 PR：`merge_commit_sha` 必须等于输入 SHA，base 为固定游戏仓库的 main。分页读取 Review，以每位审阅者合并前的最新决定为准（普通 `COMMENTED` 不撤销批准），GitHub 类型为 `User` 的非 PR 作者、非 bot 审阅者，必须对准确 PR head SHA 提交 `APPROVED`，且发生在合并之前；有效独立人数须达到游戏保护的实际审批门限，至少一人。已驳回、已撤销、过期 head、自审或合并后补审均不能通过。游戏保护还必须启用 Code Owner 审阅、新 push 撤销旧批准、最近 push 的独立批准、严格保持最新检查与讨论解决；不会给普通游戏文件扩大 CODEOWNERS 范围。回执保存 PR 与审阅证据；工具侧此处证明平台规则，不声称已核验工具 PR 的审批数量。main 上的直接 push 或找不到精确合并 PR 的旧 SHA 不满足此接入合同，不能以 `reviewed=true` 绕过。API 依据[关联 PR](https://docs.github.com/en/rest/commits/commits?apiVersion=2026-03-10#list-pull-requests-associated-with-a-commit)与[PR Review](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2026-03-10#list-reviews-for-a-pull-request)官方合同。
 
 Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设保护 Environment 的 `RULE_BYPASS_REVIEWED=true` 后接收端才继续。它记录人工配置前提；不能当成程序已经证明每一次操作全程没有绕过。保护回执的 `requiresIndependentReview` 表示规则要求，实际审阅记录单独列在 `mergedPr` 中。
 
@@ -73,7 +77,9 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 - 工具构建包：前端 `dist`、TypeScript/tsx 后端与 MCP 启动所需源码和运行依赖、C# worker 及依赖、Python 分析器、锁文件和启动说明。**dist 单独不是完整工具包**；使用方仍需按说明配置本机授权目录和可用 Python/.NET 环境。
 - 索引证据包：工具侧 `.ci-output/<game-sha>/<run-id>-<attempt>/index-evidence/` 中的 `index.json`、`architecture.json`、`semantics.json`、`audit.json`、`references.json`、`manifest.json`、只读前后摘要与必要阶段日志。记录实际工具 SHA、游戏 SHA、配置/引用指纹、分析器版本、限制、来源/目标 run 链接；人工模型副本保留原文字和复核记录。它是 CI 快照证据，不承诺复制到本地 `.cache` 即可使用。本轮没有自动安装或缓存导入功能。
 
-索引可能含游戏源码摘录。产物和失败诊断不得扩大到游戏仓库权限之外；两仓当前均私有，仍须核对工具读者集合是否为游戏读者的子集。若未来工具公开或工具读者更广，先停用自动索引上传，使用游戏仓库或另一个已获授权的私有存储；不能仅凭“同为 private”认为读者一致。不得自动公开 Pages、Release 或下载链接。
+工具构建包也含游戏源码摘录：它保留 `architecture/models/game-demo-02/model.json` 的 `anchors[].quote`、人工语义解释和文档，不含完整游戏 checkout。包的 `RUNNING.md` 和 `build-manifest.json` 明示 `containsGameSourceExcerpts=true`；不能再声称“不含游戏源码”。索引也可能含摘录。工具 Git 仓库本身、Actions 日志、测试报告、工具包、索引和失败诊断的读者均不得超出游戏允许范围；两仓 private 不足以证明读者相同。不得公开 Pages、Release 或下载链接。
+
+`tool-ci.yml` 的原必需检查名称不变，PR 不挂生产 Environment、不取得跨仓凭据，报告仅在私有仓库上传。main 的工具包由单独 `tool-package` job 处理，依赖检查成功，在 `architecture-delivery` 验证受保护 main、当前工具库 private 和人工 `INDEX_ACCESS_APPROVED` 后才能打包/上传；缺项明确失败。`game-index.yml` 的工具包和索引都要求来源授权输出 `index_access=allowed`，不再因工具包已构建就绕过失败的来源审核。访问变量是人工审核回执，不是程序自动比较完整权限集合的证明。
 
 ## 游戏主控集成材料
 
@@ -87,9 +93,11 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 
 以下均待有授权的维护者配置/核实；本地 YAML 存在不代表已部署。当前两仓 main 都未保护，**接收端尚未就绪，自动开关必须保持关闭**。
 
+开发身份已由用户确定采用暂名 `chwan-dev-agent` 的专用 GitHub App，尚未创建。它仅对现有两个项目取得 Contents / Pull requests / Workflows write，不授予 Administration、不进入 main 绕过名单，由 `chwan886` 独立最终批准。先完成本地提交，再按 [开发 App 接入清单](DEV-APP-SETUP.md)配置；不能退回 Owner 身份推送。开发 App 与下表的生产发送 App、游戏只读 App 分离。
+
 | 位置 | 设置 | 核实证据 |
 | --- | --- | --- |
-| 两仓 main Rules/branch protection | 强制 PR、独立 Review 至少 1 人、所需检查、过期批准处理、禁强推和删除、限制绕过；CODEOWNERS 由游戏第一阶段交付 | Rules 页面、有效规则 API、实际拒绝不合规合并的记录 |
+| 两仓 main Rules/branch protection | 强制 PR、独立 Review 至少 1 人、Code Owner review、所需检查、过期批准处理、禁强推和删除、限制绕过；两仓各自提供 CODEOWNERS | Rules 页面、有效规则 API、实际拒绝不合规合并的记录；独立开发身份与本人批准分离 |
 | 游戏仓库变量 | `EXPLORER_AUTOBUILD_ENABLED=false`，确认实际 CI job/check 名及文件路径 | 设置截图/只读 API 回执，主控接口材料 |
 | 工具 Environment 来源配置 | `GAME_CI_WORKFLOW_PATH` 为主控确认的 `.github/workflows/<name>.yml`；`GAME_REQUIRED_JOB_NAMES` 为精确 job 显示名 JSON 数组；`GAME_REQUIRED_CHECK_CONTEXTS` 为 PR 规则实际必需 context 的 JSON 数组 | 第一阶段报告、实际来源 run/jobs API及有效规则，对照 `needs` 覆盖全部 Fast/tools 检查；job 名与 context 分别核对，不自行猜测 |
 | 两仓 Environment | 游戏 `explorer-dispatch`，工具 `architecture-delivery`；分别仅允许 `main`，核实私有仓库账户方案支持并实际生效 | Environment 分支限制及只读配置回执；PR 不得获取秘密 |
@@ -97,9 +105,9 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 | 游戏 `explorer-dispatch` Environment | 变量 `EXPLORER_APP_CLIENT_ID`；秘密 `EXPLORER_APP_PRIVATE_KEY` | 只记录名称与归属，不输出值 |
 | 工具读取 App | 与发送 App 分离；仅安装 `GameDemo02`，Contents read、Actions read、Pull requests read；兼容读取 classic protection 另需 Administration read | 安装/令牌权限、main 保护、来源 run/jobs、合并 PR/Review 读取结果；不授予写权限 |
 | 工具 Environment | 变量 `GAME_READ_APP_CLIENT_ID`；秘密 `GAME_READ_APP_PRIVATE_KEY` | 只记录名称与归属，不输出值 |
-| 工具 Environment 访问确认 | 仅在核实产物读者不超过游戏读者后设 `INDEX_ACCESS_APPROVED=true`；缺失时接收端拒绝 | 双仓读者集合审阅日期、维护者与证据；同为 private 不足以确认 |
+| 工具 Environment 访问确认 | 审核工具仓库本身、日志/报告、工具包和索引读者均不超过游戏读者，才设 `INDEX_ACCESS_APPROVED=true`；缺失时包与索引均不能交付 | 双仓读者集合审阅日期、维护者与证据；同为 private 不足以确认 |
 | 工具 Environment 绕过审阅 | 审核两仓 main 规则中全部管理员、App、机器人绕过项，只保留明确必要的特定身份或空名单，再设 `RULE_BYPASS_REVIEWED=true` | 维护者/日期、规则及绕过清单回执；变量不构成程序验证“从未绕过”的证明 |
-| 工具 Unity 引用 | 受控 HTTPS `UNITY_REFERENCES_URL` 及锁定 `UNITY_REFERENCES_SHA256`；包中为许可允许的准确版本元数据 DLL 和清单 | Unity 版本、来源/许可证、包摘要、实际 DLL 摘要/最小引用列表；不得来自游戏脚本 |
+| 工具 Unity 引用 | Secret `UNITY_REFERENCES_URL` 保存短期私有只读 HTTPS URL；变量 `UNITY_REFERENCES_SHA256` 保存不可变 ZIP 摘要 | [供应方案](UNITY-REFERENCE-SUPPLY.md)中的版本/许可、DLL/ZIP 指纹、有效期与续期责任；不能把签名 URL 当普通变量或输出到日志 |
 | 工具产物权限 | 工具读者不超游戏读者；检查 Actions artifact retention 与下载权限 | 权限集合审阅和一次非授权访问被拒绝的证据 |
 
 工具 `GITHUB_TOKEN` 只授予自身所需 `contents: read`，不用于跨仓库。App 私钥只在受保护 Environment 中；令牌按需生成、限制单仓/显式权限、job 结束自动吊销，不使用管理员 PAT。官方 [create-github-app-token](https://github.com/actions/create-github-app-token) 提供短期令牌；[Environment 文档](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)说明秘密只在保护规则满足后可用，私有仓库功能受账户方案约束。

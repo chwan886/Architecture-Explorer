@@ -8,7 +8,8 @@ $destination=Join-Path $root '.ci-references'
 if(Test-Path -LiteralPath $destination){throw 'Unity reference directory already exists'}
 New-Item -ItemType Directory -Path $destination | Out-Null
 $archive=Join-Path $destination 'metadata.zip'
-Invoke-WebRequest -Uri $uri -OutFile $archive -MaximumRedirection 0
+try { Invoke-WebRequest -Uri $uri -OutFile $archive -MaximumRedirection 0 -TimeoutSec 120 -ErrorAction Stop }
+catch { throw 'Unity metadata download failed (network, authorization, redirect or expiry). The protected URL is omitted; review and refresh the approved URL/pin.' }
 if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:UNITY_REFERENCES_SHA256){throw 'Unity metadata ZIP fingerprint mismatch'}
 if((Get-Item -LiteralPath $archive).Length -gt 256MB){throw 'Unity metadata archive exceeds 256 MiB'}
 $zip=[IO.Compression.ZipFile]::OpenRead($archive)

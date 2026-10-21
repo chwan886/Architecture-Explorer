@@ -41,18 +41,26 @@ async function protectedReview(repository: string, branch: RecordValue, required
   assert.equal(branch.protected, true, `${repository} main is not protected`);
   const rules: RecordValue[] = await api(repository, '/rules/branches/main');
   assert.ok(Array.isArray(rules), 'Effective main rules are unreadable');
-  const reviewRule = rules.find(r => r.type === 'pull_request' && r.parameters?.required_approving_review_count >= 1);
-  const gameReviewPolicy = repository !== game || (reviewRule?.parameters?.require_code_owner_review === true &&
-    reviewRule.parameters.dismiss_stale_reviews_on_push === true && reviewRule.parameters.require_last_push_approval === true &&
-    reviewRule.parameters.required_review_thread_resolution === true);
+  // GitHub applies every active ruleset. Review count takes the strictest minimum;
+  // each required flag can be supplied by a different effective pull_request rule.
+  const reviewPolicies = rules.filter(r => r.type === 'pull_request').map(r => r.parameters ?? {});
+  const requiredApprovingReviewCount = reviewPolicies.reduce((strictest, policy) => {
+    const count = policy.required_approving_review_count ?? 0;
+    assert.ok(Number.isSafeInteger(count) && count >= 0, 'Effective review count is unreadable');
+    return Math.max(strictest, count);
+  }, 0);
+  const requiresReviewFlag = (name: string) => reviewPolicies.some(policy => policy[name] === true);
+  const requiresCodeOwnerReview = requiresReviewFlag('require_code_owner_review');
+  const gameReviewPolicy = repository !== game || ['dismiss_stale_reviews_on_push', 'require_last_push_approval', 'required_review_thread_resolution']
+    .every(requiresReviewFlag);
   // Multiple active rulesets may each supply only some mandatory contexts.
   const contexts = new Set(rules.filter(r => r.type === 'required_status_checks')
     .flatMap(r => r.parameters?.required_status_checks ?? []).map(check => check.context));
   const strictChecks = repository !== game || rules.some(r => r.type === 'required_status_checks' && r.parameters?.strict_required_status_checks_policy === true);
-  if (reviewRule && gameReviewPolicy && strictChecks && requiredContexts.every(context => contexts.has(context))) {
-    return { type: 'ruleset', requiresIndependentReview: true, requiredCheckContexts: requiredContexts, bypassPermissions: 'manually-reviewed' };
+  if (requiredApprovingReviewCount >= 1 && requiresCodeOwnerReview && gameReviewPolicy && strictChecks && requiredContexts.every(context => contexts.has(context))) {
+    return { type: 'ruleset', requiresIndependentReview: true, requiredApprovingReviewCount, requiredCheckContexts: requiredContexts, bypassPermissions: 'manually-reviewed' };
   }
-  assert.notEqual(repository, tool, 'Tool main requires a readable Ruleset covering PR review and the Tool CI check');
+  assert.notEqual(repository, tool, 'Tool main requires a readable Ruleset covering Code Owner review, PR review and the Tool CI check');
   // A 403/404 is a blocker, never evidence that protections exist.
   const protection = await api(repository, '/branches/main/protection');
   assert.ok(protection.required_pull_request_reviews?.required_approving_review_count >= 1, `${repository} requires independent PR Review`);
@@ -65,7 +73,8 @@ async function protectedReview(repository: string, branch: RecordValue, required
   for (const context of protection.required_status_checks?.contexts ?? []) contexts.add(context);
   assert.ok(requiredContexts.every(context => contexts.has(context)), `${repository} main does not require every confirmed PR check context`);
   assert.equal(protection.enforce_admins?.enabled, true, `${repository} protection must also enforce administrators`);
-  return { type: 'classic', requiresIndependentReview: true, requiredCheckContexts: requiredContexts, bypassPermissions: 'manually-reviewed' };
+  return { type: 'classic', requiresIndependentReview: true, requiredApprovingReviewCount: protection.required_pull_request_reviews.required_approving_review_count,
+    requiredCheckContexts: requiredContexts, bypassPermissions: 'manually-reviewed' };
 }
 
 /** Bind actual merged-PR and independent approval evidence to this precise main SHA. */
@@ -126,12 +135,19 @@ export async function authorizeDelivery(env: NodeJS.ProcessEnv, api: ReadApi) {
   if (gameMeta.private) assert.equal(toolMeta.visibility, 'private', 'Private game requires private evidence storage');
   const gameBranch = await api(game, '/branches/main'), toolBranch = await api(tool, '/branches/main');
   const gameProtection = await protectedReview(game, gameBranch, input.checkContexts, api);
+  // This records the tool's active platform policy, not reviewed-PR evidence for its SHA.
+  // The exact merged PR and approval evidence queried below belong to the game only.
   const toolProtection = await protectedReview(tool, toolBranch, [toolCheckContext], api);
   const compare = await api(game, `/compare/${input.sha}...main`);
   assert.ok(['ahead', 'identical'].includes(compare.status), 'Game SHA is outside allowed main history');
   const toolCompare = await api(tool, `/compare/${input.toolSha}...main`);
   assert.ok(['ahead', 'identical'].includes(toolCompare.status), 'Tool SHA is outside protected main history');
   const mergedPr = await reviewedMerge(input.sha, api);
+  const requiredGameApprovals = gameProtection.requiredApprovingReviewCount;
+  assert.ok(Number.isSafeInteger(requiredGameApprovals) && requiredGameApprovals >= 1, 'Effective game approval count is unreadable');
+  const independentReviewerCount = new Set(mergedPr.approvals.map(review => review.reviewerId)).size;
+  assert.ok(independentReviewerCount >= requiredGameApprovals,
+    `Merged PR independent approvals (${independentReviewerCount}) do not meet the effective required count (${requiredGameApprovals})`);
   const run = await api(game, `/actions/runs/${input.runId}/attempts/${input.runAttempt}`);
   assert.equal(String(run.id), input.runId, 'Source run ID mismatch');
   assert.equal(String(run.run_attempt), input.runAttempt, 'Source run attempt mismatch');
