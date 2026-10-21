@@ -1,11 +1,12 @@
 import path from 'node:path';
-import { createPrivateKey, createSign, type KeyObject } from 'node:crypto';
+import { createPrivateKey, createSign, randomUUID, type KeyObject } from 'node:crypto';
 import { lstat, open, realpath, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { canonical, ensureCacheDirectory, isWithin, readAuthorized } from '../packages/indexer/src/security.ts';
 import { prepareTaskPush, runTaskPush, type TaskPushPlan } from './dev-app-git.ts';
+import { readCiJobLog } from './dev-app-ci-logs.ts';
 
 export const DEV_APP = Object.freeze({ id: 5417611, clientId: 'Iv23lil3cvGyWUbx4yfS', slug: 'chwan-dev-agent', owner: 'chwan886',
   repository: 'chwan886/Architecture-Explorer', installedRepositories: ['chwan886/Architecture-Explorer', 'chwan886/GameDemo02'] });
@@ -37,6 +38,14 @@ function requireValue(condition: unknown, code: string): asserts condition { if 
 function samePermissions(actual: unknown, expected: Record<string, string>) {
   return actual !== null && typeof actual === 'object' && !Array.isArray(actual) &&
     Object.keys(actual).length === Object.keys(expected).length && Object.entries(expected).every(([name, value]) => (actual as Json)[name] === value);
+}
+function permissionDiagnostic(actual: unknown) {
+  const known = ['contents', 'metadata', 'pull_requests', 'workflows', 'actions'];
+  if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return { shape: 'invalid' };
+  return { shape: 'object', known: Object.fromEntries(known.filter(name => Object.hasOwn(actual, name)).map(name => {
+    const level = (actual as Json)[name];
+    return [name, ['read', 'write', 'none'].includes(level) ? level : 'invalid'];
+  })), unexpectedPermissionCount: Object.keys(actual).filter(name => !known.includes(name)).length };
 }
 
 export function createAppJwt(key: KeyObject, nowMs = Date.now()): string {
@@ -91,9 +100,15 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
     requireValue(Number.isSafeInteger(installation.id) && installation.id > 0 && installation.app_id === DEV_APP.id &&
       installation.app_slug === DEV_APP.slug && installation.account?.login === DEV_APP.owner && installation.account?.id === app.owner.id && installation.target_type === 'User' &&
       installation.repository_selection === 'selected' && installation.suspended_at === null, 'INSTALLATION_IDENTITY_OR_SCOPE_MISMATCH');
-    requireValue(samePermissions(installation.permissions, registeredPermissions), 'INSTALLATION_PERMISSION_BOUNDARY_MISMATCH');
     receipt.installation.id = installation.id;
     receipt.installation.repositorySelection = 'selected';
+    receipt.installation.observedPermissions = permissionDiagnostic(installation.permissions);
+    if (!samePermissions(installation.permissions, registeredPermissions)) {
+      const confirmation = await call('GET', `/app/installations/${installation.id}`, jwt, 200, 'INSTALLATION_CONFIRMATION_READ_FAILED');
+      receipt.installation.permissionConfirmation = { identityMatches: confirmation?.id === installation.id && confirmation?.app_id === DEV_APP.id &&
+        confirmation?.account?.id === app.owner.id, observedPermissions: permissionDiagnostic(confirmation?.permissions) };
+    }
+    requireValue(samePermissions(installation.permissions, registeredPermissions), 'INSTALLATION_PERMISSION_BOUNDARY_MISMATCH');
     receipt.installation.permissions = registeredPermissions;
     for (const repository of [options.repository]) {
       const membership = await call('GET', `/repos/${repository}/installation`, jwt, 200, 'TARGET_INSTALLATION_READ_FAILED');
@@ -272,8 +287,15 @@ export async function readTaskCi(options: Extract<AppOperation, { operation: 'st
     for (let page = 1; page <= 10; page++) {
       const result = await apiData(request, 'GET', `/repos/${options.repository}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100&page=${page}`, token, 200);
       requireValue(Array.isArray(result?.jobs), 'CI_JOBS_UNREADABLE');
-      for (const job of result.jobs) jobs.push({ id: job.id, name: job.name, status: job.status, conclusion: job.conclusion,
-        url: `https://github.com/${options.repository}/actions/runs/${run.id}/job/${job.id}` });
+      for (const job of result.jobs) {
+        requireValue(Number.isSafeInteger(job.id) && job.id > 0, 'CI_JOB_IDENTITY_INVALID');
+        const logDiagnostic = job.status === 'completed' && job.conclusion === 'failure'
+          ? await apiData(request, 'GET', `/repos/${options.repository}/actions/jobs/${job.id}/logs`, token, 200) : undefined;
+        jobs.push({ id: job.id, name: job.name, status: job.status, conclusion: job.conclusion,
+          url: `https://github.com/${options.repository}/actions/runs/${run.id}/job/${job.id}`,
+          steps: Array.isArray(job.steps) ? job.steps.map((step: Json) => ({ number: step.number, name: step.name, status: step.status, conclusion: step.conclusion })) : [],
+          ...(logDiagnostic ? { logDiagnostic } : {}) });
+      }
       if (result.jobs.length < 100) break;
       requireValue(page < 10, 'CI_JOB_PAGE_LIMIT');
     }
@@ -287,7 +309,15 @@ export async function readTaskCi(options: Extract<AppOperation, { operation: 'st
 
 // This is independent of gh/GCM/Owner credentials. Authentication never leaves this process.
 const githubRequest: AuthRequest = async (method, endpoint, credential, body) => {
-  const response = await fetch(`https://api.github.com${endpoint}`, { method, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(15000),
+  const log = /^\/repos\/(chwan886\/(?:Architecture-Explorer|GameDemo02))\/actions\/jobs\/([1-9][0-9]*)\/logs$/.exec(endpoint);
+  if (method === 'GET' && log) return { status: 200, data: await readCiJobLog(log[1], Number(log[2]), credential) };
+  const target = new URL(`https://api.github.com${endpoint}`);
+  // Permission changes must be re-observed, not inferred from the settings UI or a stale metadata response.
+  // A non-secret nonce complements cache headers; every identity/permission check below is unchanged.
+  if (method === 'GET' && (/^\/app\/installations(?:\/\d+)?$/.test(target.pathname) || /^\/repos\/chwan886\/(?:Architecture-Explorer|GameDemo02)\/installation$/.test(target.pathname))) {
+    target.searchParams.set('_verification_nonce', randomUUID());
+  }
+  const response = await fetch(target, { method, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${credential}`, accept: 'application/vnd.github+json', 'cache-control': 'no-cache, no-store, max-age=0', 'X-GitHub-Api-Version': '2026-03-10', 'user-agent': 'chwan-dev-agent-local-verification',
       ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const requestId = response.headers.get('x-github-request-id') ?? undefined;

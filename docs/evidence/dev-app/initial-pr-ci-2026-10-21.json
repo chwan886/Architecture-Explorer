@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 2,
+  "mode": "status",
+  "repository": "chwan886/Architecture-Explorer",
+  "checkedAt": "2026-10-21T23:04:50.310Z",
+  "outcome": "passed",
+  "app": {
+    "id": 5417611,
+    "clientId": "Iv23lil3cvGyWUbx4yfS",
+    "slug": "chwan-dev-agent",
+    "owner": "chwan886",
+    "verified": true,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "installation": {
+    "verifiedTargetMembership": [
+      "chwan886/Architecture-Explorer"
+    ],
+    "exactRepositorySetVerified": false,
+    "exactRepositorySet": "not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories",
+    "id": 173913073,
+    "repositorySelection": "selected",
+    "observedPermissions": {
+      "shape": "object",
+      "known": {
+        "contents": "write",
+        "metadata": "read",
+        "pull_requests": "write",
+        "workflows": "write",
+        "actions": "read"
+      },
+      "unexpectedPermissionCount": 0
+    },
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "token": {
+    "requestedRepositories": [
+      "chwan886/Architecture-Explorer"
+    ],
+    "requestedPermissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read"
+    },
+    "issued": true,
+    "secretRecorded": false,
+    "revocation": "confirmed-204",
+    "revokedTokenProbe": "rejected-401",
+    "revokedTokenProbeStatuses": [
+      200,
+      401
+    ],
+    "revokedTokenProbes": [
+      {
+        "status": 200,
+        "elapsedMs": 157,
+        "requestId": "CE8E:2F0509:1A7BF9:547C9B:6AD94513"
+      },
+      {
+        "status": 401,
+        "elapsedMs": 561,
+        "requestId": "CE8D:38B68F:1E2010:637F0C:6AD94515"
+      }
+    ],
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read",
+      "metadata": "read"
+    },
+    "expiresAt": "2026-10-22T00:04:50.000Z",
+    "visibleRepositories": [
+      "chwan886/Architecture-Explorer"
+    ]
+  },
+  "ownerAuthenticationUsed": false,
+  "performedOperations": {
+    "push": false,
+    "createPr": false,
+    "updatePr": false
+  },
+  "forbiddenOperations": {
+    "pushMain": false,
+    "forcePush": false,
+    "approve": false,
+    "merge": false,
+    "dispatch": false,
+    "modifyGitConfiguration": false
+  },
+  "readProbe": {
+    "repository": "chwan886/Architecture-Explorer",
+    "ref": "refs/heads/main",
+    "sha": "e388133a859d6f5494d69a2d1dec0ab947c7ad83",
+    "contentsReadVerified": true
+  },
+  "ci": {
+    "pullRequest": {
+      "number": 1,
+      "url": "https://github.com/chwan886/Architecture-Explorer/pull/1",
+      "headSha": "c3a619fc1dc025ce16438266a0c195c942a3ca48",
+      "branch": "codex/github-game-delivery",
+      "base": "main",
+      "author": {
+        "login": "chwan-dev-agent[bot]",
+        "id": 346053751,
+        "type": "Bot"
+      }
+    },
+    "runs": [
+      {
+        "id": 39688848223,
+        "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223",
+        "workflow": ".github/workflows/tool-ci.yml",
+        "attempt": 1,
+        "headSha": "c3a619fc1dc025ce16438266a0c195c942a3ca48",
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": [
+          {
+            "id": 119529680070,
+            "name": "Tool / typecheck, tests and builds",
+            "status": "completed",
+            "conclusion": "failure",
+            "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223/job/119529680070",
+            "steps": [
+              {
+                "number": 1,
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 2,
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 3,
+                "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 4,
+                "name": "Locked setup, typecheck, tests, frontend and C# worker",
+                "status": "completed",
+                "conclusion": "failure"
+              },
+              {
+                "number": 5,
+                "name": "Assert sources and locks were not changed",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 6,
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 11,
+                "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 12,
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 13,
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ],
+            "logDiagnostic": {
+              "outcome": "read",
+              "excerpt": [
+                "2026-10-21T22:52:31.7750408Z ✔ SSE 在请求体结束后继续推送扫描状态，服务关闭时释放活动连接 (969.7613ms)",
+                "2026-10-21T22:52:32.1178463Z ✔ sidecar does not disclose its Bearer [credential redacted] a wrong service, redirect or mismatched configured port (68.7995ms)",
+                "2026-10-21T22:52:34.0348227Z ✖ real SDK stdio → authenticated broker → index/evidence → browser protocol acknowledgement (846.4233ms)",
+                "2026-10-21T22:52:34.6840445Z ✔ MCP tool arguments are strict and expose no URL, path, command or mutation capability (94.1655ms)",
+                "2026-10-21T22:52:34.6854529Z ✔ MCP convenience tools preserve snapshot/flow, require explicit CAS, and never upgrade a pending receipt (76.1441ms)",
+                "2026-10-21T22:52:34.6861938Z ✔ view switching projects many-to-many focus through the same real flow and refuses unmapped semantics (66.7723ms)",
+                "2026-10-21T22:52:36.1425040Z ✔ Python records explicit local/callback argument-to-parameter bindings without inventing callback calls (71.1444ms)",
+                "2026-10-21T22:52:48.1596151Z ℹ duration_ms 287672.7225",
+                "2026-10-21T22:52:48.1648904Z ",
+                "2026-10-21T22:52:48.1649663Z ✖ failing tests:",
+                "2026-10-21T22:52:48.1650228Z ",
+                "2026-10-21T22:52:48.1650785Z test at tests\\bridge-control.test.ts:195:1",
+                "2026-10-21T22:52:48.1653689Z ✖ runtime is explicitly published with protected permissions and SSE only sends replayable hints with graceful close (122.5904ms)",
+                "2026-10-21T22:52:48.1657424Z   Error: 联动目录存在其他主体的显式访问权限；未发布 MCP 凭据",
+                "2026-10-21T22:52:48.1660214Z       at bridgeFailure (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:12:97)",
+                "2026-10-21T22:52:48.1662155Z       at BridgeFiles.protect (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:40:17)",
+                "2026-10-21T22:52:48.1664185Z       at async BridgeIdentity.publishLocked (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:103:5)",
+                "2026-10-21T22:52:48.1666285Z       at async BridgeFiles.publication (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:76:67)",
+                "2026-10-21T22:52:48.1668271Z       at async <anonymous> (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-control.ts:86:99)",
+                "2026-10-21T22:52:48.1670160Z       at async <anonymous> (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-control.ts:76:20) {",
+                "2026-10-21T22:52:48.1671824Z     code: 'RUNTIME_PERMISSIONS',",
+                "2026-10-21T22:52:48.1674715Z ",
+                "2026-10-21T22:52:48.1675154Z test at tests\\bridge-control.test.ts:210:1",
+                "2026-10-21T22:52:48.1676524Z ✖ runtime publication is serialized across server instances and cannot replace a live instance on another port (106.3034ms)",
+                "2026-10-21T22:52:48.1677867Z   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+                "2026-10-21T22:52:48.1678969Z   ",
+                "2026-10-21T22:52:48.1679525Z   0 !== 1",
+                "2026-10-21T22:52:48.1685297Z   ",
+                "2026-10-21T22:52:48.1686332Z       at TestContext.<anonymous> (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\tests\\bridge-control.test.ts:216:10)",
+                "2026-10-21T22:52:48.1691392Z       at async Test.run (node:internal/test_runner/test:1409:7)",
+                "2026-10-21T22:52:48.1692385Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {",
+                "2026-10-21T22:52:48.1693257Z     generatedMessage: true,",
+                "2026-10-21T22:52:48.1693756Z     code: 'ERR_ASSERTION',",
+                "2026-10-21T22:52:48.1697782Z     actual: 0,",
+                "2026-10-21T22:52:48.1698633Z     expected: 1,",
+                "2026-10-21T22:52:48.1699125Z     operator: 'strictEqual',",
+                "2026-10-21T22:52:48.1699623Z     diff: 'simple'",
+                "2026-10-21T22:52:48.1700025Z   }",
+                "2026-10-21T22:52:48.1700245Z ",
+                "2026-10-21T22:52:48.1700474Z test at tests\\mcp-stdio.test.ts:17:1",
+                "2026-10-21T22:52:48.1701655Z ✖ real SDK stdio → authenticated broker → index/evidence → browser protocol acknowledgement (846.4233ms)",
+                "2026-10-21T22:52:48.1703143Z   Error: 联动目录存在其他主体的显式访问权限；未发布 MCP 凭据",
+                "2026-10-21T22:52:48.1704174Z       at bridgeFailure (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:12:97)",
+                "2026-10-21T22:52:48.1728136Z       at BridgeFiles.protect (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:40:17)",
+                "2026-10-21T22:52:48.1737649Z       at async BridgeIdentity.publishLocked (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:103:5)",
+                "2026-10-21T22:52:48.1739796Z       at async BridgeFiles.publication (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-auth.ts:76:67)",
+                "2026-10-21T22:52:48.1741830Z       at async <anonymous> (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-control.ts:86:99)",
+                "2026-10-21T22:52:48.1743436Z       at async <anonymous> (D:\\a\\Architecture-Explorer\\Architecture-Explorer\\apps\\server\\src\\bridge-control.ts:76:20) {",
+                "2026-10-21T22:52:48.1744532Z     code: 'RUNTIME_PERMISSIONS',",
+                "2026-10-21T22:52:48.3018287Z      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "2026-10-21T22:52:48.3019863Z      | tests failed (1)",
+                "2026-10-21T22:52:48.3315644Z ##[error]Process completed with exit code 1.",
+                "2026-10-21T22:52:48.3635800Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "2026-10-21T22:52:48.3636303Z with:",
+                "2026-10-21T22:52:48.3636638Z   name: tool-checks-65b5e5cf5e6bd77ee751e7dab5d5b8179c53eafd-39688848223-1",
+                "2026-10-21T22:52:48.3637045Z   path: test-results/",
+                "2026-10-21T22:52:48.3637261Z   retention-days: 14",
+                "2026-10-21T22:52:48.3637491Z   if-no-files-found: warn",
+                "2026-10-21T22:52:48.3637717Z   compression-level: 6",
+                "2026-10-21T22:52:48.3637915Z   overwrite: false"
+              ],
+              "truncated": true,
+              "byteCount": 88660
+            }
+          },
+          {
+            "id": 119532359385,
+            "name": "Tool / protected package delivery",
+            "status": "completed",
+            "conclusion": "skipped",
+            "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223/job/119532359385",
+            "steps": []
+          }
+        ]
+      }
+    ],
+    "complete": true,
+    "outcome": "failure"
+  },
+  "privateKeyAcl": {
+    "checked": true,
+    "owner": "Administrators",
+    "allowPrincipals": [
+      "current-user",
+      "SYSTEM",
+      "Administrators"
+    ],
+    "inherited": true,
+    "scope": "directory-and-file",
+    "linksRejected": true
+  }
+}

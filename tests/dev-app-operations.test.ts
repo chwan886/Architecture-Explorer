@@ -33,7 +33,9 @@ function fixture(options: AppOperation, config: { existing?: boolean; actionsRea
     else if (endpoint.endsWith('/pulls') && method === 'POST') result = { status: 201, data: pr };
     else if (/\/pulls\/7$/.test(endpoint)) result = { status: 200, data: pr };
     else if (endpoint.includes('/actions/runs?')) result = { status: 200, data: { workflow_runs: [{ id: 8, run_attempt: 2, head_sha: sha, event: 'pull_request', path: '.github/workflows/tool-ci.yml', status: 'completed', conclusion: 'success', html_url: `https://github.com/${options.repository}/actions/runs/8`, pull_requests: [{ number: 7, head: { sha } }] }] } };
-    else if (endpoint.includes('/attempts/2/jobs?')) result = { status: 200, data: { jobs: [{ id: 9, name: 'Tool / typecheck, tests and builds', status: 'completed', conclusion: 'success' }] } };
+    else if (endpoint.includes('/attempts/2/jobs?')) result = { status: 200, data: { jobs: [{ id: 9, name: 'Tool / typecheck, tests and builds', status: 'completed', conclusion: 'success',
+      steps: [{ number: 1, name: 'Checks', status: 'completed', conclusion: 'success' }] }] } };
+    else if (endpoint.endsWith('/actions/jobs/9/logs')) result = { status: 200, data: { outcome: 'unreadable', reason: 'CI_LOG_REDIRECT_UNAVAILABLE' } };
     else if (endpoint === '/graphql') result = { status: 200, data: { errors: [{ message: 'Resource not accessible by integration' }] } };
     else throw Error(`Unexpected fixture route ${method} ${endpoint}`);
     assert.equal(credential, endpoint.startsWith('/app') || endpoint.endsWith('/installation') ? jwt : token);
@@ -132,6 +134,31 @@ test('CI reads exact PR head and exact run attempt jobs with a single-repository
     { contents: 'read', pull_requests: 'read', actions: 'read' });
   assert.ok(f.calls.some(call => call.endpoint.includes(`/actions/runs?event=pull_request&head_sha=${sha}`)));
   assert.ok(f.calls.some(call => call.endpoint.includes('/runs/8/attempts/2/jobs')));
+  assert.equal(result.ci.runs[0].jobs[0].steps[0].name, 'Checks');
+  assert.ok(!f.calls.some(call => call.endpoint.endsWith('/logs')));
+});
+
+test('only a failed valid job gets read-only log diagnostics; unavailable logs never hide failure or prevent revocation', async () => {
+  const options: AppOperation = { operation: 'status', repository: 'chwan886/Architecture-Explorer', prNumber: 7, expectedHead: sha };
+  const f = fixture(options, { actionsRead: true, mutate: (_method, endpoint, result) => {
+    if (endpoint.includes('/actions/runs?')) result.data.workflow_runs[0].conclusion = 'failure';
+    if (endpoint.includes('/attempts/2/jobs?')) result.data.jobs[0].conclusion = 'failure';
+    return result;
+  } });
+  const result = await f.run();
+  assert.equal(result.outcome, 'passed');
+  assert.equal(result.ci.outcome, 'failure');
+  assert.deepEqual(result.ci.runs[0].jobs[0].logDiagnostic, { outcome: 'unreadable', reason: 'CI_LOG_REDIRECT_UNAVAILABLE' });
+  assert.equal(f.calls.filter(call => call.endpoint.endsWith('/logs')).length, 1);
+  assert.equal(result.token.revocation, 'confirmed-204');
+  for (const id of [0, -1, 1.5, '9/../../8']) {
+    const invalid = fixture(options, { actionsRead: true, mutate: (_method, endpoint, result) => {
+      if (endpoint.includes('/attempts/2/jobs?')) { result.data.jobs[0].id = id; result.data.jobs[0].conclusion = 'failure'; }
+      return result;
+    } });
+    assert.equal((await invalid.run()).failureCode, 'CI_JOB_IDENTITY_INVALID');
+    assert.ok(!invalid.calls.some(call => call.endpoint.endsWith('/logs')));
+  }
 });
 
 test('CI missing permissions, GraphQL errors, no matching runs and failed runs never become successful CI', async () => {

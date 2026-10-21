@@ -11,7 +11,7 @@
 - `chwan886/Architecture-Explorer`
 - `chwan886/GameDemo02`
 
-App 初次核实的注册和安装权限为 Contents、Pull requests、Workflows write，以及隐含 Metadata read。用户本轮已选择增加 **Actions read** 用于单仓CI结果查询；需在App设置保存并由安装接受更新，实际是否生效以每次API核实为准。不会增加 Actions write、Checks、Commit statuses、Administration、Secrets、Environments、Variables 或账号/组织权限。Workflows write 只用于工作流文件写入，不授权重跑、dispatch、配置 Actions 或修改规则。[权限参考](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps)、[Git 访问权限](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-git-access)
+App 初次核实的注册和安装权限为 Contents、Pull requests、Workflows write，以及隐含 Metadata read。用户随后保存并接受 **Actions read** 用于单仓CI结果查询；2026-10-21T23:01:29Z 已由 API 核实 App 及安装均具备该只读权限。实际权限仍以每次 API 核实为准。不会增加 Actions write、Checks、Commit statuses、Administration、Secrets、Environments、Variables 或账号/组织权限。Workflows write 只用于工作流文件写入，不授权重跑、dispatch、配置 Actions 或修改规则。[权限参考](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps)、[Git 访问权限](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-git-access)
 
 安装应使用 Only on this account / Only select repositories。App JWT 能核对 selected、唯一账号安装及两个目标仓库的归属，但不能列举安装的完整仓库集合；单仓 IAT 列表也不能排除第三仓。**“恰好只安装上述两仓”仍待用户在 GitHub 安装设置 UI 核实并保留非秘密证据**；入口不为此额外铸造覆盖整个 installation 的 token。
 
@@ -63,7 +63,7 @@ Push 使用工具侧隔离的 bare Git 传输目录和受控 alternates 读取�
 
 ## Status 的实际能力与限制
 
-App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真实 runs，以及相应 run attempt 的 jobs，记录实际 run URL、attempt、命名 job 和结论；不重跑、取消或 dispatch。缺结果、未完成、失败、取消或读取受阻均如实记录，不把空列表、旧 SHA 或别的 attempt 当成功。[Workflow runs REST](https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2026-03-10)
+App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真实 runs，以及相应 run attempt 的 jobs/steps，记录实际 run URL、attempt、命名 job 和结论；不重跑、取消或 dispatch。已完成的失败 job 会用同一个单仓 token 读取有限脱敏错误上下文；日志下载只允许固定 GitHub API 返回的受限 HTTPS Actions 存储主机，下载请求不携带 Authorization，拒绝后续跳转，限制时长和字节量。签名 URL、token、JWT、PEM 与原始错误响应不写回执；下载失败不掩盖 job 的失败结论。缺结果、未完成、失败、取消或读取受阻均如实记录，不把空列表、旧 SHA 或别的 attempt 当成功。回执顶层 `outcome` 表示查询与凭据撤销是否通过，CI 是否通过必须读取 `ci.outcome` 和实际 job 结论。[Workflow runs REST](https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2026-03-10)、[Job 日志 REST](https://docs.github.com/en/rest/actions/workflow-jobs?apiVersion=2026-03-10#download-job-logs-for-a-workflow-run)
 
 没有 Actions read 时，仅尝试现有 token 可访问的 GraphQL `statusCheckRollup` 聚合，并核对 PR head/commit oid；HTTP 200 仍检查 GraphQL errors。null、错误或部分数据标为不可读；即使聚合是 SUCCESS，也不能冒充命名 CI、实际 run/产物证据或已满足分支规则。REST Checks/Commit statuses 另需相应 read 权限，本入口不增加这些权限，也不通过 Owner 认证补读。完整远端 CI 证据不足时保留未完成项。[Rollup 字段](https://docs.github.com/en/graphql/reference/commits#statuscheckrollup)、[GraphQL 权限需实际测试](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app#choosing-permissions-for-graphql-api-access)
 
@@ -87,12 +87,16 @@ App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真�
 | --- | --- |
 | App 与旧工具只读认证 | 已核实上述身份和安装归属；首失败及第二次通过回执保留 |
 | 安装精确范围 | 待 UI 证明恰好两仓，没有第三仓 |
-| 共享四模式入口 | 本地344项完整回归及29项收尾针对验证通过；另10项Git诊断/alternates/nonff/HTTP Basic测试通过。真实写入以本机回交报告为准 |
+| 共享四模式入口 | 最新完整本地355项通过，零失败、零跳过；含原生SID别名、失败job日志脱敏及传输边界，见验收记录。真实写入以本机回交报告为准 |
 | 游戏 Verify | 真实游戏单仓只读验证已通过，见已入库脱敏回执；不直接推游戏 |
 | 工具 Push / PR | 本轮已授权仅本次工具任务分支和 main PR；准确 SHA、App 作者 PR URL 和实际操作结果以本机回交报告/回执为准 |
-| Status / 远端 CI | Actions read 配置选择待用户答复；准确 head 的真实结果与可读范围以本机报告为准，无法读取则明确缺项 |
+| Status / 远端 CI | Actions read 已经真实 API 核实；已读到 PR #1 准确 head 的真实运行和失败 job，后续修复和最终 head 结果以本机回交报告为准 |
 | main / Code Owner 规则 | 待独立设置及实际验收，App 无 bypass |
 | 生产身份 / Environment / Unity 引用 | 与开发 App 分离，仍按原交付合同接入与手测 |
 | 自动发送 | 继续关闭，不随开发 App 验证、推送或建 PR 自动开启 |
 
 未填项目不得替换成成功、虚构编号或链接；新增实际结果由工具主控按回执补录。权限不足或身份不符就报告，不自动扩大权限、改用 Owner、改写历史或撤销已经合并的游戏。
+
+安装权限与 App 登记不匹配时，回执只记录固定权限名的有限等级和未知权限项数量；未知键和值不进入回执。入口以同一 JWT 对照指定安装端点，仍要求原精确权限校验通过，不因确认请求成功而忽略不匹配。此阶段不签发安装 token，故不存在需要撤销的已签发 token。
+
+22:59 UTC 的安装列表及指定安装端点尚未返回 actions，入口安全停止；23:01 UTC 在安装 metadata GET 加非秘密随机查询参数后，完整身份/权限/单仓校验通过，并读到真实 CI，原 token 已撤销 204 且最终 401。随机参数仅补充 no-cache/no-store 请求头，不保证 GitHub 缓存行为，也不能由这次先后观察断言旧响应的根因。查询参数不包含凭据，所有授权校验保持不变。

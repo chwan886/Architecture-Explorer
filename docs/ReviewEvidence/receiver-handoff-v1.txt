@@ -247,3 +247,15 @@ Push核对本地origin、clean工作区、当前codex任务分支和准确Expect
 本轮本地测试、构建与安全审阅见 docs/DELIVERY-VALIDATION.md；工具实际push/PR/CI结果由工具主控填入本机回交报告 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt，避免将实现或请求接受误作CI成功，最终head按该回执/真实PR核对。
 私有CI完整run/job查询需Actions read；若未配置或GraphQL不可读，必须明确权限缺项，不用Owner身份兜底、不编造成功或run链接。
 PR不等于main已合入。接收端仍需第七节的受保护规则、Environment、生产只读/发送身份、Unity供应和精确SHA手测，自动发送继续关闭。
+
+十一、App Actions read 与首轮真实 CI 收尾（2026-10-21）
+
+App及安装Actions read已由API核实，Status使用单仓Contents/Pull requests/Actions read，finally撤销204并确认原token401。此前安装权限不匹配的失败保持原记录，未借Owner凭据。
+真实PR：https://github.com/chwan886/Architecture-Explorer/pull/1；作者chwan-dev-agent[bot]（Bot ID 346053751），base main。
+首次head c3a619fc1dc025ce16438266a0c195c942a3ca48的真实CI失败：https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223。
+失败日志定位到MCP发布时RUNTIME_PERMISSIONS；发现并修复SDDL别名直接比较的问题，改为Windows原生展开SID后仍只允许当前用户与SYSTEM，拒绝其他账号、管理员组和未知ACE。旧runner实际SID未取得，不编造旧身份或把本地通过替代远端修复结果。
+本地最终完整355项测试通过，零失败、零跳过；Typecheck、前端、C#构建通过。报告与JUnit：docs/evidence/dev-app/final-local-checks.json、final-local-junit.xml。
+共享Status增补真实steps与失败job有限脱敏日志；下载不携带Authorization、不记录签名URL或凭据、不扩大App权限。
+游戏在新增Actions read后再次Verify通过，仍只签发GameDemo02单仓Contents read，main f2761432cfa68140b7b095112cc5e0ee2fda3cd4，撤销204+401；未接触游戏工作区。
+最终已推head、App推送回执和新CI真实结论以 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt 及同名JSON为准。
+本轮仍不批准、不合并、不直推main、不强推、不修改Owner登录/全局Git；自动发送关闭，生产接收端REMOTE_NOT_READY。

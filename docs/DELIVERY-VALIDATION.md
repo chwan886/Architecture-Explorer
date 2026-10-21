@@ -74,3 +74,15 @@ PR 链接实际打开固定的 `https://github.com/chwan886/GameDemo02/pulls`。
 首次真实工具推送退出128，未确认成功；原IAT已撤销204+401，回执保留 `.tmp/shared-tool-push-1.json`。后续新增Git固定脱敏诊断、显式Schannel证书/吊销检查，**9/9** 无网络Git夹具及Typecheck通过，包含实际alternates精确SHA推送和非快进拒绝。旧失败原因未知，不将TLS配置差异直接写成已证实原因，也不恢复Owner凭据或降低TLS检查。
 
 第二次真实推送明确为凭据helper失败，回执 `.tmp/shared-tool-push-2.json` 保留且IAT已撤销。随后在仅loopback的真实Git HTTP Basic协商中复现：Git合法重复 `capability[]` 被旧Map当标量拒绝。按[官方凭据协议](https://git-scm.com/docs/git-credential#_inputoutput_format)支持多值 capability[]/wwwauth[]/state[]，敏感标量重复继续拒绝，固定拒绝码不带原始值；新增HTTP Basic复现后 **10/10** Git测试及Typecheck通过。没有放宽host/path/username、TLS或Owner回退限制；真实远端结果仍以回交报告为准。
+
+## Actions read 生效与首轮远端诊断
+
+App 注册及安装的 Actions read 已于 `2026-10-21T23:01:29Z` 经完整 API 校验通过。此前不匹配回执保留，入口在签发 token 前停止；新增固定字段权限诊断及安装 metadata 非秘密随机参数后仍要求精确权限一致，不宣称已证实缓存根因。游戏随后再次只读 Verify 通过，IAT 仍只有游戏单仓 Contents read，撤销 204 并确认原 token 401，见本机 `.tmp/shared-game-verify-2.json`。
+
+真实 [PR #1](https://github.com/chwan886/Architecture-Explorer/pull/1) 作者为 `chwan-dev-agent[bot]`。首个 head `c3a619fc1dc025ce16438266a0c195c942a3ca48` 的 [Tool CI 运行](https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223) 失败，不能用本地通过替代。Steps 与有限脱敏日志显示三项 MCP 测试在 `BridgeFiles.protect` 以 `RUNTIME_PERMISSIONS` 拒绝发布。诊断读取使用该仓 Actions read token；下载不转发 Authorization，签名 URL/凭据/原始响应不落盘，最终撤销 204 并确认 401。
+
+排查发现旧 SDDL 检查把 trustee 别名与当前用户完整 SID 直接比较。现改用 Windows 原生 `RawSecurityDescriptor` 将别名展开成 SID，仍仅允许当前用户和 SYSTEM，不一般允许 LA、Administrators 或 Users，不跳过测试或放宽门禁。新夹具实际核实 LA 对应本机 RID500 时的精确身份等价，以及别的用户、BA/BU、错误描述符的拒绝。远端 runner 的实际 SID 未从旧日志取得，故不把该缺陷直接写成已证实的旧 runner 身份；最终修复结果以新 head 的真实运行验证。
+
+后续准确 head、完整本地检查与真实 CI 结论由 `.tmp/shared-app-handoff-20261021.txt` 及同名 JSON 记录。生产 package job 在 PR 中按条件跳过；它不是测试跳过，PR 不取得生产 Environment/跨仓凭据。生产接收端仍未合入 main，不能由 PR CI 推导为已就绪。
+
+本轮最终 `Tools/ci-check.ps1`：**355/355 通过，0 失败、0 跳过**，Typecheck、前端与 C# 构建成功。新证据独立保存：[最终 JUnit](evidence/dev-app/final-local-junit.xml)、[检查摘要](evidence/dev-app/final-local-checks.json)、[首轮真实 CI 脱敏回执](evidence/dev-app/initial-pr-ci-2026-10-21.json)、[Actions read 生效后的游戏单仓 Verify](evidence/dev-app/game-verify-actions-read-2026-10-21.json)。此前失败与历史回执不覆盖。

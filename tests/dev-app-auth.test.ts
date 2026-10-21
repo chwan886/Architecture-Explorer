@@ -20,6 +20,7 @@ function fixture(mutate?: Mutation) {
     let result: any;
     if (endpoint === '/app') result = { status: 200, data: { id: DEV_APP.id, client_id: DEV_APP.clientId, slug: DEV_APP.slug, owner, permissions } };
     else if (endpoint === '/app/installations?per_page=100&page=1') result = { status: 200, data: [installation] };
+    else if (endpoint === '/app/installations/789') result = { status: 200, data: installation };
     else if (DEV_APP.installedRepositories.some(repo => endpoint === `/repos/${repo}/installation`)) result = { status: 200, data: installation };
     else if (method === 'POST' && endpoint === '/app/installations/789/access_tokens') result = { status: 201, data: {
       token: tokenSecret, permissions: { contents: 'read', metadata: 'read' }, repository_selection: 'selected', repositories: [repository],
@@ -77,6 +78,25 @@ test('wrong App identity or excessive App/installation permissions prevents toke
   const f = fixture((_method, endpoint, result) => { if (endpoint.startsWith('/app/installations?')) result.data[0].permissions.actions = 'write'; return result; });
   assert.equal((await f.run()).failureCode, 'INSTALLATION_PERMISSION_BOUNDARY_MISMATCH');
   assert.ok(!f.calls.some(call => call.method === 'POST'));
+});
+
+test('installation permission mismatch reports only fixed permission names and levels before minting', async () => {
+  for (const extra of [false, true]) {
+    const f = fixture((_method, endpoint, result) => {
+      if (endpoint === '/app') result.data.permissions.actions = 'read';
+      if (endpoint.startsWith('/app/installations?') && extra) {
+        result.data[0].permissions.actions = tokenSecret;
+        result.data[0].permissions[jwtSecret] = tokenSecret;
+      }
+      return result;
+    });
+    const result = await f.run();
+    assert.equal(result.failureCode, 'INSTALLATION_PERMISSION_BOUNDARY_MISMATCH');
+    assert.equal(result.installation.id, 789);
+    assert.deepEqual(result.installation.observedPermissions, { shape: 'object',
+      known: { ...permissions, ...(extra ? { actions: 'invalid' } : {}) }, unexpectedPermissionCount: extra ? 1 : 0 });
+    assert.ok(!f.calls.some(call => call.method === 'POST'));
+  }
 });
 
 test('all-repository, wrong-owner, suspended, multiple or mismatched installation membership fails before minting', async () => {
