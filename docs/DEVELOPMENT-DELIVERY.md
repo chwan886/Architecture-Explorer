@@ -93,7 +93,7 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 
 以下均待有授权的维护者配置/核实；本地 YAML 存在不代表已部署。当前两仓 main 都未保护，**接收端尚未就绪，自动开关必须保持关闭**。
 
-开发身份已由用户确定采用暂名 `chwan-dev-agent` 的专用 GitHub App，尚未创建。它仅对现有两个项目取得 Contents / Pull requests / Workflows write，不授予 Administration、不进入 main 绕过名单，由 `chwan886` 独立最终批准。先完成本地提交，再按 [开发 App 接入清单](DEV-APP-SETUP.md)配置；不能退回 Owner 身份推送。开发 App 与下表的生产发送 App、游戏只读 App 分离。
+开发 App `chwan-dev-agent` 已创建，App ID `5417611`、Installation ID `173913073` 已通过 API 核实，两仓安装归属与工具单仓 Contents read 验证/撤销通过。注册/安装仅 Contents / Pull requests / Workflows write 与隐含 Metadata read，无 Administration；精确安装集合仍待 UI 证明。当前[本机入口](DEV-APP-SETUP.md)只有只读验证，尚无 Git helper/PR 写入认证，本轮无推送/PR/合并授权，不回退 Owner。main 绕过与规则仍待独立审核，由 `chwan886` 最终批准。开发 App 与下表的生产发送 App、游戏只读 App 分离。
 
 | 位置 | 设置 | 核实证据 |
 | --- | --- | --- |

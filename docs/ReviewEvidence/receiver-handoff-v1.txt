@@ -144,7 +144,7 @@ PR 外链确实跳到固定游戏 PR 列表；当时内置浏览器未登录，�
 2. 工具实现仅本地分支；尚未通过工具 PR 合入默认 main。已部署 workflow SHA=null。
 3. 两仓 main 保护未启用/未完成有效验收。工具自身 CODEOWNERS 已补齐，需 Ruleset：PR + 至少1独立 Review + Code Owner review + 必需 Tool / typecheck, tests and builds；游戏需第一阶段约定的完整规则。文件不代替平台设置，唯一 Owner 不能批准自己作者的 PR。
 4. 游戏 explorer-dispatch 和工具 architecture-delivery 的 main-only 限制、可用账户方案、保护与审批规则未配置/未核实；PR/tag 不得取得跨仓秘密。
-5. 受限 App 与秘密未配置/未核实。用户已选定尚未创建的开发 App，暂名 chwan-dev-agent，仅两个现有项目的 Contents/Pull requests/Workflows write，无 Administration、不加入 main bypass；chwan886 最终独立批准。开发、生产发送、游戏读取三类身份分开，不能使用管理员 PAT，不能用 Owner 代开发身份推送。
+5. 开发 App chwan-dev-agent 已创建并完成工具单仓只读认证，App ID 5417611、Installation ID 173913073；注册/安装权限为 Contents/Pull requests/Workflows write + Metadata read，无 Administration。两仓安装归属已核实，恰好两仓仍待 UI 证据；没有 Git/PR 写入认证。生产发送与游戏读取 App/秘密仍未配置/未核实，三类身份分开，不能使用管理员 PAT 或回退 Owner。main bypass/规则仍待独立核实，chwan886 最终批准。
 6. Unity 供应方案已准备于 docs/UNITY-REFERENCE-SUPPLY.md；真实 Editor 版本、许可、私有不可变 ZIP/DLL 指纹、短期 URL 与续期责任尚待交付。当前 CoreModule 静态分析策略不等同 Unity facade 插件编译或完整 Unity 语义，不借用本机路径或造类型。
 7. 产物访问集合与绕过名单未人工确认。INDEX_ACCESS_APPROVED 和 RULE_BYPASS_REVIEWED 尚不能当作已满足。
 8. 指定真实 source SHA/run/attempt 的手动接收、构建、Scan/Verify/Audit、产物上传未运行。
@@ -194,7 +194,7 @@ E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEVELOPMENT-DELIVERY.md
 八、本轮收尾交付与下一阶段入口
 
 本地收尾验证通过。当前结论仍为 REMOTE_NOT_READY；没有真实 PR、接收端运行或产物 URL。
-用户要求先完成本地提交，再接入专用开发 App；App 尚未创建，不能假定已可用或回退 Owner 身份。
+用户要求先完成本地提交，再接入专用开发 App；后续已创建并完成下节只读认证。写入身份仍未实现，本轮只允许验证，不可据此推送/PR 或回退 Owner。
 
 开发 App 创建、安装、本机认证与待完成清单绝对路径：
 E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEV-APP-SETUP.md
@@ -212,3 +212,25 @@ E:/Codex/worktrees/cd84/Architecture-Explorer/docs/UNITY-REFERENCE-SUPPLY.md
 
 本地 CODEOWNERS 不等于 main 已启用；首次导入需用户真实独立审阅。开发 App 认证就绪且各自主控收尾通过后，才由对应主控用 App 推自己的任务分支并建 PR；本工具执行者不推送游戏工作区或替游戏主控宣称通过。
 之后仍按第七节六步顺序进入 main 规则/Environment/生产凭据配置和接收端手测。自动发送继续关闭，直到接收端真实就绪、用户审核并另行开启。
+
+九、开发 App 最小本机只读认证补充（2026-10-21）
+
+入口绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1
+实现：同目录 dev-app-auth.ts。两个主控均可从任意工作目录使用同一入口；当前请求固定为 Architecture-Explorer Contents read，不提供push/PR/token回调。
+准确命令（stdout只输出脱敏结果）：
+pwsh -NoLogo -NoProfile -File E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1 -Verify -PrivateKeyDirectory C:/Users/chwan/AppData/Local/ChwanDevAgent/keys
+需要保存时可加 -ReceiptPath <工具根内全新绝对.json>；父目录须存在且无链接，不覆盖旧证据。
+
+真实结果：App 5417611 / Client Iv23lil3cvGyWUbx4yfS / slug chwan-dev-agent 核验一致，唯一账号安装 173913073 为 selected，两个目标仓库均属于该安装。注册/安装仅三项 write + Metadata read、无 Administration；不能由这两个正向检查证明没有第三仓，仍需人工 UI 核实。
+真实 key 目录及文件均仅当前用户/SYSTEM/Administrators 取得 Allow，owner为Administrators，继承受限，路径链无reparse。未更改真实 ACL；仅认证Node进程读取PEM并生成JWT，未落盘秘密、未接入Owner登录或全局Git。
+工具单仓 IAT 的响应与可见列表均只包含 Architecture-Explorer，权限 Contents read + Metadata read；main ref 实读为 e388133a859d6f5494d69a2d1dec0ab947c7ad83。到期原定 2026-10-21T23:11:34Z，已提前撤销。
+第一次 DELETE204 后即时失效探测未确认，回执保持failed，不补写未知状态。第二次同样窄权验证 DELETE204 后只读探测200、200、200、401，约2409ms后确认，最终passed。不将这次观察解释为GitHub保证传播时限或已确定缓存原因。
+
+首次失败脱敏回执：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/dev-app/auth-verification-2026-10-21.json
+第二次通过脱敏回执：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/dev-app/auth-verification-2026-10-21-attempt2.json
+认证夹具覆盖真实Windows ACL/目录及文件链接、scope、JWT、失效时间、异常脱敏、撤销与有界只读探测。最终检查与JUnit见 docs/DELIVERY-VALIDATION.md。
+
+本轮无push、PR、merge、dispatch、GitHub设置修改或自动发送启用；认证通过不改变接收端 REMOTE_NOT_READY。

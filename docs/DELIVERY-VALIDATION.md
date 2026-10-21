@@ -29,7 +29,7 @@
 
 本轮包启动证据中的 `packageId` 是本地测试目录标识，`execution=local-check`、`runUrl=null`、`sourceDirty=true`，打包时 HEAD 为 `74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06`，不是远端提交产物或干净提交包。初轮“不含游戏源码”的描述错误，现予更正：包未带完整游戏 checkout、本机配置、Git 凭据、Unity DLL 或缓存，但保留人工模型/锚点/文档中的游戏源码摘录；`model.json` 的 236 个锚点都有引文。工具仓库、日志、报告及两类产物须按游戏访问范围审核。新包的清单和 RUNNING.md 明确披露摘录，真实启动测试核实引文及人工模型字节保留。包仍需 Git、Python 与 .NET 运行环境及本机配置，不是安装器。
 
-本轮本地子代理审阅发现并关闭：临时目录 junction/清理边界、多个 Ruleset 聚合顺序、实际审批人数不足门限三项问题。子代理审阅不替代 GitHub 上独立 Code Owner 的真实批准。Unity 仅交付[供应方案](UNITY-REFERENCE-SUPPLY.md)，尚无生产 DLL/ZIP、许可确认或长期续期方案。开发 App 暂名 `chwan-dev-agent`，按用户决定尚未创建；[App 清单](DEV-APP-SETUP.md)记录创建、安装、三项写权限与无 Owner 回退的本机短会话要求，尚未实现或验证认证 helper。
+本轮本地子代理审阅发现并关闭：临时目录 junction/清理边界、多个 Ruleset 聚合顺序、实际审批人数不足门限三项问题。子代理审阅不替代 GitHub 上独立 Code Owner 的真实批准。Unity 仅交付[供应方案](UNITY-REFERENCE-SUPPLY.md)，尚无生产 DLL/ZIP、许可确认或长期续期方案。上述收尾时开发 App 尚未创建；后续已创建并完成本页末尾的只读认证验证，[App 清单](DEV-APP-SETUP.md)已同步真实身份与结果。Git/PR 写入认证仍未实现。
 
 ## 界面证据
 
@@ -48,3 +48,15 @@ PR 链接实际打开固定的 `https://github.com/chwan886/GameDemo02/pulls`。
 - 未运行 Unity Full / Release、真实 feature 合并或端到端联调；不以 Fast、夹具或 HTTP 请求接受冒充。
 
 正式启用按 [交付合同的六步顺序](DEVELOPMENT-DELIVERY.md#首次接入顺序)继续；缺项未补齐时开关保持关闭。
+
+## 后续开发 App 只读认证验证
+
+用户创建 App 后，本轮仅授权本机认证验证。入口为 `Tools/dev-app-auth.ps1 -Verify`，实际过程及绝对命令见 [DEV-APP-SETUP.md](DEV-APP-SETUP.md)。App ID `5417611`、Client ID `Iv23lil3cvGyWUbx4yfS`、slug `chwan-dev-agent`、Installation ID `173913073` 均经真实 App JWT API 核实。
+
+最终 `Tools/ci-check.ps1`：**321/321 通过，0 失败、0 跳过**，包含新增 14 项认证核心与 11 项实际 Windows ACL/link 测试；Typecheck、Vite、C# worker 均成功。独立子代理复核指出的未知签发状态、撤销异常路径和探测测试断言问题均已修正。新版完整 JUnit 与摘要独立保存在 [dev-app/full-junit.xml](evidence/dev-app/full-junit.xml)、[dev-app/local-checks.json](evidence/dev-app/local-checks.json)，此前 296 项交付验收证据不改写。
+
+真实只读认证共两次，均只申请 `Architecture-Explorer` Contents read（服务端另含隐含 Metadata read），没有 GameDemo02 或 installation 全范围 token。首次在 DELETE 204 后即时探测未确认，保持 [failed 回执](evidence/dev-app/auth-verification-2026-10-21.json)。增加状态记录及有界只读探测后，[第二次 passed 回执](evidence/dev-app/auth-verification-2026-10-21-attempt2.json)证实权限、单仓可见范围、准确 main ref 实读、DELETE 204，以及同一原 token 最终 401。200、200、200、401 的实测序列完整保存，不能据此编造官方传播时间或缓存原因。
+
+私钥目录/文件 ACL 只允许当前用户、SYSTEM、Administrators；受限继承与 owner Administrators 均明确记录，路径链不含链接。未更改真实权限。只在认证 Node 内存读取 PEM、签 JWT、持有 IAT；不输出/持久化这些秘密，不使用 Owner 或全局 Git/CLI 登录，生产 CI 不取得此 App 凭据。
+
+仍待完成：安装恰好两仓的人工 UI 证据，Git/PR 写入认证入口、main/Environment/生产 App 与真实接收端验证。JWT 两仓正向 membership 和窄权 token 不能证明安装没有第三仓。本轮未推送、未建 PR、未合并、未 dispatch、未启用自动发送；接收端继续 `REMOTE_NOT_READY`。
