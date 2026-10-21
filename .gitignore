@@ -8,3 +8,9 @@ config/local.json
 **/obj/
 test-results/
 *.log
+
+# Keep locally extracted analysis artifacts out of source control.
+/architecture-explorer/output/
+/architecture-explorer/work/
+/architecture-explorer/**/__pycache__/
+/architecture-explorer/**/*.py[cod]
