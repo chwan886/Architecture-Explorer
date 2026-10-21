@@ -1,0 +1,265 @@
+Architecture-Explorer 接收端交接 v1
+日期：2026-10-21（America/Toronto）
+交接状态：LOCAL_IMPLEMENTATION_COMPLETE / REMOTE_NOT_READY
+正式自动触发：不得开启；EXPLORER_AUTOBUILD_ENABLED 保持缺失或 false。
+
+本文件供用户整体转交游戏主控。接口已按游戏七字段 v1 对齐，未临时兼容旧字段；没有真实运行的条目明确列为 null / 未运行，不填写虚构验证链接。
+
+一、交接来源、责任和仓库事实
+
+只读接收的游戏材料：
+E:/Codex/worktrees/fbb2/GameDemo02/Docs/ReviewEvidence/explorer-dispatch-handoff-v1.txt
+收到该材料后，没有再读取其他游戏文件，没有应用补丁或修改任何游戏工作目录。
+游戏主控继续负责第一阶段 Fast、报告、CODEOWNERS 和发送 job；工具主控负责本接收端。
+
+工具原目录：E:/Projects/Architecture-Explorer
+工具实施 worktree：E:/Codex/worktrees/cd84/Architecture-Explorer
+工具现有 origin：https://github.com/chwan886/Architecture-Explorer.git
+游戏现有 origin：https://github.com/chwan886/GameDemo02.git
+两仓默认分支：main；可见性：private。沿用原仓库、origin、历史及可见性。
+
+本轮开始时，原有 Git 认证的只读 API 实际核实：两仓均可 pull/push/maintain/admin，main protected=false。
+工具远端 main：e388133a859d6f5494d69a2d1dec0ab947c7ad83
+游戏远端 main：8118b73bb632d6618720c47ac95ad95d6b349d55
+这是本轮开始时的只读核实快照；没有修改 GitHub 设置，不能当成未来仍有效的保护证明。
+
+工具本地分支：codex/github-game-delivery
+工具接收端实现提交：30407a794f9bb8a5a93854f12277c306b741be40
+首次交接证据提交：74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06
+本轮收尾实现提交：1d7c4fa5d5154bb73ce83eeee770a5c486411d56
+实现为本地独立提交；未推送，未合并至本地或远端 main。
+工具默认分支上已部署的接收工作流提交：null（尚未进入 main）。
+
+最新同一游戏交接材料报告：本地与远端 main 已同为 f2761432cfa68140b7b095112cc5e0ee2fda3cd4，旧 13 提交同步待办已完成并取消。第一阶段提交 faca62dc6fcd30fa08ef4fac59b0db83d8ded448 仍未进入 main。
+这些游戏事实来自转交文档，未将其 349 项本地测试写成工具实测或远端通过，也未处理其主线同步。
+
+二、双方确认的接收接口
+
+目标仓库：chwan886/Architecture-Explorer
+接收工作流文件：.github/workflows/game-index.yml
+本地完整路径：E:/Codex/worktrees/cd84/Architecture-Explorer/.github/workflows/game-index.yml
+工作流名称：Game SHA index
+触发事件：workflow_dispatch
+请求顶层 ref / target_ref：main
+工具受保护目标 ref：refs/heads/main（要求；目前平台尚未满足）
+来源 source_ref 与目标 ref 属于不同仓库，不能混用。
+
+正式 inputs：七个字段，全部 string，名称和约束如下：
+  contract_version   固定 "1"
+  source_repo        固定 "chwan886/GameDemo02"
+  source_ref         固定 "refs/heads/main"
+  source_sha         本次 main push 的 GITHUB_SHA，完整 40 位小写十六进制
+  source_run_id      本次游戏 GITHUB_RUN_ID 的正整数字符串
+  source_run_attempt 本次游戏 GITHUB_RUN_ATTEMPT 的正整数字符串
+  source_run_url     严格为 https://github.com/chwan886/GameDemo02/actions/runs/<source_run_id>
+
+source_run_url 是基础 run URL；attempt 单独传递，回执另派生 attemptUrl。
+不接受 source_repository/game_sha 等旧四字段合同，不猜测字段别名、工作流名或最新 main。
+目标工作流只有进入默认分支并满足平台配置后才可正式调用。本文件不是“已部署”声明。
+
+游戏来源合同：
+  workflow：Architecture and server
+  文件：.github/workflows/architecture.yml
+  前置 job ID：fast-gate，完整包含 Fast、Tools、无差异检查及报告
+  fast-gate 是唯一候选检查显示名称，实际远端注册名称仍待首次 run 核实
+  发送 job：dispatch-explorer，needs: [fast-gate]
+  开关：EXPLORER_AUTOBUILD_ENABLED（初始关闭）
+  游戏 Environment：explorer-dispatch，仅 Branch/main
+  游戏 App 变量：EXPLORER_APP_CLIENT_ID
+  游戏 App Secret：EXPLORER_APP_PRIVATE_KEY
+  游戏 App token：仅 Architecture-Explorer 的 Actions write + 隐含 Metadata read
+
+三、接收和扫描的实际实现
+
+1. 工作流只允许工具 main；在请求跨仓库凭据前校验 main protected、版本、固定 repo/ref、SHA、来源 run/attempt/URL 与配置前提。
+2. 工具代码 checkout 使用该次 GitHub 运行的准确 github.sha；打包和快照再次核对真实工具 HEAD。不是执行游戏提供的脚本。
+3. Tools/ci-authorize.ts 查询指定 run 的指定 attempt 及其 jobs，不取 latest：repository/event=push/head_branch=main/head_sha/path/run_attempt 必须匹配，全部确认的 Fast/tools jobs 已成功；来源整体可以仍在发送中，失败/取消不接受。
+4. 核对双方 main 保护与历史、必需检查 context；双方均要求 Code Owner，游戏还要求过期批准处理、最近 push 独立批准、strict 最新检查与解决讨论。聚合全部有效 Ruleset 的数量最大值与各布尔门禁，不因分散到不同规则或返回顺序误判。
+5. 查真实已合并 PR：merge_commit_sha=source_sha，base 是固定游戏 main；分页读取合并前、准确 PR head、非作者、非 bot 的 User 批准，独立不同用户数量须达到游戏实际有效审批门限。普通 COMMENTED 不撤销批准；自审、撤销、要求修改、旧 head、合并后补审不能通过。工具侧此处核对当前平台规则，不声称已核验工具 PR 审批数量。
+6. 游戏 checkout 的 ref 始终是 source_sha，fetch 完整历史；严格 Git 再证实 HEAD 非空、origin 固定、属于 origin/main 历史、工作区与未跟踪文件干净。
+7. Tools/ci-references.ps1 仅取人工批准的 SHA256 固定 HTTPS 元数据 ZIP，不跟随跳转，仅允许根 references.json 和 DLL，拒绝路径穿越、目录、链接、重名或指纹错误。
+8. Tools/ci-snapshot.ts 生成 runner 临时配置，引用和缓存/输出均在工具侧；Unity 清单版本必须匹配游戏 ProjectVersion.txt，每 DLL 摘要核对，至少 CoreModule，禁止根聚合 UnityEngine.dll 混用和假 Unity 类型。
+9. 复用既有 Scan → Verify → Audit。Git/API 读取失败、metadata.gitHead 为空/不等于输入、源字节变化等都失败关闭。即使扫描/审计失败，也继续只读核对并保留失败诊断。
+10. 扫描前后核对游戏 HEAD、完整 Git 状态、授权源文件字节摘要、工具 tracked 差异和人工模型原字节。待复核职责/解释/锚点保留，不确认、不重写、不刷新人工哈希。
+
+引用缺失阻塞。引用存在但 C# 编译上下文仍有诊断时，保留 partial-semantic-context 和全部限制，不能宣称完整 Unity 语义或实际游戏编译成功。只解析目标源码/程序集元数据，不运行目标 Python、目标程序集、Unity 或游戏构建。
+
+四、产物、关联和独立结果
+
+工具包：tool-build-<toolSHA>-<targetRunID>-<targetAttempt>
+  前端、TypeScript/tsx server/MCP、离线冻结恢复的可移植依赖、Node、C# worker 及依赖、Python 分析器、锁文件与 RUNNING.md。
+  保留人工模型 anchors[].quote、语义解释和文档中的游戏源码摘录；containsGameSourceExcerpts=true。无完整游戏 checkout 不等于不含游戏源码。
+  需要 Git、Python 3.11+ 与 .NET 10 runtime/锁定 SDK，按说明生成自己的本机配置；dist 不是完整工具，也没有自动安装器。
+
+游戏证据包：game-index-<sourceSHA>-<toolSHA>-<targetRunID>-<targetAttempt>
+  工具侧目录：.ci-output/<sourceSHA>/<targetRunID>-<targetAttempt>/index-evidence/
+  index.json、architecture.json、semantics.json、audit.json、references.json、manifest.json、只读前后摘要、人工模型副本与阶段日志；失败产物明确 failed / outcome=failed。
+  manifest 记录双方 SHA、来源 run/attempt、目标 run/attempt、分析器版本、配置/引用/源码/人工模型指纹及限制。
+  另附 authorization.json 的来源检查与真实 PR/Review 证据。
+
+检查包：tool-checks-<toolSHA>-<targetRunID>-<targetAttempt>
+  JUnit 和必要诊断；delivery-result.json 分别记录 toolBuildCompleted、indexVerified 及各阶段 outcome。
+  只有 snapshot 成功才 indexVerified=true，HTTP dispatch 接受不参与该判定。
+
+保留期：14 天；不同提交、目标 run、attempt 不覆盖，overwrite 默认关闭。
+每次 dispatch 有独立 target run，concurrency 以 source SHA + target run ID 分组，cancel-in-progress=false，不按 main 分支替换中间 pending。
+首版不做跨 run 全局去重；重复请求通过 contract/source repo/ref/SHA/run/attempt 关联，各自独立运行和保留证据。来源重跑沿用准确 SHA，并带新的 source attempt；目标重跑以 target attempt 区分。
+
+目标失败保持红色，由有权限人员在 GitHub 对原 run 重跑；不自动重试 POST、不撤销游戏合并、不改写历史。
+云索引是 CI 快照证据，不是本地 .cache 导入格式；本轮没有安装或缓存导入功能。
+工具包、索引、失败诊断和测试报告都可能含游戏源码摘录。工具 Git 仓库本身、Actions 日志/报告和产物的读者都须核实不超出游戏允许范围；两仓同为 private 不足以证明权限相同。禁止公开 Pages/Release。
+tool-ci 的 PR 检查不挂生产环境/取跨仓凭据；main 工具包使用单独 main-only Environment job，当前工具 private、main protected、INDEX_ACCESS_APPROVED 均满足才可打包上传。game-index 的工具包与索引都受来源 authorize.index_access 门控，授权失败不上传包。
+
+五、实际本地验证
+
+Tools/ci-check.ps1 -Prepare：锁定准备与冻结还原成功，不创建/读取 config/local.json。
+最终 Tools/ci-check.ps1：Typecheck 成功；296/296 测试通过，0 失败、0 跳过；Vite 前端构建成功；C# worker 构建成功，0 warning/0 error。
+本机 Python 3.14.3；CI 固定 3.13.7，远端该组合未运行。
+actionlint 1.7.12：两份工具工作流通过；官方 Actions 已核实并固定 SHA；PowerShell Parser 通过。
+七字段联通夹具：执行参考发送脚本，捕获精确七个 string，经过真实 workflow env 映射同时通过两个接收入口；不联网，回执明确 targetConclusion=not-observed。
+安全回归覆盖非法 repo/ref/版本/SHA/run/attempt、Git/API 失败、空/错索引 HEAD、来源 attempt 串用、源码隐藏修改、未保护规则/缺检查、自审/bot/旧批准、缺引用和 ZIP 路径/链接边界。
+真实 Scan/Verify/Audit 子进程使用工具仓库夹具；目标带 raise 的 Python 没有被执行，过期人工说明保留待复核。
+
+完整包真实启动：包内 Node+tsx、17 个根依赖均从包内解析，前端 HTTP 200、项目与图 API，C#/Python 夹具分析 12 nodes / 5 edges / 2 files，通过。
+本轮包确实保留并披露 236 个源码引文锚点，人工模型逐字节一致；创建/清理临时目录的4项 junction/所有权测试也实际通过。
+此包测试在收尾实现提交前进行，打包时 HEAD=74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06、sourceDirty=true、execution=local-check、runUrl=null；目录中的数字是本地测试标识，不是 GitHub run，也不是干净提交产物。
+已修复直接复制 pnpm 链接导致 tsx/esbuild 依赖丢失；改为隔离 staging 的离线冻结 hoisted 复制依赖，并实测启动。
+
+实际浏览器：本轮工具 localhost:4311，使用仓库夹具；新入口、总览、详情展开、阶段返回均检查。
+PR 外链确实跳到固定游戏 PR 列表；当时内置浏览器未登录，私有仓库显示 GitHub 404/Sign in，不声称浏览了私有 PR。
+页面标明人工维护、无实时状态；没有 GitHub 凭据、批准/合并/重跑/发布操作，不把交付连线当静态调用或运行时证据。
+
+证据绝对路径：
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DELIVERY-VALIDATION.md
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/delivery/local-junit.xml
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/delivery/local-checks.json
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/delivery/package-smoke.json
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/delivery/overview.png
+  E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/delivery/details.png
+完整本地控制台日志在工具 test-results/，没有上传到远端。
+
+六、尚未就绪的缺项（不能开启发送）
+
+1. 游戏第一阶段未纳入 main，fast-gate 尚无真实远端名称/运行/报告证据；既有主线同步已经完成，不再保留 13 提交同步待办。
+2. 工具实现仅本地分支；尚未通过工具 PR 合入默认 main。已部署 workflow SHA=null。
+3. 两仓 main 保护未启用/未完成有效验收。工具自身 CODEOWNERS 已补齐，需 Ruleset：PR + 至少1独立 Review + Code Owner review + 必需 Tool / typecheck, tests and builds；游戏需第一阶段约定的完整规则。文件不代替平台设置，唯一 Owner 不能批准自己作者的 PR。
+4. 游戏 explorer-dispatch 和工具 architecture-delivery 的 main-only 限制、可用账户方案、保护与审批规则未配置/未核实；PR/tag 不得取得跨仓秘密。
+5. 开发 App chwan-dev-agent 已创建并完成工具单仓只读认证，App ID 5417611、Installation ID 173913073；注册/安装权限为 Contents/Pull requests/Workflows write + Metadata read，无 Administration。两仓安装归属已核实，恰好两仓仍待 UI 证据；没有 Git/PR 写入认证。生产发送与游戏读取 App/秘密仍未配置/未核实，三类身份分开，不能使用管理员 PAT 或回退 Owner。main bypass/规则仍待独立核实，chwan886 最终批准。
+6. Unity 供应方案已准备于 docs/UNITY-REFERENCE-SUPPLY.md；真实 Editor 版本、许可、私有不可变 ZIP/DLL 指纹、短期 URL 与续期责任尚待交付。当前 CoreModule 静态分析策略不等同 Unity facade 插件编译或完整 Unity 语义，不借用本机路径或造类型。
+7. 产物访问集合与绕过名单未人工确认。INDEX_ACCESS_APPROVED 和 RULE_BYPASS_REVIEWED 尚不能当作已满足。
+8. 指定真实 source SHA/run/attempt 的手动接收、构建、Scan/Verify/Audit、产物上传未运行。
+9. 真实 feature 合并联调未执行；远端 Fast、发送回执、工具运行和生产索引证据均无。
+
+真实远端验证字段：
+  tool_pr_main_ci_run_url: null（未运行）
+  receiver_workflow_dispatch_run_url: null（未发送/未运行）
+  source_dispatch_run_url: null（未运行）
+  remote_tool_build_outcome: not-observed
+  remote_index_verify_audit_outcome: not-observed
+  tool_artifact_url: null
+  game_index_artifact_url: null
+  feature_merge_e2e: not-executed
+
+七、手工设置与首次接入责任
+
+工具 Environment architecture-delivery（仅 main）：
+  Vars GAME_READ_APP_CLIENT_ID
+  Secret GAME_READ_APP_PRIVATE_KEY
+  读取 App 仅安装 GameDemo02，Contents read / Actions read / Pull requests read / Administration read（读取 classic protection）；不授予写权限。
+  Vars GAME_CI_WORKFLOW_PATH=.github/workflows/architecture.yml
+  Vars GAME_REQUIRED_JOB_NAMES 与 GAME_REQUIRED_CHECK_CONTEXTS：真实远端核实后填 JSON 数组，候选均为 ["fast-gate"]，现在不能用候选冒充已注册证据。
+  Vars INDEX_ACCESS_APPROVED=true：仅在双仓 artifact 读者集合审阅后设置。
+  Vars RULE_BYPASS_REVIEWED=true：仅在管理员/机器人绕过名单审阅后设置。
+  Secret UNITY_REFERENCES_URL：短期私有只读 HTTPS URL，不重定向、不进入文档/日志/UI/产物；下载异常固定脱敏信息并设置超时。
+  Vars UNITY_REFERENCES_SHA256：对应不可变 ZIP 的真实小写摘要。清单、DLL 指纹/版本会再次验证；过期需由责任人续签同对象。持续自动发送前必须解决续期和真实兼容性，不能把供应方案当成已备好生产引用。
+工具 GITHUB_TOKEN 仅 contents:read，用于自身 checkout/有效 Ruleset 读取；PR 测试无跨仓凭据，只用仓库夹具。
+
+游戏 Environment explorer-dispatch 及 App/开关严格使用游戏交接中名称，由游戏主控实施，用户配置后验收。
+工具侧最小参考片段/补丁位于 docs/ci/，已同步七字段，但基线是之前保存的旧 workflow；不是针对游戏最新发送实现生成，不能覆盖当前成果。收到本轮游戏文档后未重新做游戏 apply 检查。
+
+正式顺序保持用户原定：
+1. 游戏主控完成 Fast CI、报告、CODEOWNERS，并交真实检查名、main 和工作流位置。
+2. 工具主控完成本接收接口、本地构建/扫描/验证及上传实现。
+3. 工具主控＋用户将工作流合入工具 main，满足手测先决条件后手动验证一次，补真实 SHA/run/产物与保护实证，才发“接收端就绪”材料。
+4. 游戏主控按确认接口集成发送 job，独立开关初始关闭。
+5. 用户完成受限身份、main-only Environment、规则与权限验收，审核游戏改动后开启自动触发。
+6. 两主控用真实 feature 合并联调，分别交发送回执、工具运行与索引证据。
+
+第3步手测依赖合规的游戏 main 合并/Review/run、接收端只读身份与 Unity 引用。先决条件未到位时保持阻塞，不用夹具或未保护历史冒充手动接收就绪。
+远端真实验证方案详见：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEVELOPMENT-DELIVERY.md
+
+本轮未推送、未合并、未修改 GitHub 设置、未开启自动化、未启动 Unity Full/Release，也未清理用户已有成果。
+
+八、本轮收尾交付与下一阶段入口
+
+本地收尾验证通过。当前结论仍为 REMOTE_NOT_READY；没有真实 PR、接收端运行或产物 URL。
+用户要求先完成本地提交，再接入专用开发 App；后续已创建并完成下节只读认证。写入身份仍未实现，本轮只允许验证，不可据此推送/PR 或回退 Owner。
+
+开发 App 创建、安装、本机认证与待完成清单绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEV-APP-SETUP.md
+Unity 引用供应方案绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/UNITY-REFERENCE-SUPPLY.md
+
+收尾实现改动文件：
+  .github/CODEOWNERS；.github/workflows/tool-ci.yml；.github/workflows/game-index.yml
+  Tools/ci-authorize.ts；Tools/ci-artifact-access.ts；Tools/ci-package.ps1
+  Tools/ci-package-smoke.ts；Tools/ci-smoke-directories.ts；Tools/ci-references.ps1
+  tests/ci-authorize.test.ts；tests/ci-artifact-access.test.ts；tests/ci-references.test.ts
+  tests/ci-smoke-directories.test.ts；tests/codeowners.test.ts
+  README.md；docs/DEVELOPMENT-DELIVERY.md；docs/UNITY-REFERENCE-SUPPLY.md；docs/DEV-APP-SETUP.md
+本文件、docs/DELIVERY-VALIDATION.md 和 docs/evidence/delivery/ 三份实际检查证据另作本地证据提交。
+
+本地 CODEOWNERS 不等于 main 已启用；首次导入需用户真实独立审阅。开发 App 认证就绪且各自主控收尾通过后，才由对应主控用 App 推自己的任务分支并建 PR；本工具执行者不推送游戏工作区或替游戏主控宣称通过。
+之后仍按第七节六步顺序进入 main 规则/Environment/生产凭据配置和接收端手测。自动发送继续关闭，直到接收端真实就绪、用户审核并另行开启。
+
+九、开发 App 最小本机只读认证补充（2026-10-21）
+
+本节保存上一轮只读验证的历史；最新共享入口与本轮授权见第十节。
+
+入口绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1
+实现：同目录 dev-app-auth.ts。两个主控均可从任意工作目录使用同一入口；当前请求固定为 Architecture-Explorer Contents read，不提供push/PR/token回调。
+准确命令（stdout只输出脱敏结果）：
+pwsh -NoLogo -NoProfile -File E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1 -Verify -PrivateKeyDirectory C:/Users/chwan/AppData/Local/ChwanDevAgent/keys
+需要保存时可加 -ReceiptPath <工具根内全新绝对.json>；父目录须存在且无链接，不覆盖旧证据。
+
+真实结果：App 5417611 / Client Iv23lil3cvGyWUbx4yfS / slug chwan-dev-agent 核验一致，唯一账号安装 173913073 为 selected，两个目标仓库均属于该安装。注册/安装仅三项 write + Metadata read、无 Administration；不能由这两个正向检查证明没有第三仓，仍需人工 UI 核实。
+真实 key 目录及文件均仅当前用户/SYSTEM/Administrators 取得 Allow，owner为Administrators，继承受限，路径链无reparse。未更改真实 ACL；仅认证Node进程读取PEM并生成JWT，未落盘秘密、未接入Owner登录或全局Git。
+工具单仓 IAT 的响应与可见列表均只包含 Architecture-Explorer，权限 Contents read + Metadata read；main ref 实读为 e388133a859d6f5494d69a2d1dec0ab947c7ad83。到期原定 2026-10-21T23:11:34Z，已提前撤销。
+第一次 DELETE204 后即时失效探测未确认，回执保持failed，不补写未知状态。第二次同样窄权验证 DELETE204 后只读探测200、200、200、401，约2409ms后确认，最终passed。不将这次观察解释为GitHub保证传播时限或已确定缓存原因。
+
+首次失败脱敏回执：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/dev-app/auth-verification-2026-10-21.json
+第二次通过脱敏回执：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/dev-app/auth-verification-2026-10-21-attempt2.json
+认证夹具覆盖真实Windows ACL/目录及文件链接、scope、JWT、失效时间、异常脱敏、撤销与有界只读探测。最终检查与JUnit见 docs/DELIVERY-VALIDATION.md。
+
+本轮无push、PR、merge、dispatch、GitHub设置修改或自动发送启用；认证通过不改变接收端 REMOTE_NOT_READY。
+
+十、共享入口及工具任务分支 PR 交付（2026-10-21）
+
+最新入口与命令合同：E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEV-APP-SETUP.md
+入口仍为 Tools/dev-app-auth.ps1，复用同一PEM/JWT/单仓token/撤销流程，新增 -Repository、互斥 -Verify/-Push/-PullRequest/-Status。两个主控共用工具侧绝对路径；每次只能指定一个现有允许仓库。
+Push核对本地origin、clean工作区、当前codex任务分支和准确ExpectedHead；隔离bare传输不加载源hooks/凭据/config，固定URL+SHA refspec、无force/main/tag/删除。PR固定main，仅本App bot作者同仓准确head，PATCH只改title/body。每次按动作缩权，finally撤销204并确认401；不读取Owner凭据或修改全局Git。
+本轮用户已授权工具当前任务分支推送并建立main PR；游戏仅只读验证，不代游戏主控推分支或建PR，不开启自动发送。
+游戏真实验证已通过：单仓Contents read，main SHA=f2761432cfa68140b7b095112cc5e0ee2fda3cd4，token撤销204+401；回执 docs/evidence/dev-app/shared-game-verify-2026-10-21.json。
+本轮本地测试、构建与安全审阅见 docs/DELIVERY-VALIDATION.md；工具实际push/PR/CI结果由工具主控填入本机回交报告 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt，避免将实现或请求接受误作CI成功，最终head按该回执/真实PR核对。
+私有CI完整run/job查询需Actions read；若未配置或GraphQL不可读，必须明确权限缺项，不用Owner身份兜底、不编造成功或run链接。
+PR不等于main已合入。接收端仍需第七节的受保护规则、Environment、生产只读/发送身份、Unity供应和精确SHA手测，自动发送继续关闭。
+
+十一、App Actions read 与首轮真实 CI 收尾（2026-10-21）
+
+App及安装Actions read已由API核实，Status使用单仓Contents/Pull requests/Actions read，finally撤销204并确认原token401。此前安装权限不匹配的失败保持原记录，未借Owner凭据。
+真实PR：https://github.com/chwan886/Architecture-Explorer/pull/1；作者chwan-dev-agent[bot]（Bot ID 346053751），base main。
+首次head c3a619fc1dc025ce16438266a0c195c942a3ca48的真实CI失败：https://github.com/chwan886/Architecture-Explorer/actions/runs/39688848223。
+失败日志定位到MCP发布时RUNTIME_PERMISSIONS；发现并修复SDDL别名直接比较的问题，改为Windows原生展开SID后仍只允许当前用户与SYSTEM，拒绝其他账号、管理员组和未知ACE。旧runner实际SID未取得，不编造旧身份或把本地通过替代远端修复结果。
+本地最终完整355项测试通过，零失败、零跳过；Typecheck、前端、C#构建通过。报告与JUnit：docs/evidence/dev-app/final-local-checks.json、final-local-junit.xml。
+共享Status增补真实steps与失败job有限脱敏日志；下载不携带Authorization、不记录签名URL或凭据、不扩大App权限。
+游戏在新增Actions read后再次Verify通过，仍只签发GameDemo02单仓Contents read，main f2761432cfa68140b7b095112cc5e0ee2fda3cd4，撤销204+401；未接触游戏工作区。
+最终已推head、App推送回执和新CI真实结论以 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt 及同名JSON为准。
+本轮仍不批准、不合并、不直推main、不强推、不修改Owner登录/全局Git；自动发送关闭，生产接收端REMOTE_NOT_READY。
+
+后续收尾：head 35d00533e40f780b567559843d896e6f449b33ce的第二次远端运行仍在三项runtime发布测试安全拒绝；回执 docs/evidence/dev-app/second-pr-ci-2026-10-21.json保留，未写成通过。现正向MCP测试显式准备只含当前用户/SYSTEM的新建独占bridge目录，拒绝重置已有目录；另以真实BA额外授权证明生产发布仍拒绝、无凭据/锁/审计文件残留。原有符号链接负例未改变，生产门禁未放宽。
+夹具修正后完整356项本地回归、Typecheck、前端/C#构建通过，零失败、零跳过；夹具根路径加固后15项ACL/MCP与Typecheck复验通过。JUnit/摘要：docs/evidence/dev-app/fixture-local-junit.xml、fixture-local-checks.json。
+最新已推head及新远端结论仍见本机共享App交接报告，不用此前355/356本地结果替代实际GitHub运行。

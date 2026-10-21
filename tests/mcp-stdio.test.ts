@@ -9,6 +9,7 @@ import { createServer } from '../apps/server/src/server.ts';
 import { IndexManager, loadConfig, TOOL_ROOT } from '../packages/indexer/src/index.ts';
 import { runWorker } from '../packages/indexer/src/workers.ts';
 import type { AnalysisPresentation, BrowserBootstrap, ControlCommand, SnapshotDescriptor } from '../packages/control-protocol/src/types.ts';
+import { createPrivateBridgeFixture } from './fixtures/private-bridge.ts';
 
 async function availablePort(): Promise<number> {
   const server = netServer(); await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
@@ -31,6 +32,7 @@ test('real SDK stdio → authenticated broker → index/evidence → browser pro
   const client = new Client({ name: 'architecture-explorer-protocol-test', version: '1.0' });
   let diagnostics = ''; transport.stderr?.on('data', chunk => { diagnostics += String(chunk); });
   try {
+    await createPrivateBridgeFixture(directory, config);
     await app.listen({ host: '127.0.0.1', port }); await app.bridgeBroker.publishRuntime();
     await client.connect(transport);
     const list = await client.listTools(); assert.ok(list.tools.some(tool => tool.name === 'show_flow'));

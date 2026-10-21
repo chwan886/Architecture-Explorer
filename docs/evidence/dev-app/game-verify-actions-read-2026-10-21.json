@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "mode": "verify",
+  "repository": "chwan886/GameDemo02",
+  "checkedAt": "2026-10-21T23:06:32.594Z",
+  "outcome": "passed",
+  "app": {
+    "id": 5417611,
+    "clientId": "Iv23lil3cvGyWUbx4yfS",
+    "slug": "chwan-dev-agent",
+    "owner": "chwan886",
+    "verified": true,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "installation": {
+    "verifiedTargetMembership": [
+      "chwan886/GameDemo02"
+    ],
+    "exactRepositorySetVerified": false,
+    "exactRepositorySet": "not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories",
+    "id": 173913073,
+    "repositorySelection": "selected",
+    "observedPermissions": {
+      "shape": "object",
+      "known": {
+        "contents": "write",
+        "metadata": "read",
+        "pull_requests": "write",
+        "workflows": "write",
+        "actions": "read"
+      },
+      "unexpectedPermissionCount": 0
+    },
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "token": {
+    "requestedRepositories": [
+      "chwan886/GameDemo02"
+    ],
+    "requestedPermissions": {
+      "contents": "read"
+    },
+    "issued": true,
+    "secretRecorded": false,
+    "revocation": "confirmed-204",
+    "revokedTokenProbe": "rejected-401",
+    "revokedTokenProbeStatuses": [
+      200,
+      200,
+      200,
+      401
+    ],
+    "revokedTokenProbes": [
+      {
+        "status": 200,
+        "elapsedMs": 175,
+        "requestId": "C120:B7E9B:1BC231:590999:6AD94579"
+      },
+      {
+        "status": 200,
+        "elapsedMs": 629,
+        "requestId": "C11F:38B68F:20F4DA:6CD475:6AD94579"
+      },
+      {
+        "status": 200,
+        "elapsedMs": 1328,
+        "requestId": "C11F:38B68F:20FA30:6CE67F:6AD9457A"
+      },
+      {
+        "status": 401,
+        "elapsedMs": 2443,
+        "requestId": "C11F:38B68F:210325:6D02BB:6AD9457A"
+      }
+    ],
+    "permissions": {
+      "contents": "read",
+      "metadata": "read"
+    },
+    "expiresAt": "2026-10-22T00:06:32.000Z",
+    "visibleRepositories": [
+      "chwan886/GameDemo02"
+    ]
+  },
+  "ownerAuthenticationUsed": false,
+  "performedOperations": {
+    "push": false,
+    "createPr": false,
+    "updatePr": false
+  },
+  "forbiddenOperations": {
+    "pushMain": false,
+    "forcePush": false,
+    "approve": false,
+    "merge": false,
+    "dispatch": false,
+    "modifyGitConfiguration": false
+  },
+  "readProbe": {
+    "repository": "chwan886/GameDemo02",
+    "ref": "refs/heads/main",
+    "sha": "f2761432cfa68140b7b095112cc5e0ee2fda3cd4",
+    "contentsReadVerified": true
+  },
+  "privateKeyAcl": {
+    "checked": true,
+    "owner": "Administrators",
+    "allowPrincipals": [
+      "current-user",
+      "SYSTEM",
+      "Administrators"
+    ],
+    "inherited": true,
+    "scope": "directory-and-file",
+    "linksRejected": true
+  }
+}

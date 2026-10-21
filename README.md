@@ -1,6 +1,6 @@
 # Architecture Explorer
 
-本地运行的中文架构探索工具。系统职责与模块协作、技术分层、多粒度业务解释与代码双层对照、React Flow 代码画布、源码证据、C#/Python 静态分析及文件监听。分析目标默认只读，源代码不会上传。
+本地运行的中文架构探索工具。系统职责与模块协作、技术分层、多粒度业务解释与代码双层对照、React Flow 代码画布、源码证据、C#/Python 静态分析及文件监听。分析目标默认只读，普通本地扫描不上传目标源码。显式启用的 GitHub 工具包保留人工模型/文档中的游戏源码摘录，索引证据包也可能包含源码上下文；工具仓库、日志和产物均须遵循游戏的访问范围。
 
 支持 Codex 本地 STDIO MCP 查询与网页联动：[连接和使用指南](docs/MCP-GUIDE.md)。新增服务不会修改用户级 Codex 配置；网页明确允许后才接受控制，指令与实体绑定到同一索引快照。
 
@@ -47,7 +47,21 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 
 完整使用方法见 [docs/SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md)。
 
-## 命令
+## 开发交付流程与 GitHub CI
+
+顶部“开发交付流程”提供人工维护的条件图、可展开阶段详情和两仓 GitHub 跳转；也可使用 `?page=delivery` 直达。不读取 GitHub 实时状态，不保存 GitHub 凭据，不提供审批、合并、重跑或发布操作。
+
+工具 PR / main CI 仅使用仓库夹具，在干净 Windows runner 冻结还原锁定依赖，执行 Typecheck、全部测试、前端和 C# worker 构建。`Build` 保持前端命令；`BuildAnalyzer` 显式构建 C#。`Tools/ci-check.ps1 -Prepare` 执行完整准备与检查，CI 不生成或读取 `config/local.json`，任何必需测试被跳过也会失败。
+
+`game-index.yml` 接收固定游戏仓库、精确 SHA 与来源 run，经保护规则、合并 PR / 独立 Review、main 检查和历史核验后复用 Scan → Verify → Audit。工具构建包包含 TypeScript/tsx 后端、运行依赖、前端及 C# worker，**dist 不能单独运行完整工具**；游戏索引另存为每提交/每 run/attempt 的 CI 快照证据包，不能直接覆盖本地 `.cache`。
+
+两仓当前 main 尚未保护，自动触发尚未启用。正式接入遵循用户确定的六步顺序：游戏第一阶段交接 → 工具接收端 → 工具 main 合入并手动验证 → 游戏发送初始关闭 → 用户配置并启用 → 真实 feature 联调。接口、最小游戏补丁、Unity 元数据引用供应、App / Environment / Secrets 与规则手动清单见 [开发交付合同](docs/DEVELOPMENT-DELIVERY.md)；本地验证见 [本轮交付验证](docs/DELIVERY-VALIDATION.md)。
+
+## 本地命令
+
+工具自身 [CODEOWNERS](.github/CODEOWNERS) 保护 CI、依赖、读取/分析边界和交付证据；需由 main Ruleset 启用 Code Owner review 才强制生效，作者不能自批。工具包与索引均须经过受保护环境的读者范围审核才能上传。[Unity 引用供应方案](docs/UNITY-REFERENCE-SUPPLY.md)已准备，真实版本、许可、私有 ZIP 与指纹仍待维护者交付；首次手测使用 Secret 短期 URL，自动发送保持关闭。
+
+开发 App `chwan-dev-agent` 的[共享入口](docs/DEV-APP-SETUP.md)支持每次指定一个仓库的 Verify、任务分支 Push、PR 创建/文字更新和 Status；两仓只读认证均已实测。推送固定准确 SHA 与 `codex/` 分支，PR 固定 main、核对 App 作者，禁强推/批准/合并和 Owner 回退。工具任务分支的实际 PR/CI 以本机回交报告为准；安装恰好两仓仍需人工核实，自动发送继续关闭。
 
 ```powershell
 ./Tools/explorer.ps1 -Task Scan                 # 手动全量扫描
@@ -57,6 +71,7 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 ./Tools/explorer.ps1 -Task Test                 # 分析器、索引、安全与契约测试
 ./Tools/explorer.ps1 -Task Typecheck
 ./Tools/explorer.ps1 -Task Build
+./Tools/explorer.ps1 -Task BuildAnalyzer        # 锁定还原并构建 C# 分析器
 ```
 
 扫描命令支持 `-Project <配置ID>` 与 `-Worktree <工作目录ID>`。Worktree ID 从网站选择器或 API 查询；只允许配置授权的工作目录。可配置多个项目，但不会自动扫描 Git 发现的其他工作目录。

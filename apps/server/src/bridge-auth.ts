@@ -14,6 +14,31 @@ export function secureEqual(a: string, b: string): boolean {
   const one = Buffer.from(a), two = Buffer.from(b);
   return one.length === two.length && timingSafeEqual(one, two);
 }
+/** Resolve native SDDL trustee aliases before comparing exact principals. */
+export async function windowsRuntimeDaclIsPrivate(sddl: string, currentSid: string): Promise<boolean> {
+  if (!/^S-1-(?:\d+-)+\d+$/.test(currentSid) || sddl.length > 64 * 1024) return false;
+  const descriptor = sddl.split(/\r?\n/).find(line => line.startsWith('D:'));
+  if (!descriptor) return false;
+  const script = String.raw`
+$ErrorActionPreference='Stop'
+$descriptor=[Security.AccessControl.RawSecurityDescriptor]::new($env:AE_RUNTIME_ACL_SDDL)
+if($null -eq $descriptor.DiscretionaryAcl){throw 'DACL required'}
+$aces=@($descriptor.DiscretionaryAcl | ForEach-Object {@{type=$_.AceType.ToString();sid=$_.SecurityIdentifier.Value}})
+@{aceCount=$descriptor.DiscretionaryAcl.Count;aces=$aces} | ConvertTo-Json -Compress
+`;
+  try {
+    const powershell = path.join(process.env.SystemRoot ?? 'C:/Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
+    const result = await execute(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+      { windowsHide: true, timeout: 5000, maxBuffer: 8192, env: { ...process.env, AE_RUNTIME_ACL_SDDL: descriptor } });
+    const parsed = JSON.parse(result.stdout);
+    const allowed = ['AccessAllowed', 'AccessAllowedObject', 'AccessAllowedCallback', 'AccessAllowedCallbackObject'];
+    const denied = ['AccessDenied', 'AccessDeniedObject', 'AccessDeniedCallback', 'AccessDeniedCallbackObject'];
+    return Number.isSafeInteger(parsed.aceCount) && parsed.aceCount > 0 && Array.isArray(parsed.aces) && parsed.aces.length === parsed.aceCount &&
+      parsed.aces.some((ace: { type?: unknown }) => typeof ace?.type === 'string' && allowed.includes(ace.type)) &&
+      parsed.aces.every((ace: { type?: unknown; sid?: unknown }) => typeof ace?.type === 'string' && typeof ace.sid === 'string' && /^S-1-(?:\d+-)+\d+$/.test(ace.sid) &&
+        (allowed.includes(ace.type) ? ace.sid === 'S-1-5-18' || ace.sid === currentSid : denied.includes(ace.type)));
+  } catch { return false; }
+}
 export class BridgeFiles {
   readonly directory: string;
   constructor(readonly config: LoadedConfig) { this.directory = path.join(config.cacheDir, 'bridge'); }
@@ -35,8 +60,9 @@ export class BridgeFiles {
         await execute(path.join(system, 'icacls.exe'), [this.directory, '/save', auditPath, '/q'], { windowsHide: true, timeout: 10000, maxBuffer: 8192 });
         const audit = await readAuthorized(this.config.toolRoot, this.relative(auditName), 64 * 1024);
         const sddl = audit.toString('utf16le').replace(/^\uFEFF/, '');
-        const aces = [...sddl.matchAll(/\(([^()]*)\)/g)].map(match => match[1].split(';'));
-        if (!aces.length || aces.some(ace => ['A', 'OA', 'XA', 'ZA'].includes(ace[0]) && !['SY', 'S-1-5-18', sid].includes(ace[5])))
+        // icacls can serialize the exact current account as LA (RID 500), not a full SID.
+        // Native expansion does not permit LA/BA in general: only the current SID and SYSTEM pass.
+        if (!await windowsRuntimeDaclIsPrivate(sddl, sid))
           throw bridgeFailure('RUNTIME_PERMISSIONS', '联动目录存在其他主体的显式访问权限；未发布 MCP 凭据', 503);
       } finally { await unlink(auditPath).catch(() => {}); }
     } else await chmod(this.directory, 0o700);

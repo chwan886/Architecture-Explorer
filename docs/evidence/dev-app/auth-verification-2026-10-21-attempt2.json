@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "mode": "authentication-verification-only",
+  "checkedAt": "2026-10-21T22:11:34.294Z",
+  "outcome": "passed",
+  "app": {
+    "id": 5417611,
+    "clientId": "Iv23lil3cvGyWUbx4yfS",
+    "slug": "chwan-dev-agent",
+    "owner": "chwan886",
+    "verified": true,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write"
+    }
+  },
+  "installation": {
+    "verifiedTargetMembership": [
+      "chwan886/Architecture-Explorer",
+      "chwan886/GameDemo02"
+    ],
+    "exactRepositorySetVerified": false,
+    "exactRepositorySet": "not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories",
+    "id": 173913073,
+    "repositorySelection": "selected",
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write"
+    }
+  },
+  "token": {
+    "requestedRepositories": [
+      "chwan886/Architecture-Explorer"
+    ],
+    "requestedPermissions": {
+      "contents": "read"
+    },
+    "issued": true,
+    "secretRecorded": false,
+    "revocation": "confirmed-204",
+    "revokedTokenProbe": "rejected-401",
+    "revokedTokenProbeStatuses": [
+      200,
+      200,
+      200,
+      401
+    ],
+    "revokedTokenProbes": [
+      {
+        "status": 200,
+        "elapsedMs": 192,
+        "requestId": "F0B5:AC1B2:1C58C3A:5B55107:6AD93896"
+      },
+      {
+        "status": 200,
+        "elapsedMs": 622,
+        "requestId": "F0B4:1BB5AE:1B1904D:57F98FC:6AD93897"
+      },
+      {
+        "status": 200,
+        "elapsedMs": 1289,
+        "requestId": "F0B4:1BB5AE:1B194D4:57FA7B8:6AD93897"
+      },
+      {
+        "status": 401,
+        "elapsedMs": 2409,
+        "requestId": "F0B4:1BB5AE:1B19CAF:57FC11F:6AD93898"
+      }
+    ],
+    "permissions": {
+      "contents": "read",
+      "metadata": "read"
+    },
+    "expiresAt": "2026-10-21T23:11:34.000Z",
+    "visibleRepositories": [
+      "chwan886/Architecture-Explorer"
+    ]
+  },
+  "ownerAuthenticationUsed": false,
+  "forbiddenOperations": {
+    "push": false,
+    "createPr": false,
+    "merge": false,
+    "dispatch": false,
+    "modifyGitConfiguration": false
+  },
+  "readProbe": {
+    "repository": "chwan886/Architecture-Explorer",
+    "ref": "refs/heads/main",
+    "sha": "e388133a859d6f5494d69a2d1dec0ab947c7ad83",
+    "contentsReadVerified": true
+  },
+  "privateKeyAcl": {
+    "checked": true,
+    "owner": "Administrators",
+    "allowPrincipals": [
+      "current-user",
+      "SYSTEM",
+      "Administrators"
+    ],
+    "inherited": true,
+    "scope": "directory-and-file",
+    "linksRejected": true
+  }
+}
