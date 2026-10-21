@@ -11,7 +11,7 @@
 - `chwan886/Architecture-Explorer`
 - `chwan886/GameDemo02`
 
-App 注册和安装的已核实权限仍恰为 Contents、Pull requests、Workflows write，以及隐含 Metadata read，没有 Actions read。共享入口允许的唯一可选扩展是 **Actions read**，用于读取真实工作流结果；用户对此配置选择尚待答复，不能声称已经授权或生效。不会增加 Actions write、Checks、Commit statuses、Administration、Secrets、Environments、Variables 或账号/组织权限。Workflows write 只用于工作流文件写入，不授权重跑、dispatch、配置 Actions 或修改规则。[权限参考](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps)、[Git 访问权限](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app#choosing-permissions-for-git-access)
+App 初次核实的注册和安装权限为 Contents、Pull requests、Workflows write，以及隐含 Metadata read。用户本轮已选择增加 **Actions read** 用于单仓CI结果查询；需在App设置保存并由安装接受更新，实际是否生效以每次API核实为准。不会增加 Actions write、Checks、Commit statuses、Administration、Secrets、Environments、Variables 或账号/组织权限。Workflows write 只用于工作流文件写入，不授权重跑、dispatch、配置 Actions 或修改规则。[权限参考](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps)、[Git 访问权限](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-git-access)
 
 安装应使用 Only on this account / Only select repositories。App JWT 能核对 selected、唯一账号安装及两个目标仓库的归属，但不能列举安装的完整仓库集合；单仓 IAT 列表也不能排除第三仓。**“恰好只安装上述两仓”仍待用户在 GitHub 安装设置 UI 核实并保留非秘密证据**；入口不为此额外铸造覆盖整个 installation 的 token。
 
@@ -87,7 +87,7 @@ App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真�
 | --- | --- |
 | App 与旧工具只读认证 | 已核实上述身份和安装归属；首失败及第二次通过回执保留 |
 | 安装精确范围 | 待 UI 证明恰好两仓，没有第三仓 |
-| 共享四模式入口 | 本地344项完整回归及29项收尾针对验证通过；另9项Git诊断/alternates/nonff测试通过。真实写入以本机回交报告为准 |
+| 共享四模式入口 | 本地344项完整回归及29项收尾针对验证通过；另10项Git诊断/alternates/nonff/HTTP Basic测试通过。真实写入以本机回交报告为准 |
 | 游戏 Verify | 真实游戏单仓只读验证已通过，见已入库脱敏回执；不直接推游戏 |
 | 工具 Push / PR | 本轮已授权仅本次工具任务分支和 main PR；准确 SHA、App 作者 PR URL 和实际操作结果以本机回交报告/回执为准 |
 | Status / 远端 CI | Actions read 配置选择待用户答复；准确 head 的真实结果与可读范围以本机报告为准，无法读取则明确缺项 |

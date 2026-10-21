@@ -39,6 +39,8 @@ export interface TaskPushProof {
 }
 export type TaskPushGitDiagnostic = 'TLS_CERTIFICATE_VALIDATION_FAILED' | 'TLS_BACKEND_UNAVAILABLE' |
   'CREDENTIAL_HELPER_FAILED' | 'AUTHENTICATION_REJECTED' | 'WORKFLOW_PERMISSION_REJECTED' |
+  'CREDENTIAL_HELPER_NO_TOKEN' | 'CREDENTIAL_HELPER_INVALID_PROTOCOL' | 'CREDENTIAL_HELPER_INVALID_HOST' |
+  'CREDENTIAL_HELPER_INVALID_PATH' | 'CREDENTIAL_HELPER_INVALID_USERNAME' | 'CREDENTIAL_HELPER_PROTOCOL_PARSE' |
   'PUSH_NON_FAST_FORWARD' | 'PUSH_REMOTE_RULE_REJECTED' | 'GIT_CONFIGURATION_REJECTED' |
   'OBJECT_DATABASE_UNAVAILABLE' | 'NETWORK_DNS_FAILED' | 'NETWORK_CONNECTION_FAILED' |
   'GIT_PROCESS_START_FAILED' | 'GIT_PROCESS_TIMEOUT' | 'GIT_OUTPUT_LIMIT_REACHED' |
@@ -46,6 +48,9 @@ export type TaskPushGitDiagnostic = 'TLS_CERTIFICATE_VALIDATION_FAILED' | 'TLS_B
 
 /** Maps bounded in-memory diagnostics to constants. No original text, URL, header or credential is returned. */
 export function classifyTaskPushGitFailure(text: string): TaskPushGitDiagnostic {
+  for (const code of ['NO_TOKEN', 'INVALID_PROTOCOL', 'INVALID_HOST', 'INVALID_PATH', 'INVALID_USERNAME', 'PROTOCOL_PARSE'] as const) {
+    if (text.includes(`EXPLORER_GIT_HELPER_${code}`)) return `CREDENTIAL_HELPER_${code}`;
+  }
   if (/unsupported ssl backend/i.test(text)) return 'TLS_BACKEND_UNAVAILABLE';
   if (/ssl certificate problem|certificate verif(?:y|ication) failed|server certificate verification failed|unable to get (?:local )?issuer certificate|self[- ]signed certificate|sec_e_untrusted_root|cert_trust_is_untrusted_root|error setting certificate (?:verify )?locations|problem with the ssl ca cert|schannel:.*(?:cert|trust|revocation)/i.test(text)) return 'TLS_CERTIFICATE_VALIDATION_FAILED';
   if (/could not read (?:username|password)|unable to get password|terminal prompts disabled|credential.*(?:failed|not found)|unable to read askpass|waitpid for|ntcreatedirectoryobject|err_module_not_found|cannot (?:spawn|run).*credential/i.test(text)) return 'CREDENTIAL_HELPER_FAILED';
@@ -69,25 +74,29 @@ const repositoryVariable = 'EXPLORER_DEV_APP_GIT_REPOSITORY';
 
 /** Static credential protocol program: never contains a token or writes a credential to disk. */
 export const taskPushCredentialHelper = String.raw`import process from 'node:process';
+const deny = code => { process.stderr.write('EXPLORER_GIT_HELPER_' + code + '\n'); process.exit(1); };
 let input = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => { input += chunk; if (input.length > 8192) process.exit(1); });
+process.stdin.on('data', chunk => { input += chunk; if (input.length > 8192) deny('PROTOCOL_PARSE'); });
 process.stdin.on('end', () => {
   if (process.argv[2] !== 'get') return;
   const values = new Map();
   for (const line of input.split('\n')) {
     if (!line) continue;
     const at = line.indexOf('=');
-    if (at <= 0 || values.has(line.slice(0, at))) process.exit(1);
-    values.set(line.slice(0, at), line.slice(at + 1));
+    if (at <= 0) deny('PROTOCOL_PARSE');
+    const key = line.slice(0, at);
+    // Git's advertised capabilities and HTTP challenges are documented multi-valued attributes.
+    if (values.has(key) && !['capability[]', 'wwwauth[]', 'state[]'].includes(key)) deny('PROTOCOL_PARSE');
+    values.set(key, line.slice(at + 1));
   }
   const repo = process.env.EXPLORER_DEV_APP_GIT_REPOSITORY;
   const token = process.env.EXPLORER_DEV_APP_GIT_TOKEN;
-  if (!['chwan886/Architecture-Explorer', 'chwan886/GameDemo02'].includes(repo) ||
-      values.get('protocol') !== 'https' || values.get('host') !== 'github.com' ||
-      values.get('path') !== repo + '.git' ||
-      (values.has('username') && values.get('username') !== 'x-access-token') ||
-      !token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) process.exit(1);
+  if (!token || token.length > 16384 || /[\x00-\x20\x7f]/.test(token)) deny('NO_TOKEN');
+  if (values.get('protocol') !== 'https') deny('INVALID_PROTOCOL');
+  if (values.get('host') !== 'github.com') deny('INVALID_HOST');
+  if (!['chwan886/Architecture-Explorer', 'chwan886/GameDemo02'].includes(repo) || values.get('path') !== repo + '.git') deny('INVALID_PATH');
+  if (values.has('username') && values.get('username') !== 'x-access-token') deny('INVALID_USERNAME');
   process.stdout.write('username=x-access-token\npassword=' + token + '\n\n');
 });
 `;
