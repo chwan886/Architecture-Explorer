@@ -3,18 +3,12 @@
   "execution": "local-check",
   "runUrl": null,
   "sourceDirty": true,
-  "packageId": "tool-e388133a859d6f5494d69a2d1dec0ab947c7ad83-927461001-7",
+  "toolSha": "74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06",
+  "packageId": "tool-74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06-local-3",
+  "containsGameSourceExcerpts": true,
+  "sourceQuoteAnchorCount": 236,
+  "humanModelBytesPreserved": true,
   "runtime": "bundled Node + tsx",
-  "tested": [
-    "all root dependencies resolve inside artifact",
-    "server startup",
-    "built frontend HTTP 200",
-    "C# and Python fixture analysis",
-    "code graph API",
-    "project API",
-    "target Python not executed",
-    "no machine config/Git/game/Unity references bundled"
-  ],
   "counts": {
     "nodes": 12,
     "edges": 5,
@@ -42,5 +36,16 @@
     "tsx": "node_modules\\tsx\\dist\\loader.mjs",
     "typescript": "node_modules\\typescript\\lib\\version.cjs",
     "vite": "node_modules\\vite\\dist\\node\\index.js"
-  }
+  },
+  "tested": [
+    "all root dependencies resolve inside artifact",
+    "server startup",
+    "built frontend HTTP 200",
+    "C# and Python fixture analysis",
+    "code graph API",
+    "project API",
+    "target Python not executed",
+    "curated game source excerpts preserved and disclosed",
+    "no complete target checkout, local config, Git credentials or Unity DLLs bundled"
+  ]
 }

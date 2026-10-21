@@ -25,10 +25,12 @@ E:/Codex/worktrees/fbb2/GameDemo02/Docs/ReviewEvidence/explorer-dispatch-handoff
 
 工具本地分支：codex/github-game-delivery
 工具接收端实现提交：30407a794f9bb8a5a93854f12277c306b741be40
+首次交接证据提交：74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06
+本轮收尾实现提交：1d7c4fa5d5154bb73ce83eeee770a5c486411d56
 实现为本地独立提交；未推送，未合并至本地或远端 main。
 工具默认分支上已部署的接收工作流提交：null（尚未进入 main）。
 
-游戏材料报告：第一阶段提交 faca62dc6fcd30fa08ef4fac59b0db83d8ded448，尚未进入 main；游戏本地 main f2761432cfa68140b7b095112cc5e0ee2fda3cd4，保留 13 个未推送提交。
+最新同一游戏交接材料报告：本地与远端 main 已同为 f2761432cfa68140b7b095112cc5e0ee2fda3cd4，旧 13 提交同步待办已完成并取消。第一阶段提交 faca62dc6fcd30fa08ef4fac59b0db83d8ded448 仍未进入 main。
 这些游戏事实来自转交文档，未将其 349 项本地测试写成工具实测或远端通过，也未处理其主线同步。
 
 二、双方确认的接收接口
@@ -72,8 +74,8 @@ source_run_url 是基础 run URL；attempt 单独传递，回执另派生 attemp
 1. 工作流只允许工具 main；在请求跨仓库凭据前校验 main protected、版本、固定 repo/ref、SHA、来源 run/attempt/URL 与配置前提。
 2. 工具代码 checkout 使用该次 GitHub 运行的准确 github.sha；打包和快照再次核对真实工具 HEAD。不是执行游戏提供的脚本。
 3. Tools/ci-authorize.ts 查询指定 run 的指定 attempt 及其 jobs，不取 latest：repository/event=push/head_branch=main/head_sha/path/run_attempt 必须匹配，全部确认的 Fast/tools jobs 已成功；来源整体可以仍在发送中，失败/取消不接受。
-4. 核对双方 main 保护与历史、必需检查 context；游戏还要求 Code Owner、过期批准处理、最近 push 独立批准、strict 最新检查与解决讨论。
-5. 查真实已合并 PR：merge_commit_sha=source_sha，base 是固定游戏 main；分页读取合并前、准确 PR head、非作者、非 bot 的 User 批准。普通 COMMENTED 不撤销批准；自审、撤销、要求修改、旧 head、合并后补审不能通过。
+4. 核对双方 main 保护与历史、必需检查 context；双方均要求 Code Owner，游戏还要求过期批准处理、最近 push 独立批准、strict 最新检查与解决讨论。聚合全部有效 Ruleset 的数量最大值与各布尔门禁，不因分散到不同规则或返回顺序误判。
+5. 查真实已合并 PR：merge_commit_sha=source_sha，base 是固定游戏 main；分页读取合并前、准确 PR head、非作者、非 bot 的 User 批准，独立不同用户数量须达到游戏实际有效审批门限。普通 COMMENTED 不撤销批准；自审、撤销、要求修改、旧 head、合并后补审不能通过。工具侧此处核对当前平台规则，不声称已核验工具 PR 审批数量。
 6. 游戏 checkout 的 ref 始终是 source_sha，fetch 完整历史；严格 Git 再证实 HEAD 非空、origin 固定、属于 origin/main 历史、工作区与未跟踪文件干净。
 7. Tools/ci-references.ps1 仅取人工批准的 SHA256 固定 HTTPS 元数据 ZIP，不跟随跳转，仅允许根 references.json 和 DLL，拒绝路径穿越、目录、链接、重名或指纹错误。
 8. Tools/ci-snapshot.ts 生成 runner 临时配置，引用和缓存/输出均在工具侧；Unity 清单版本必须匹配游戏 ProjectVersion.txt，每 DLL 摘要核对，至少 CoreModule，禁止根聚合 UnityEngine.dll 混用和假 Unity 类型。
@@ -86,6 +88,7 @@ source_run_url 是基础 run URL；attempt 单独传递，回执另派生 attemp
 
 工具包：tool-build-<toolSHA>-<targetRunID>-<targetAttempt>
   前端、TypeScript/tsx server/MCP、离线冻结恢复的可移植依赖、Node、C# worker 及依赖、Python 分析器、锁文件与 RUNNING.md。
+  保留人工模型 anchors[].quote、语义解释和文档中的游戏源码摘录；containsGameSourceExcerpts=true。无完整游戏 checkout 不等于不含游戏源码。
   需要 Git、Python 3.11+ 与 .NET 10 runtime/锁定 SDK，按说明生成自己的本机配置；dist 不是完整工具，也没有自动安装器。
 
 游戏证据包：game-index-<sourceSHA>-<toolSHA>-<targetRunID>-<targetAttempt>
@@ -104,12 +107,13 @@ source_run_url 是基础 run URL；attempt 单独传递，回执另派生 attemp
 
 目标失败保持红色，由有权限人员在 GitHub 对原 run 重跑；不自动重试 POST、不撤销游戏合并、不改写历史。
 云索引是 CI 快照证据，不是本地 .cache 导入格式；本轮没有安装或缓存导入功能。
-索引/失败诊断可能含游戏源码摘录，只有核实工具 artifact 读者不超过游戏读者后才上传；两仓同为 private 不足以证明权限相同。禁止公开 Pages/Release。
+工具包、索引、失败诊断和测试报告都可能含游戏源码摘录。工具 Git 仓库本身、Actions 日志/报告和产物的读者都须核实不超出游戏允许范围；两仓同为 private 不足以证明权限相同。禁止公开 Pages/Release。
+tool-ci 的 PR 检查不挂生产环境/取跨仓凭据；main 工具包使用单独 main-only Environment job，当前工具 private、main protected、INDEX_ACCESS_APPROVED 均满足才可打包上传。game-index 的工具包与索引都受来源 authorize.index_access 门控，授权失败不上传包。
 
 五、实际本地验证
 
 Tools/ci-check.ps1 -Prepare：锁定准备与冻结还原成功，不创建/读取 config/local.json。
-最终 Tools/ci-check.ps1：Typecheck 成功；277/277 测试通过，0 失败、0 跳过；Vite 前端构建成功；C# worker 构建成功，0 warning/0 error。
+最终 Tools/ci-check.ps1：Typecheck 成功；296/296 测试通过，0 失败、0 跳过；Vite 前端构建成功；C# worker 构建成功，0 warning/0 error。
 本机 Python 3.14.3；CI 固定 3.13.7，远端该组合未运行。
 actionlint 1.7.12：两份工具工作流通过；官方 Actions 已核实并固定 SHA；PowerShell Parser 通过。
 七字段联通夹具：执行参考发送脚本，捕获精确七个 string，经过真实 workflow env 映射同时通过两个接收入口；不联网，回执明确 targetConclusion=not-observed。
@@ -117,7 +121,8 @@ actionlint 1.7.12：两份工具工作流通过；官方 Actions 已核实并固
 真实 Scan/Verify/Audit 子进程使用工具仓库夹具；目标带 raise 的 Python 没有被执行，过期人工说明保留待复核。
 
 完整包真实启动：包内 Node+tsx、17 个根依赖均从包内解析，前端 HTTP 200、项目与图 API，C#/Python 夹具分析 12 nodes / 5 edges / 2 files，通过。
-此包测试在实现提交前进行，sourceDirty=true、execution=local-check、runUrl=null；目录中的数字是本地测试标识，不是 GitHub run。
+本轮包确实保留并披露 236 个源码引文锚点，人工模型逐字节一致；创建/清理临时目录的4项 junction/所有权测试也实际通过。
+此包测试在收尾实现提交前进行，打包时 HEAD=74a2f532c5dcb3b75b7477a2a13ac2f4e71eea06、sourceDirty=true、execution=local-check、runUrl=null；目录中的数字是本地测试标识，不是 GitHub run，也不是干净提交产物。
 已修复直接复制 pnpm 链接导致 tsx/esbuild 依赖丢失；改为隔离 staging 的离线冻结 hoisted 复制依赖，并实测启动。
 
 实际浏览器：本轮工具 localhost:4311，使用仓库夹具；新入口、总览、详情展开、阶段返回均检查。
@@ -135,12 +140,12 @@ PR 外链确实跳到固定游戏 PR 列表；当时内置浏览器未登录，�
 
 六、尚未就绪的缺项（不能开启发送）
 
-1. 游戏第一阶段未纳入 main，fast-gate 尚无真实远端名称/运行/报告证据；既有本地领先历史由用户与游戏主控单独审阅处理。
+1. 游戏第一阶段未纳入 main，fast-gate 尚无真实远端名称/运行/报告证据；既有主线同步已经完成，不再保留 13 提交同步待办。
 2. 工具实现仅本地分支；尚未通过工具 PR 合入默认 main。已部署 workflow SHA=null。
-3. 两仓 main 保护未启用/未完成有效验收。工具需 Ruleset：PR + 至少1独立 Review + 必需 Tool / typecheck, tests and builds；游戏需第一阶段约定的完整规则及 CODEOWNERS 生效证明。
+3. 两仓 main 保护未启用/未完成有效验收。工具自身 CODEOWNERS 已补齐，需 Ruleset：PR + 至少1独立 Review + Code Owner review + 必需 Tool / typecheck, tests and builds；游戏需第一阶段约定的完整规则。文件不代替平台设置，唯一 Owner 不能批准自己作者的 PR。
 4. 游戏 explorer-dispatch 和工具 architecture-delivery 的 main-only 限制、可用账户方案、保护与审批规则未配置/未核实；PR/tag 不得取得跨仓秘密。
-5. 受限 App 与秘密未配置/未核实。发送与读取身份分开，不能使用管理员 PAT。
-6. Unity 引用供应 URL、ZIP 摘要、准确编辑器版本、DLL 摘要/许可与 defines 未准备；不借用本机路径或造类型。
+5. 受限 App 与秘密未配置/未核实。用户已选定尚未创建的开发 App，暂名 chwan-dev-agent，仅两个现有项目的 Contents/Pull requests/Workflows write，无 Administration、不加入 main bypass；chwan886 最终独立批准。开发、生产发送、游戏读取三类身份分开，不能使用管理员 PAT，不能用 Owner 代开发身份推送。
+6. Unity 供应方案已准备于 docs/UNITY-REFERENCE-SUPPLY.md；真实 Editor 版本、许可、私有不可变 ZIP/DLL 指纹、短期 URL 与续期责任尚待交付。当前 CoreModule 静态分析策略不等同 Unity facade 插件编译或完整 Unity 语义，不借用本机路径或造类型。
 7. 产物访问集合与绕过名单未人工确认。INDEX_ACCESS_APPROVED 和 RULE_BYPASS_REVIEWED 尚不能当作已满足。
 8. 指定真实 source SHA/run/attempt 的手动接收、构建、Scan/Verify/Audit、产物上传未运行。
 9. 真实 feature 合并联调未执行；远端 Fast、发送回执、工具运行和生产索引证据均无。
@@ -165,7 +170,8 @@ PR 外链确实跳到固定游戏 PR 列表；当时内置浏览器未登录，�
   Vars GAME_REQUIRED_JOB_NAMES 与 GAME_REQUIRED_CHECK_CONTEXTS：真实远端核实后填 JSON 数组，候选均为 ["fast-gate"]，现在不能用候选冒充已注册证据。
   Vars INDEX_ACCESS_APPROVED=true：仅在双仓 artifact 读者集合审阅后设置。
   Vars RULE_BYPASS_REVIEWED=true：仅在管理员/机器人绕过名单审阅后设置。
-  Vars UNITY_REFERENCES_URL / UNITY_REFERENCES_SHA256：许可允许、受控 HTTPS、准确 ZIP 摘要。清单与 DLL 的指纹/版本还会由扫描包装再次验证。
+  Secret UNITY_REFERENCES_URL：短期私有只读 HTTPS URL，不重定向、不进入文档/日志/UI/产物；下载异常固定脱敏信息并设置超时。
+  Vars UNITY_REFERENCES_SHA256：对应不可变 ZIP 的真实小写摘要。清单、DLL 指纹/版本会再次验证；过期需由责任人续签同对象。持续自动发送前必须解决续期和真实兼容性，不能把供应方案当成已备好生产引用。
 工具 GITHUB_TOKEN 仅 contents:read，用于自身 checkout/有效 Ruleset 读取；PR 测试无跨仓凭据，只用仓库夹具。
 
 游戏 Environment explorer-dispatch 及 App/开关严格使用游戏交接中名称，由游戏主控实施，用户配置后验收。
@@ -184,3 +190,25 @@ PR 外链确实跳到固定游戏 PR 列表；当时内置浏览器未登录，�
 E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEVELOPMENT-DELIVERY.md
 
 本轮未推送、未合并、未修改 GitHub 设置、未开启自动化、未启动 Unity Full/Release，也未清理用户已有成果。
+
+八、本轮收尾交付与下一阶段入口
+
+本地收尾验证通过。当前结论仍为 REMOTE_NOT_READY；没有真实 PR、接收端运行或产物 URL。
+用户要求先完成本地提交，再接入专用开发 App；App 尚未创建，不能假定已可用或回退 Owner 身份。
+
+开发 App 创建、安装、本机认证与待完成清单绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEV-APP-SETUP.md
+Unity 引用供应方案绝对路径：
+E:/Codex/worktrees/cd84/Architecture-Explorer/docs/UNITY-REFERENCE-SUPPLY.md
+
+收尾实现改动文件：
+  .github/CODEOWNERS；.github/workflows/tool-ci.yml；.github/workflows/game-index.yml
+  Tools/ci-authorize.ts；Tools/ci-artifact-access.ts；Tools/ci-package.ps1
+  Tools/ci-package-smoke.ts；Tools/ci-smoke-directories.ts；Tools/ci-references.ps1
+  tests/ci-authorize.test.ts；tests/ci-artifact-access.test.ts；tests/ci-references.test.ts
+  tests/ci-smoke-directories.test.ts；tests/codeowners.test.ts
+  README.md；docs/DEVELOPMENT-DELIVERY.md；docs/UNITY-REFERENCE-SUPPLY.md；docs/DEV-APP-SETUP.md
+本文件、docs/DELIVERY-VALIDATION.md 和 docs/evidence/delivery/ 三份实际检查证据另作本地证据提交。
+
+本地 CODEOWNERS 不等于 main 已启用；首次导入需用户真实独立审阅。开发 App 认证就绪且各自主控收尾通过后，才由对应主控用 App 推自己的任务分支并建 PR；本工具执行者不推送游戏工作区或替游戏主控宣称通过。
+之后仍按第七节六步顺序进入 main 规则/Environment/生产凭据配置和接收端手测。自动发送继续关闭，直到接收端真实就绪、用户审核并另行开启。
