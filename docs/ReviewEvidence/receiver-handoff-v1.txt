@@ -215,6 +215,8 @@ E:/Codex/worktrees/cd84/Architecture-Explorer/docs/UNITY-REFERENCE-SUPPLY.md
 
 九、开发 App 最小本机只读认证补充（2026-10-21）
 
+本节保存上一轮只读验证的历史；最新共享入口与本轮授权见第十节。
+
 入口绝对路径：
 E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1
 实现：同目录 dev-app-auth.ts。两个主控均可从任意工作目录使用同一入口；当前请求固定为 Architecture-Explorer Contents read，不提供push/PR/token回调。
@@ -234,3 +236,14 @@ E:/Codex/worktrees/cd84/Architecture-Explorer/docs/evidence/dev-app/auth-verific
 认证夹具覆盖真实Windows ACL/目录及文件链接、scope、JWT、失效时间、异常脱敏、撤销与有界只读探测。最终检查与JUnit见 docs/DELIVERY-VALIDATION.md。
 
 本轮无push、PR、merge、dispatch、GitHub设置修改或自动发送启用；认证通过不改变接收端 REMOTE_NOT_READY。
+
+十、共享入口及工具任务分支 PR 交付（2026-10-21）
+
+最新入口与命令合同：E:/Codex/worktrees/cd84/Architecture-Explorer/docs/DEV-APP-SETUP.md
+入口仍为 Tools/dev-app-auth.ps1，复用同一PEM/JWT/单仓token/撤销流程，新增 -Repository、互斥 -Verify/-Push/-PullRequest/-Status。两个主控共用工具侧绝对路径；每次只能指定一个现有允许仓库。
+Push核对本地origin、clean工作区、当前codex任务分支和准确ExpectedHead；隔离bare传输不加载源hooks/凭据/config，固定URL+SHA refspec、无force/main/tag/删除。PR固定main，仅本App bot作者同仓准确head，PATCH只改title/body。每次按动作缩权，finally撤销204并确认401；不读取Owner凭据或修改全局Git。
+本轮用户已授权工具当前任务分支推送并建立main PR；游戏仅只读验证，不代游戏主控推分支或建PR，不开启自动发送。
+游戏真实验证已通过：单仓Contents read，main SHA=f2761432cfa68140b7b095112cc5e0ee2fda3cd4，token撤销204+401；回执 docs/evidence/dev-app/shared-game-verify-2026-10-21.json。
+本轮本地测试、构建与安全审阅见 docs/DELIVERY-VALIDATION.md；工具实际push/PR/CI结果由工具主控填入本机回交报告 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt，避免将实现或请求接受误作CI成功，最终head按该回执/真实PR核对。
+私有CI完整run/job查询需Actions read；若未配置或GraphQL不可读，必须明确权限缺项，不用Owner身份兜底、不编造成功或run链接。
+PR不等于main已合入。接收端仍需第七节的受保护规则、Environment、生产只读/发送身份、Unity供应和精确SHA手测，自动发送继续关闭。

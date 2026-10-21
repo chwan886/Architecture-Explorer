@@ -61,7 +61,7 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 
 工具自身 [CODEOWNERS](.github/CODEOWNERS) 保护 CI、依赖、读取/分析边界和交付证据；需由 main Ruleset 启用 Code Owner review 才强制生效，作者不能自批。工具包与索引均须经过受保护环境的读者范围审核才能上传。[Unity 引用供应方案](docs/UNITY-REFERENCE-SUPPLY.md)已准备，真实版本、许可、私有 ZIP 与指纹仍待维护者交付；首次手测使用 Secret 短期 URL，自动发送保持关闭。
 
-开发 App `chwan-dev-agent` 已创建，工具单仓 Contents read 的本机认证、范围和撤销已验证，见[入口、命令与脱敏回执](docs/DEV-APP-SETUP.md)。当前入口只做验证；安装恰好两仓仍待人工核实，写入认证尚未实现，本轮不推送或建 PR。由 `chwan886` 独立批准，不回退使用 Owner 身份。
+开发 App `chwan-dev-agent` 的[共享入口](docs/DEV-APP-SETUP.md)支持每次指定一个仓库的 Verify、任务分支 Push、PR 创建/文字更新和 Status；两仓只读认证均已实测。推送固定准确 SHA 与 `codex/` 分支，PR 固定 main、核对 App 作者，禁强推/批准/合并和 Owner 回退。工具任务分支的实际 PR/CI 以本机回交报告为准；安装恰好两仓仍需人工核实，自动发送继续关闭。
 
 ```powershell
 ./Tools/explorer.ps1 -Task Scan                 # 手动全量扫描

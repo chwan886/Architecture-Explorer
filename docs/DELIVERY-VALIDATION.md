@@ -60,3 +60,13 @@ PR 链接实际打开固定的 `https://github.com/chwan886/GameDemo02/pulls`。
 私钥目录/文件 ACL 只允许当前用户、SYSTEM、Administrators；受限继承与 owner Administrators 均明确记录，路径链不含链接。未更改真实权限。只在认证 Node 内存读取 PEM、签 JWT、持有 IAT；不输出/持久化这些秘密，不使用 Owner 或全局 Git/CLI 登录，生产 CI 不取得此 App 凭据。
 
 仍待完成：安装恰好两仓的人工 UI 证据，Git/PR 写入认证入口、main/Environment/生产 App 与真实接收端验证。JWT 两仓正向 membership 和窄权 token 不能证明安装没有第三仓。本轮未推送、未建 PR、未合并、未 dispatch、未启用自动发送；接收端继续 `REMOTE_NOT_READY`。
+
+## 共享入口与本次任务分支交付
+
+上述只读入口现已扩展为单仓 Verify / Push / PullRequest / Status，合同与命令见 [共享 App 入口](DEV-APP-SETUP.md)。完整本地 `Tools/ci-check.ps1` **344/344 通过，零失败、零跳过**；Typecheck、前端与 C# 构建成功。收尾审阅后的通用 armor/准确 PR 编号防线与隔离 Git 配置，另经 29 项针对测试及 Typecheck 通过。证据：[共享回归 JUnit](evidence/dev-app/shared-full-junit.xml)、[检查摘要](evidence/dev-app/shared-checks.json)。
+
+正反例覆盖两个允许仓库、每次只验证所选安装归属、单仓精确权限；互斥动作/非法仓库、main/ref/尾换行/SHA/正文路径与 armor；PR 精确 head/base/同仓/App bot ID、已有 PR 只更新 title/body、错误作者/关闭或歧义 PR 拒绝、未知 POST 不重试；CI 缺权限/错 SHA/错 PR/失败或未完成不报告成功。真实本地 Git 夹具核实 clean/HEAD/origin/危险配置、静态 helper 协议、清除继承凭据及隔离传输计划。未在夹具中读取真实 PEM 或访问远端。
+
+[游戏只读真实回执](evidence/dev-app/shared-game-verify-2026-10-21.json)验证 `GameDemo02` main `f2761432cfa68140b7b095112cc5e0ee2fda3cd4`，IAT 只含该仓 Contents read 与 Metadata read，撤销 204 后原 token 最终 401；没有扫描或修改游戏工作目录。
+
+本轮用户授权工具本次任务分支推送并创建 base=main PR；这些动作的实际 PR/head/App 作者/远端 CI，由本机回交报告 `.tmp/shared-app-handoff-20261021.txt` 及其脱敏 JSON 记录，不把本地通过当远端结果。自动发送保持关闭，禁止 Owner 回退、直推 main、强推、自动批准或合并；未扩大生产 CI 的凭据权限。

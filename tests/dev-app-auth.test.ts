@@ -87,7 +87,7 @@ test('all-repository, wrong-owner, suspended, multiple or mismatched installatio
     const f = fixture((_method, endpoint, result) => { if (endpoint.startsWith('/app/installations?')) change(result.data); return result; });
     assert.equal((await f.run()).outcome, 'failed'); assert.ok(!f.calls.some(call => call.method === 'POST'));
   }
-  const f = fixture((_method, endpoint, result) => { if (endpoint.endsWith('/GameDemo02/installation')) result.data.id++; return result; });
+  const f = fixture((_method, endpoint, result) => { if (endpoint.endsWith('/Architecture-Explorer/installation')) result.data.id++; return result; });
   assert.equal((await f.run()).failureCode, 'TARGET_INSTALLATION_MISMATCH');
   assert.ok(!f.calls.some(call => call.method === 'POST'));
 });

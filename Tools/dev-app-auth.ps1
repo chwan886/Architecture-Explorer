@@ -1,9 +1,19 @@
 #requires -Version 7.0
-# Windows-only, read-only key preflight for the App verification command.
+# Windows-only key preflight for the narrowly scoped App commands.
 # This wrapper does not repair ACLs, read the PEM, or supply a token through the environment.
 [CmdletBinding()]
 param(
   [switch]$Verify,
+  [switch]$Push,
+  [switch]$PullRequest,
+  [switch]$Status,
+  [ValidateSet('chwan886/Architecture-Explorer','chwan886/GameDemo02')][string]$Repository='chwan886/Architecture-Explorer',
+  [string]$WorkingDirectory='',
+  [string]$Branch='',
+  [string]$ExpectedHead='',
+  [string]$Title='',
+  [string]$BodyFile='',
+  [int]$PrNumber=0,
   [string]$PrivateKeyDirectory='C:/Users/chwan/AppData/Local/ChwanDevAgent/keys',
   [string]$ReceiptPath=''
 )
@@ -88,15 +98,72 @@ function Get-RestrictedAclEvidence([string]$AbsolutePath, [string]$CurrentSid) {
     }
     return @{ owner=$ownerClass; inherited=$hasInherited }
   } catch {
-    if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z_]+$') { throw }
+    if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z0-9_]+$') { throw }
     Stop-Preflight 'ACL_UNREADABLE'
   }
 }
 
 try {
   if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Stop-Preflight 'WINDOWS_REQUIRED' }
-  if (-not $Verify) { Stop-Preflight 'VERIFY_REQUIRED' }
   $toolRoot=[IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\','/')
+  $operationCount=0
+  foreach ($selected in @($Verify,$Push,$PullRequest,$Status)) { if ($selected) { $operationCount++ } }
+  if ($operationCount -ne 1) { Stop-Preflight 'EXACTLY_ONE_OPERATION_REQUIRED' }
+  $operation=if ($Verify) { 'verify' } elseif ($Push) { 'push' } elseif ($PullRequest) { 'pr' } else { 'status' }
+  $repositoryName=if ($Repository -ieq 'chwan886/GameDemo02') { 'chwan886/GameDemo02' } else { 'chwan886/Architecture-Explorer' }
+  $operationArguments=@('--operation',$operation,'--repository',$repositoryName)
+  if ($Verify) {
+    foreach ($unused in @('WorkingDirectory','Branch','ExpectedHead','Title','BodyFile','PrNumber')) {
+      if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
+    }
+  } elseif ($Status) {
+    foreach ($unused in @('WorkingDirectory','Branch','Title','BodyFile')) {
+      if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
+    }
+    if ($ExpectedHead -notmatch '\A[0-9a-fA-F]{40}\z') { Stop-Preflight 'EXACT_HEAD_REQUIRED' }
+    if (-not $PSBoundParameters.ContainsKey('PrNumber') -or $PrNumber -lt 1) { Stop-Preflight 'PR_NUMBER_INVALID' }
+    $operationArguments+=@('--expected-head',$ExpectedHead.ToLowerInvariant(),'--pr-number',$PrNumber.ToString([Globalization.CultureInfo]::InvariantCulture))
+  } else {
+    # Only ordinary codex feature refs are accepted here. Node independently
+    # validates Git state, remote identity, exact HEAD, and the fixed main base.
+    if ($Branch -cnotmatch '\Acodex/[A-Za-z0-9][A-Za-z0-9._/-]*\z' -or $Branch.Contains('..') -or $Branch.Contains('//') -or $Branch.EndsWith('/') -or $Branch.EndsWith('.')) {
+      Stop-Preflight 'FEATURE_BRANCH_REQUIRED'
+    }
+    foreach ($component in $Branch.Split('/')) {
+      if ($component.StartsWith('.') -or $component.EndsWith('.lock',[StringComparison]::OrdinalIgnoreCase)) { Stop-Preflight 'FEATURE_BRANCH_REQUIRED' }
+    }
+    if ($ExpectedHead -notmatch '\A[0-9a-fA-F]{40}\z') { Stop-Preflight 'EXACT_HEAD_REQUIRED' }
+    $operationArguments+=@('--branch',$Branch,'--expected-head',$ExpectedHead.ToLowerInvariant())
+    if ($Push) {
+      foreach ($unused in @('Title','BodyFile','PrNumber')) {
+        if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
+      }
+      $workingPath=Get-LocalAbsolutePath $WorkingDirectory 'WORKING_DIRECTORY_INVALID'
+      Assert-NoLinks $workingPath
+      if (-not (Test-Path -LiteralPath $workingPath -PathType Container)) { Stop-Preflight 'WORKING_DIRECTORY_INVALID' }
+      $operationArguments+=@('--working-directory',$workingPath)
+    } else {
+      if ($PSBoundParameters.ContainsKey('WorkingDirectory')) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
+      if ([string]::IsNullOrWhiteSpace($Title)) { Stop-Preflight 'PR_TITLE_REQUIRED' }
+      $bodyPath=Get-LocalAbsolutePath $BodyFile 'PR_BODY_FILE_INVALID'
+      if (-not $bodyPath.StartsWith($toolRoot+[IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        Stop-Preflight 'PR_BODY_OUTSIDE_TOOL'
+      }
+      Assert-NoLinks $bodyPath
+      if (-not (Test-Path -LiteralPath $bodyPath -PathType Leaf)) { Stop-Preflight 'PR_BODY_FILE_INVALID' }
+      if ((Get-Item -LiteralPath $bodyPath -Force).Length -gt 65536) { Stop-Preflight 'PR_BODY_TOO_LARGE' }
+      try {
+        # Read only the explicitly supplied PR text, never the PEM. Strict UTF-8
+        # decoding prevents UTF-16 BOM auto-detection from changing the contract.
+        $bodyBytes=[IO.File]::ReadAllBytes($bodyPath)
+        $bodyText=[Text.UTF8Encoding]::new($false,$true).GetString($bodyBytes)
+      } catch { Stop-Preflight 'PR_BODY_UTF8_REQUIRED' }
+      if ($bodyText -match '-----BEGIN [A-Z0-9 ]+-----') { Stop-Preflight 'PR_BODY_PEM_REJECTED' }
+      if ($PSBoundParameters.ContainsKey('PrNumber') -and $PrNumber -lt 1) { Stop-Preflight 'PR_NUMBER_INVALID' }
+      $operationArguments+=@('--title',$Title,'--body-file',$bodyPath)
+      if ($PSBoundParameters.ContainsKey('PrNumber')) { $operationArguments+=@('--pr-number',$PrNumber.ToString([Globalization.CultureInfo]::InvariantCulture)) }
+    }
+  }
   $keyDirectory=Get-LocalAbsolutePath $PrivateKeyDirectory 'KEY_DIRECTORY_INVALID'
   Assert-NoLinks $keyDirectory
   $directoryItem=Get-Item -LiteralPath $keyDirectory -Force
@@ -148,7 +215,7 @@ try {
 
   try {
     $lock=Get-Content -LiteralPath (Join-Path $toolRoot 'toolchain.lock.json') -Raw | ConvertFrom-Json
-    if ($lock.node.version -notmatch '^\d+\.\d+\.\d+$') { Stop-Preflight 'LOCKED_NODE_UNAVAILABLE' }
+    if ($lock.node.version -notmatch '\A\d+\.\d+\.\d+\z') { Stop-Preflight 'LOCKED_NODE_UNAVAILABLE' }
     $node=Join-Path $toolRoot ('.tools/node-v'+$lock.node.version+'-win-x64/node.exe')
     $tsx=Join-Path $toolRoot 'node_modules/tsx/dist/cli.mjs'
     $entry=Join-Path $toolRoot 'Tools/dev-app-auth.ts'
@@ -156,7 +223,7 @@ try {
       if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { Stop-Preflight 'LOCKED_RUNTIME_UNAVAILABLE' }
     }
   } catch {
-    if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z_]+$') { throw }
+    if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z0-9_]+$') { throw }
     Stop-Preflight 'LOCKED_RUNTIME_UNAVAILABLE'
   }
 
@@ -168,7 +235,7 @@ try {
   $start.UseShellExecute=$false
   $start.CreateNoWindow=$true
   $start.RedirectStandardInput=$true
-  foreach ($argument in @($tsx,$entry,'--key-file',$keyFile)) { $start.ArgumentList.Add($argument) }
+  foreach ($argument in (@($tsx,$entry)+$operationArguments+@('--key-file',$keyFile))) { $start.ArgumentList.Add($argument) }
   if ($receipt) { $start.ArgumentList.Add('--receipt'); $start.ArgumentList.Add($receipt) }
   foreach ($external in @('NODE_OPTIONS','NODE_PATH','NODE_DEBUG','NODE_DEBUG_NATIVE','GH_DEBUG','GH_TOKEN','GITHUB_TOKEN','GH_ENTERPRISE_TOKEN','GITHUB_ENTERPRISE_TOKEN')) {
     $start.Environment.Remove($external) | Out-Null
@@ -182,7 +249,7 @@ try {
   $process.Dispose()
   if ($childExitCode -ne 0) { Stop-Preflight 'VERIFICATION_FAILED' }
 } catch {
-  if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z_]+$') {
+  if ($_.Exception.Message -match '^App verification preflight rejected: [A-Z0-9_]+$') {
     Write-Error -Message $_.Exception.Message -ErrorAction Continue
   } else {
     Write-Error -Message 'App verification preflight rejected: LOCAL_CHECK_FAILED' -ErrorAction Continue

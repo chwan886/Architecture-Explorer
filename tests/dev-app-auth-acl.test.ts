@@ -9,6 +9,7 @@ import { createSmokeDirectory, removeSmokeDirectory } from '../Tools/ci-smoke-di
 
 const execute = promisify(execFile);
 const invalidPem = 'INVALID-FIXTURE-NOT-A-PRIVATE-KEY\n';
+const exactHead = 'abcdef1234567890abcdef1234567890abcdef12';
 
 // This script changes ACLs only on each freshly owned test directory/file.
 // No real key path or key content is read by this suite.
@@ -104,8 +105,81 @@ console.log('Fixture Node started without reading any PEM or making a network re
       await assert.rejects(access(sentinel), { code: 'ENOENT' });
     };
 
-    await t.test('requires explicit -Verify before touching even the default key directory', async () => {
-      await rejectBeforeNode([], /VERIFY_REQUIRED/);
+    await t.test('requires exactly one explicit operation before touching even the default key directory', async () => {
+      for (const args of [[], ['-Verify', '-Push'], ['-Verify', '-PullRequest'], ['-Push', '-PullRequest'], ['-Status', '-Verify'], ['-Status', '-Push'], ['-Status', '-PullRequest'], ['-Verify', '-Push', '-PullRequest', '-Status']]) {
+        await rejectBeforeNode(args, /EXACTLY_ONE_OPERATION_REQUIRED/);
+      }
+    });
+    await t.test('rejects repositories outside the two fixed names', async () => {
+      await rejectBeforeNode(['-Verify', '-Repository', 'chwan886/another-repository'], /Repository/);
+    });
+    await t.test('rejects main and unsafe feature refs for both write operations', async () => {
+      for (const operation of ['-Push', '-PullRequest']) {
+        for (const branch of ['main', 'refs/heads/main', 'codex/../main', 'codex/topic.lock', 'codex/topic//child', 'codex/topic\n']) {
+          await rejectBeforeNode([operation, '-Branch', branch, '-ExpectedHead', exactHead], /FEATURE_BRANCH_REQUIRED/);
+        }
+      }
+    });
+    await t.test('requires an exact 40-hex HEAD for either write operation', async () => {
+      for (const operation of ['-Push', '-PullRequest']) {
+        for (const head of ['', 'abcdef1', 'g'.repeat(40), exactHead + '\n']) {
+          const args = [operation, '-Branch', 'codex/app-auth-fixture'];
+          if (head) args.push('-ExpectedHead', head);
+          await rejectBeforeNode(args, /EXACT_HEAD_REQUIRED/);
+        }
+      }
+    });
+    await t.test('exposes no force push or caller-selectable base option', async () => {
+      for (const forbidden of ['-Force', '-ForceWithLease', '--force', '-Base']) {
+        await rejectBeforeNode(['-Push', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, forbidden], /parameter|force|base/i);
+      }
+    });
+    await t.test('rejects operation-specific parameters on other operations', async () => {
+      await rejectBeforeNode(['-Verify', '-Branch', 'codex/app-auth-fixture'], /OPERATION_PARAMETER_INVALID/);
+      await rejectBeforeNode(['-Push', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, '-Title', 'fixture'], /OPERATION_PARAMETER_INVALID/);
+      await rejectBeforeNode(['-PullRequest', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, '-WorkingDirectory', fakeTool], /OPERATION_PARAMETER_INVALID/);
+    });
+    await t.test('requires an exact SHA and PR for status and refuses write-specific arguments', async () => {
+      await rejectBeforeNode(['-Status', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+      await rejectBeforeNode(['-Status', '-ExpectedHead', 'abcdef1', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+      await rejectBeforeNode(['-Status', '-ExpectedHead', exactHead + '\n', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+      for (const number of ['', '0', '-1']) {
+        const args = ['-Status', '-ExpectedHead', exactHead];
+        if (number) args.push('-PrNumber', number);
+        await rejectBeforeNode(args, /PR_NUMBER_INVALID/);
+      }
+      for (const [parameter, value] of [['-Branch', 'codex/app-auth-fixture'], ['-WorkingDirectory', fakeTool], ['-Title', 'fixture'], ['-BodyFile', path.join(owned.directory, 'unused.md')]]) {
+        await rejectBeforeNode(['-Status', '-ExpectedHead', exactHead, '-PrNumber', '12', parameter!, value!], /OPERATION_PARAMETER_INVALID/);
+      }
+    });
+    await t.test('requires an absolute existing push working directory', async () => {
+      for (const directory of ['', '.', path.join(owned.directory, 'missing-worktree')]) {
+        const args = ['-Push', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead];
+        if (directory) args.push('-WorkingDirectory', directory);
+        await rejectBeforeNode(args, /WORKING_DIRECTORY_INVALID|PATH_UNREADABLE/);
+      }
+    });
+    await t.test('requires a PR title, absolute UTF-8 body file, and positive update number', async () => {
+      const prArguments = ['-PullRequest', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead];
+      await rejectBeforeNode(prArguments, /PR_TITLE_REQUIRED/);
+      await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', 'relative.md'], /PR_BODY_FILE_INVALID/);
+      const outsideBody = path.join(owned.directory, 'outside-body.md');
+      await writeFile(outsideBody, '-----BEGIN PRIVATE KEY-----\nINVALID-FIXTURE-ARMOR\n-----END PRIVATE KEY-----\n', 'utf8');
+      await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', outsideBody], /PR_BODY_OUTSIDE_TOOL/);
+      const invalidBody = path.join(fakeTool, 'invalid-body.md');
+      await writeFile(invalidBody, Buffer.from([0xff, 0xfe, 0x61, 0x00]));
+      await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', invalidBody], /PR_BODY_UTF8_REQUIRED/);
+      const armorBody = path.join(fakeTool, 'armor-body.md');
+      await writeFile(armorBody, '-----BEGIN PRIVATE KEY-----\nINVALID-FIXTURE-ARMOR\n-----END PRIVATE KEY-----\n', 'utf8');
+      await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', armorBody], /PR_BODY_PEM_REJECTED/);
+      const oversizedBody = path.join(fakeTool, 'oversized-body.md');
+      await writeFile(oversizedBody, 'x'.repeat(65537), 'utf8');
+      await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', oversizedBody], /PR_BODY_TOO_LARGE/);
+      const validBody = path.join(fakeTool, 'valid-body.md');
+      await writeFile(validBody, 'Fixture PR body.\n', 'utf8');
+      for (const number of ['0', '-1']) {
+        await rejectBeforeNode([...prArguments, '-Title', 'fixture', '-BodyFile', validBody, '-PrNumber', number], /PR_NUMBER_INVALID/);
+      }
     });
     await t.test('rejects no PEM', async () => {
       const directory = await createKeyDirectory('empty', false);
@@ -155,7 +229,7 @@ console.log('Fixture Node started without reading any PEM or making a network re
       await rejectBeforeNode(['-Verify', '-PrivateKeyDirectory', directory, '-ReceiptPath', path.join(owned.directory, 'outside-tool.json')], /RECEIPT_OUTSIDE_TOOL/);
       await assert.rejects(access(path.join(owned.directory, 'outside-tool.json')), { code: 'ENOENT' });
     });
-    await t.test('accepts only privileged inherited grants and passes non-secret metadata to locked Node', async () => {
+    await t.test('accepts privileged inherited grants and forwards each operation through locked Node without a shell', async () => {
       const directory = await createKeyDirectory('allowed-inheritance');
       const receipt = path.join(fakeTool, 'receipt.json');
       const result = await run(['-Verify', '-PrivateKeyDirectory', directory, '-ReceiptPath', receipt]);
@@ -166,7 +240,7 @@ console.log('Fixture Node started without reading any PEM or making a network re
         inheritedToken: boolean; nodeOptions: string | null; nodePath: string | null;
         nodeDebug: string | null; nativeDebug: string | null; ghDebug: string | null;
       };
-      assert.deepEqual(started.args, [path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--key-file', path.join(directory, 'fixture.pem'), '--receipt', receipt]);
+      assert.deepEqual(started.args, [path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--operation', 'verify', '--repository', 'chwan886/Architecture-Explorer', '--key-file', path.join(directory, 'fixture.pem'), '--receipt', receipt]);
       assert.equal(started.attestation.schemaVersion, 1);
       assert.equal(started.attestation.keyFile, path.join(directory, 'fixture.pem'));
       assert.equal(started.attestation.acl.checked, true);
@@ -184,6 +258,35 @@ console.log('Fixture Node started without reading any PEM or making a network re
       assert.equal(started.ghDebug, null);
       assert.equal(await readFile(path.join(directory, 'fixture.pem'), 'utf8'), invalidPem);
       assert.doesNotMatch(result.output, /INVALID-FIXTURE-NOT-A-PRIVATE-KEY|S-1-5-|NONSECRET-FIXTURE-SENTINEL/);
+
+      await unlink(sentinel);
+      const pushed = await run(['-Push', '-Repository', 'chwan886/GameDemo02', '-WorkingDirectory', fakeTool, '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead.toUpperCase(), '-PrivateKeyDirectory', directory]);
+      assert.equal(pushed.code, 0, pushed.output);
+      assert.deepEqual((JSON.parse(await readFile(sentinel, 'utf8')) as { args: string[] }).args, [
+        path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--operation', 'push', '--repository', 'chwan886/GameDemo02',
+        '--branch', 'codex/app-auth-fixture', '--expected-head', exactHead, '--working-directory', fakeTool, '--key-file', path.join(directory, 'fixture.pem'),
+      ]);
+
+      await unlink(sentinel);
+      const title = 'Fixture "title" 中文 & literal';
+      const bodyFile = path.join(fakeTool, 'forwarded-body.md');
+      await writeFile(bodyFile, 'Fixture UTF-8 PR body: 中文.\n', 'utf8');
+      const pullRequest = await run(['-PullRequest', '-Repository', 'chwan886/Architecture-Explorer', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, '-Title', title, '-BodyFile', bodyFile, '-PrNumber', '12', '-PrivateKeyDirectory', directory]);
+      assert.equal(pullRequest.code, 0, pullRequest.output);
+      assert.deepEqual((JSON.parse(await readFile(sentinel, 'utf8')) as { args: string[] }).args, [
+        path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--operation', 'pr', '--repository', 'chwan886/Architecture-Explorer',
+        '--branch', 'codex/app-auth-fixture', '--expected-head', exactHead, '--title', title, '--body-file', bodyFile, '--pr-number', '12', '--key-file', path.join(directory, 'fixture.pem'),
+      ]);
+      assert.equal(await readFile(path.join(directory, 'fixture.pem'), 'utf8'), invalidPem);
+
+      await unlink(sentinel);
+      const status = await run(['-Status', '-Repository', 'chwan886/GameDemo02', '-ExpectedHead', exactHead.toUpperCase(), '-PrNumber', '42', '-PrivateKeyDirectory', directory]);
+      assert.equal(status.code, 0, status.output);
+      assert.deepEqual((JSON.parse(await readFile(sentinel, 'utf8')) as { args: string[] }).args, [
+        path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--operation', 'status', '--repository', 'chwan886/GameDemo02',
+        '--expected-head', exactHead, '--pr-number', '42', '--key-file', path.join(directory, 'fixture.pem'),
+      ]);
+      assert.equal(await readFile(path.join(directory, 'fixture.pem'), 'utf8'), invalidPem);
     });
   } finally {
     for (const link of links.reverse()) await unlink(link);
