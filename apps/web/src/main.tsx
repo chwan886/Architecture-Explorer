@@ -8,5 +8,6 @@ import './architecture/architecture.css';
 import './semantics/semantic.css';
 import './control/control.css';
 import './control/floating-progress.css';
+import './delivery/delivery.css';
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

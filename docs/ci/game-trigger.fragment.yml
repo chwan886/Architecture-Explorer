@@ -1,0 +1,48 @@
+# Reference fragment for Architecture and server (.github/workflows/architecture.yml).
+# The game controller owns the in-progress sender; do not overwrite its implementation.
+# Confirmed needs: fast-gate. Its candidate check display name is not remotely registered yet.
+# Initial repository variable EXPLORER_AUTOBUILD_ENABLED must be absent or false.
+  dispatch-explorer:
+    name: Request Architecture Explorer snapshot
+    needs: [fast-gate]
+    if: >-
+      ${{ success() && github.repository == 'chwan886/GameDemo02' &&
+          github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+          github.ref_protected && vars.EXPLORER_AUTOBUILD_ENABLED == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    environment: explorer-dispatch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: Tools/dispatch-explorer.ps1
+          sparse-checkout-cone-mode: false
+      - name: Mint a target-only short-lived dispatch token
+        id: dispatch-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.EXPLORER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.EXPLORER_APP_PRIVATE_KEY }}
+          owner: chwan886
+          repositories: Architecture-Explorer
+          permission-actions: write
+      - name: Request exact-SHA indexing and record the actual target run
+        id: dispatch
+        shell: pwsh
+        env:
+          EXPLORER_DISPATCH_TOKEN: ${{ steps.dispatch-token.outputs.token }}
+          EXPLORER_AUTOBUILD_ENABLED: ${{ vars.EXPLORER_AUTOBUILD_ENABLED }}
+          DELIVERY_REF_PROTECTED: ${{ github.ref_protected }}
+        run: ./Tools/dispatch-explorer.ps1
+      - name: Retain the request receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: explorer-dispatch-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci/explorer-dispatch.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -7,6 +7,8 @@ config/local.json
 **/bin/
 **/obj/
 test-results/
+.ci-output/
+.ci-references/
 *.log
 
 # Keep locally extracted analysis artifacts out of source control.

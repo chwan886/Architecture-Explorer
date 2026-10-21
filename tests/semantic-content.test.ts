@@ -94,6 +94,7 @@ test('text edits cannot rewrite bindings, identities or asynchronous boundaries'
 });
 
 async function fixture(t: test.TestContext) {
+  await mkdir(path.join(root, '.cache'), { recursive: true });
   const directory = await mkdtemp(path.join(root, '.cache/semantic-store-test-'));
   assert.ok(directory.startsWith(path.join(root, '.cache') + path.sep));
   t.after(() => rm(directory, { recursive: true, force: true }));

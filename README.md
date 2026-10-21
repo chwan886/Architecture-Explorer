@@ -47,7 +47,17 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 
 完整使用方法见 [docs/SYSTEM-ARCHITECTURE.md](docs/SYSTEM-ARCHITECTURE.md)。
 
-## 命令
+## 开发交付流程与 GitHub CI
+
+顶部“开发交付流程”提供人工维护的条件图、可展开阶段详情和两仓 GitHub 跳转；也可使用 `?page=delivery` 直达。不读取 GitHub 实时状态，不保存 GitHub 凭据，不提供审批、合并、重跑或发布操作。
+
+工具 PR / main CI 仅使用仓库夹具，在干净 Windows runner 冻结还原锁定依赖，执行 Typecheck、全部测试、前端和 C# worker 构建。`Build` 保持前端命令；`BuildAnalyzer` 显式构建 C#。`Tools/ci-check.ps1 -Prepare` 执行完整准备与检查，CI 不生成或读取 `config/local.json`，任何必需测试被跳过也会失败。
+
+`game-index.yml` 接收固定游戏仓库、精确 SHA 与来源 run，经保护规则、合并 PR / 独立 Review、main 检查和历史核验后复用 Scan → Verify → Audit。工具构建包包含 TypeScript/tsx 后端、运行依赖、前端及 C# worker，**dist 不能单独运行完整工具**；游戏索引另存为每提交/每 run/attempt 的 CI 快照证据包，不能直接覆盖本地 `.cache`。
+
+两仓当前 main 尚未保护，自动触发尚未启用。正式接入遵循用户确定的六步顺序：游戏第一阶段交接 → 工具接收端 → 工具 main 合入并手动验证 → 游戏发送初始关闭 → 用户配置并启用 → 真实 feature 联调。接口、最小游戏补丁、Unity 元数据引用供应、App / Environment / Secrets 与规则手动清单见 [开发交付合同](docs/DEVELOPMENT-DELIVERY.md)；本地验证见 [本轮交付验证](docs/DELIVERY-VALIDATION.md)。
+
+## 本地命令
 
 ```powershell
 ./Tools/explorer.ps1 -Task Scan                 # 手动全量扫描
@@ -57,6 +67,7 @@ GameDemo02 随附六个候选业务系统，以及共享支撑与旧路径两个
 ./Tools/explorer.ps1 -Task Test                 # 分析器、索引、安全与契约测试
 ./Tools/explorer.ps1 -Task Typecheck
 ./Tools/explorer.ps1 -Task Build
+./Tools/explorer.ps1 -Task BuildAnalyzer        # 锁定还原并构建 C# 分析器
 ```
 
 扫描命令支持 `-Project <配置ID>` 与 `-Worktree <工作目录ID>`。Worktree ID 从网站选择器或 API 查询；只允许配置授权的工作目录。可配置多个项目，但不会自动扫描 Git 发现的其他工作目录。
