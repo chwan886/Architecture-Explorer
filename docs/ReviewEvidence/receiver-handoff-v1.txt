@@ -259,3 +259,7 @@ App及安装Actions read已由API核实，Status使用单仓Contents/Pull reques
 游戏在新增Actions read后再次Verify通过，仍只签发GameDemo02单仓Contents read，main f2761432cfa68140b7b095112cc5e0ee2fda3cd4，撤销204+401；未接触游戏工作区。
 最终已推head、App推送回执和新CI真实结论以 E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/shared-app-handoff-20261021.txt 及同名JSON为准。
 本轮仍不批准、不合并、不直推main、不强推、不修改Owner登录/全局Git；自动发送关闭，生产接收端REMOTE_NOT_READY。
+
+后续收尾：head 35d00533e40f780b567559843d896e6f449b33ce的第二次远端运行仍在三项runtime发布测试安全拒绝；回执 docs/evidence/dev-app/second-pr-ci-2026-10-21.json保留，未写成通过。现正向MCP测试显式准备只含当前用户/SYSTEM的新建独占bridge目录，拒绝重置已有目录；另以真实BA额外授权证明生产发布仍拒绝、无凭据/锁/审计文件残留。原有符号链接负例未改变，生产门禁未放宽。
+夹具修正后完整356项本地回归、Typecheck、前端/C#构建通过，零失败、零跳过；夹具根路径加固后15项ACL/MCP与Typecheck复验通过。JUnit/摘要：docs/evidence/dev-app/fixture-local-junit.xml、fixture-local-checks.json。
+最新已推head及新远端结论仍见本机共享App交接报告，不用此前355/356本地结果替代实际GitHub运行。

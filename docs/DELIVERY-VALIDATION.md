@@ -86,3 +86,7 @@ App 注册及安装的 Actions read 已于 `2026-10-21T23:01:29Z` 经完整 API 
 后续准确 head、完整本地检查与真实 CI 结论由 `.tmp/shared-app-handoff-20261021.txt` 及同名 JSON 记录。生产 package job 在 PR 中按条件跳过；它不是测试跳过，PR 不取得生产 Environment/跨仓凭据。生产接收端仍未合入 main，不能由 PR CI 推导为已就绪。
 
 本轮最终 `Tools/ci-check.ps1`：**355/355 通过，0 失败、0 跳过**，Typecheck、前端与 C# 构建成功。新证据独立保存：[最终 JUnit](evidence/dev-app/final-local-junit.xml)、[检查摘要](evidence/dev-app/final-local-checks.json)、[首轮真实 CI 脱敏回执](evidence/dev-app/initial-pr-ci-2026-10-21.json)、[Actions read 生效后的游戏单仓 Verify](evidence/dev-app/game-verify-actions-read-2026-10-21.json)。此前失败与历史回执不覆盖。
+
+第二次真实 head `35d00533e40f780b567559843d896e6f449b33ce` 的 [运行](https://github.com/chwan886/Architecture-Explorer/actions/runs/39691686688) 仍在三项凭据发布测试被拒绝，[脱敏回执](evidence/dev-app/second-pr-ci-2026-10-21.json)保留；原生别名正反例未失败，不能声称别名修复已解决 runner 问题。正向 MCP 夹具原先依赖机器默认 DACL，现只在测试独占的新建 bridge 目录中显式准备当前用户与 SYSTEM 的受限 ACL，拒绝重置已存在目录。原符号链接攻击测试不预建目录；新增实际给该夹具加入 BA 显式权限的负例，验证真实发布拒绝、`published=false` 且无凭据/锁/审计文件残留。本轮只改夹具准备，生产权限边界保持严格。
+
+夹具修正后完整本地 **356/356 通过，零失败、零跳过**，Typecheck、前端及 C# 构建成功；补查夹具 toolRoot 真实路径后，15 项实际 ACL/MCP 测试与 Typecheck 再次通过。[本次 JUnit](evidence/dev-app/fixture-local-junit.xml)、[检查摘要](evidence/dev-app/fixture-local-checks.json)。后续远端结果仍单独记录，不用该本地结果替代。
