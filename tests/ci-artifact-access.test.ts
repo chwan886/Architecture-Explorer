@@ -72,6 +72,27 @@ test('game dispatch cannot upload its quote-bearing tool package when source aut
   const toolArtifact = /if: ([^\r\n]+)\r?\n\s+id: tool-artifact/.exec(workflow)?.[1];
   assert.ok(toolArtifact);
   assert.match(toolArtifact, /steps\.package\.outcome == 'success'/);
+  assert.match(toolArtifact, /steps\.package-runtime\.outcome == 'success'/);
   assert.match(toolArtifact, /steps\.authorize\.outputs\.index_access == 'allowed'/);
   assert.match(workflow, /UNITY_REFERENCES_URL: \$\{\{ secrets\.UNITY_REFERENCES_URL \}\}/);
+});
+
+test('game tool artifact upload requires successful runtime and cleanup even when package and authorization passed', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/game-index.yml', import.meta.url), 'utf8');
+  const condition = /if: ([^\r\n]+)\r?\n\s+id: tool-artifact/.exec(workflow)?.[1];
+  assert.ok(condition);
+  const clauses = condition.split(/\s*&&\s*/);
+  assert.deepEqual(clauses, ['always()', "steps.package.outcome == 'success'", "steps.package-runtime.outcome == 'success'", "steps.authorize.outputs.index_access == 'allowed'"]);
+  const permits = (packageOutcome: string, runtimeOutcome: string, authorization: string) => clauses.every(clause => ({
+    'always()': true,
+    "steps.package.outcome == 'success'": packageOutcome === 'success',
+    "steps.package-runtime.outcome == 'success'": runtimeOutcome === 'success',
+    "steps.authorize.outputs.index_access == 'allowed'": authorization === 'allowed',
+  } as Record<string, boolean>)[clause] === true);
+  assert.equal(permits('success', 'success', 'allowed'), true);
+  for (const runtimeOutcome of ['failure', 'cancelled', 'skipped', '', 'cleanup-failed']) {
+    assert.equal(permits('success', runtimeOutcome, 'allowed'), false, `Runtime/cleanup outcome ${runtimeOutcome} must block package upload`);
+  }
+  assert.equal(permits('failure', 'success', 'allowed'), false);
+  assert.equal(permits('success', 'success', 'denied'), false);
 });

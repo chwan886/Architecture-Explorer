@@ -168,7 +168,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: always() && steps.package.outcome == 'success' && steps.authorize.outputs.index_access == 'allowed'
+        if: always() && steps.package.outcome == 'success' && steps.package-runtime.outcome == 'success' && steps.authorize.outputs.index_access == 'allowed'
         id: tool-artifact
         with:
           name: tool-build-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
