@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { canonical, ensureCacheDirectory, isWithin, readAuthorized } from '../packages/indexer/src/security.ts';
-import { prepareTaskPush, runTaskPush, type TaskPushPlan } from './dev-app-git.ts';
+import { prepareMainFetch, prepareTaskPush, runMainFetch, runTaskPush, type MainFetchPlan, type TaskPushPlan } from './dev-app-git.ts';
 import { readCiJobLog } from './dev-app-ci-logs.ts';
 import { inspectRepositoryMain } from './dev-app-main.ts';
 import { githubApiVersion } from './github-api-version.ts';
@@ -17,7 +17,8 @@ type Json = Record<string, any>;
 export type AuthRequest = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', endpoint: string, credential: string, body?: Json) => Promise<{ status: number; data?: any; requestId?: string }>;
 export type Repository = 'chwan886/Architecture-Explorer' | 'chwan886/GameDemo02';
 export type AppOperation = { repository: Repository } & (
-  { operation: 'verify' } | { operation: 'inspect-main'; expectedHead: string; prNumber: number } | { operation: 'push'; workingDirectory: string; branch: string; expectedHead: string } |
+  { operation: 'verify' } | { operation: 'fetch-main'; workingDirectory: string; expectedHead: string } |
+  { operation: 'inspect-main'; expectedHead: string; prNumber: number } | { operation: 'push'; workingDirectory: string; branch: string; expectedHead: string } |
   { operation: 'pr'; branch: string; expectedHead: string; title: string; body: string; prNumber?: number } |
   { operation: 'status'; expectedHead: string; prNumber: number });
 export function validateTaskBranch(branch: string) {
@@ -26,8 +27,10 @@ export function validateTaskBranch(branch: string) {
 }
 function validateOperation(options: AppOperation) {
   requireValue(DEV_APP.installedRepositories.includes(options.repository), 'UNAPPROVED_REPOSITORY');
-  requireValue(['verify', 'push', 'pr', 'status', 'inspect-main'].includes(options.operation), 'UNAPPROVED_OPERATION');
+  requireValue(['verify', 'push', 'pr', 'status', 'inspect-main', 'fetch-main'].includes(options.operation), 'UNAPPROVED_OPERATION');
   if (options.operation !== 'verify') requireValue(options.expectedHead.length === 40 && /^[a-f0-9]{40}$/.test(options.expectedHead), 'EXACT_TASK_HEAD_REQUIRED');
+  if (options.operation === 'fetch-main') requireValue(Object.keys(options).every(key =>
+    ['operation', 'repository', 'workingDirectory', 'expectedHead'].includes(key)), 'MAIN_FETCH_ARGUMENTS_INVALID');
   if (options.operation === 'push' || options.operation === 'pr') validateTaskBranch(options.branch);
   if (options.operation === 'pr') requireValue(options.title.trim().length > 0 && options.title.length <= 256 && !/[\r\n\0]/.test(options.title) &&
     Buffer.byteLength(options.body) <= 65536 && !options.body.includes('\0') && !/-----BEGIN\b/i.test(options.body), 'PR_TEXT_INVALID');
@@ -67,7 +70,7 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
       exactRepositorySet: 'not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories' },
     token: { requestedRepositories: [options.repository], requestedPermissions: { contents: 'read' }, issued: false, secretRecorded: false,
       revocation: 'not-issued', revokedTokenProbe: 'not-run', revokedTokenProbeStatuses: [], revokedTokenProbes: [] }, ownerAuthenticationUsed: false,
-    performedOperations: { push: false, createPr: false, updatePr: false },
+    performedOperations: { push: false, createPr: false, updatePr: false, fetchMain: false },
     forbiddenOperations: { pushMain: false, forcePush: false, approve: false, merge: false, dispatch: false, modifyGitConfiguration: false } };
   let token = '', jwt = '', verified = false;
   const call = async (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', endpoint: string, credential: string, status: number, code: string, body?: Json) => {
@@ -78,8 +81,11 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
   try {
     validateOperation(options);
     let pushPlan: TaskPushPlan | undefined;
+    let mainFetchPlan: MainFetchPlan | undefined;
     if (options.operation === 'push') {
       try { pushPlan = await prepareTaskPush(options); } catch { throw new AuthFailure('TASK_PUSH_PREFLIGHT_FAILED'); }
+    } else if (options.operation === 'fetch-main') {
+      try { mainFetchPlan = await prepareMainFetch(options); } catch { throw new AuthFailure('MAIN_FETCH_PREFLIGHT_FAILED'); }
     }
     jwt = signJwt();
     const app = await call('GET', '/app', jwt, 200, 'APP_IDENTITY_READ_FAILED');
@@ -156,7 +162,12 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
     const main = await call('GET', `/repos/${options.repository}/git/ref/heads/main`, token, 200, 'CONTENTS_READ_PROBE_FAILED');
     requireValue(main?.ref === 'refs/heads/main' && main.object?.type === 'commit' && /^[a-f0-9]{40}$/.test(main.object?.sha ?? ''), 'CONTENTS_READ_PROBE_INVALID');
     receipt.readProbe = { repository: options.repository, ref: main.ref, sha: main.object.sha, contentsReadVerified: true };
-    if (options.operation === 'push') {
+    if (options.operation === 'fetch-main') {
+      requireValue(main.object.sha === options.expectedHead, 'MAIN_HEAD_CHANGED_OR_MISMATCHED');
+      receipt.mainFetch = await runMainFetch(mainFetchPlan!, token);
+      requireValue(receipt.mainFetch.outcome === 'passed', 'MAIN_FETCH_FAILED');
+      receipt.performedOperations.fetchMain = true;
+    } else if (options.operation === 'push') {
       receipt.push = await push(pushPlan!, token);
       requireValue(receipt.push.outcome === 'passed', 'TASK_BRANCH_PUSH_FAILED');
       receipt.performedOperations.push = true;
@@ -346,6 +357,7 @@ async function main() {
   const operation = flags.get('--operation') ?? 'verify', repository = (flags.get('--repository') ?? DEV_APP.repository) as Repository;
   let options: AppOperation;
   if (operation === 'verify') options = { operation, repository };
+  else if (operation === 'fetch-main') options = { operation, repository, workingDirectory: flags.get('--working-directory') ?? '', expectedHead: flags.get('--expected-head') ?? '' };
   else if (operation === 'push') options = { operation, repository, workingDirectory: flags.get('--working-directory') ?? '', branch: flags.get('--branch') ?? '', expectedHead: flags.get('--expected-head') ?? '' };
   else if (operation === 'pr') {
     const bodyPath = path.resolve(flags.get('--body-file') ?? '');
@@ -357,7 +369,7 @@ async function main() {
   } else if (operation === 'status') options = { operation, repository, expectedHead: flags.get('--expected-head') ?? '', prNumber: Number(flags.get('--pr-number')) };
   else if (operation === 'inspect-main') options = { operation, repository, expectedHead: flags.get('--expected-head') ?? '', prNumber: Number(flags.get('--pr-number')) };
   else throw new AuthFailure('UNAPPROVED_OPERATION');
-  const operationFlags = operation === 'verify' ? [] : operation === 'push' ? ['--working-directory', '--branch', '--expected-head']
+  const operationFlags = operation === 'verify' ? [] : operation === 'fetch-main' ? ['--working-directory', '--expected-head'] : operation === 'push' ? ['--working-directory', '--branch', '--expected-head']
     : operation === 'pr' ? ['--branch', '--expected-head', '--title', '--body-file', '--pr-number'] : ['--expected-head', '--pr-number'];
   requireValue([...flags.keys()].every(name => ['--key-file', '--receipt', '--operation', '--repository', ...operationFlags].includes(name)), 'MIXED_OPERATION_ARGUMENTS');
   validateOperation(options);

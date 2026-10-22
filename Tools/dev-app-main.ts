@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { AuthRequest, Repository } from './dev-app-auth.ts';
+import { inspectUnityDependencyRelease } from './dev-app-dependency.ts';
 
 type Json = Record<string, any>;
 const tool = 'chwan886/Architecture-Explorer', game = 'chwan886/GameDemo02';
@@ -169,5 +170,6 @@ export async function inspectRepositoryMain(options: { repository: Repository; p
     : ci.every((run: Json) => run.conclusion === 'success' && completedJobsPass(run)) ? 'success' : 'failure';
   if (report.mainCi !== 'success') blockers.push('FROZEN_MAIN_CI_NOT_SUCCESSFUL');
   report.manualPrerequisites = ['Environment/main-only rules', 'Production read App and secret names', 'Artifact audience and bypass review', 'Unity reference supply', 'Controller-confirmed exact source tuple'];
+  if (repository === tool) report.unityDependencyRelease = await inspectUnityDependencyRelease(token, request);
   return report;
 }
