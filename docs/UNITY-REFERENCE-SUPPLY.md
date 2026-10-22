@@ -1,10 +1,16 @@
 # Unity 元数据引用供应方案
 
-状态：**准确游戏 main 的本地审查包已制作并通过现有接收校验；私有托管、CI 权利/读者审阅和远端下载仍待配置。** 自动发送继续关闭。目标为 `3d448c5e4a6ac7148472a0e78b187674810fc118`、Unity `6000.6.5f1`，Win64 Development Player 静态切片，显式 `DEBUG`。真实包路径、49 DLL/ZIP 摘要、正反例和限制见[本地包交接](ReviewEvidence/unity-reference-package-v1.txt)。本方案只服务 Architecture-Explorer 的静态分析，不安装或启动 Unity，不打开游戏项目、不编译/执行游戏；本地 DLL 副本不代表 CI 已就绪。
+状态：**准确游戏 main 的本地审查包已制作并通过现有接收校验；首次远端取用与索引仍须真实手测。** 自动发送继续关闭。目标为 `3d448c5e4a6ac7148472a0e78b187674810fc118`、Unity `6000.6.5f1`，Win64 Development Player 静态切片，显式 `DEBUG`。真实包路径、49 DLL/ZIP 摘要、正反例和限制见[本地包交接](ReviewEvidence/unity-reference-package-v1.txt)。本方案只服务 Architecture-Explorer 的静态分析，不安装或启动 Unity，不打开游戏项目、不编译/执行游戏；本地 DLL 副本不代表 CI 已就绪。
 
 ## 首次手测采用的供应方式
 
-采用“受权维护者从准确版本的受管 Editor 导出显式 DLL 清单 → 私有只读对象 → 有时限的 HTTPS 读取 → ZIP 与每 DLL 双重指纹核验”。优先使用用户已有的私有存储；尚未指定供应商，不为此新建通用制品服务或购买资源。
+采用“受权维护者从准确版本的受管 Editor 导出显式 DLL 清单 → 现有私有工具仓库的已发布依赖 Release → 固定资产 ID 只读下载 → ZIP 与每 DLL 双重指纹核验”。依赖入口为 [Unity 6000.6.5f1 引用供应](https://github.com/chwan886/Architecture-Explorer/releases/tag/unity-references-6000.6.5f1-win64-dev-v1)。维护者上传并审阅后，将 API 返回的真实正整数资产 ID 存入既有 `architecture-delivery` Environment 普通变量 `UNITY_REFERENCES_ASSET_ID`；它不是 URL。现有变量 `UNITY_REFERENCES_SHA256` 必须为 `4d5371537010f078c70ba64616c238ef8b54a77a01920fa9d31a0773aa11b844`，对应 `unity-6000.6.5f1-win64-development-metadata.zip`（3,797,931 字节）。配置存在与首次 CI 读取成功分别记录，不把已上传视为已验收。
+
+资产模式只使用本仓 job 的 `GITHUB_TOKEN`、`contents: read`，不增加 App 权限或 Secret。下载器固定仓库 `chwan886/Architecture-Explorer`，先确认仓库私有，再核对资产 ID、uploaded 状态、长度及服务器 SHA256。原始字节请求仅接受直接 200，或一次指向 `https://release-assets.githubusercontent.com` 默认端口、无 userinfo/fragment 的 302；第二跳不携带 Authorization/Cookie，不允许第三跳。流式下载限 256 MiB，写入工具侧 `.ci-references/metadata.zip`，拒绝链接和覆盖，核对完整 ZIP 后才进入原有 ZIP/提取、清单、逐 DLL 和准确 Editor 版本校验。错误仅输出固定代码，不输出请求/响应体、token 或签名 URL。[官方资产 API](https://docs.github.com/en/rest/releases/assets#get-a-release-asset)。
+
+非空资产 ID 显式选择此源；无权、缺失、指纹错误或下载失败均保持失败，**不回退旧 URL**。依赖 Release 必须在既有私有仓库中已发布，draft 资产不作为 `contents: read` 供应合同；不得扩大 Unity 或游戏资料允许的读者范围。这份已发布私有依赖与自动生成、等待用户确认的**产品工具 Release 草稿**用途不同。按当前元数据和哈希固定取用，不按 latest/tag 自动选新包；替换内容须单独审阅新资产 ID 和摘要。
+
+以下保留空资产 ID 时的既有 HTTPS URL 接口，供已有受控存储使用；当前首次接入无需另购存储或新建通用制品服务：
 
 首次手测由维护者为一个不可变对象签发短时只读 URL，存入工具仓库 `architecture-delivery` Environment 的 **Secret `UNITY_REFERENCES_URL`**。`UNITY_REFERENCES_SHA256` 为同一 Environment 的普通变量，保存整个 ZIP 的真实小写 SHA256。签名 URL 本身具有访问能力，不能放普通变量、文档、日志、页面、回执或产物。它与游戏读取 App、跨仓发送 App 是三种不同用途的权限，不能复用私钥或管理员 PAT。GitHub 支持 Environment secrets，并建议通过环境变量等方式传递秘密；日志掩码不替代避免输出。参见[官方 Secrets 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)。
 
@@ -35,7 +41,7 @@ Unity Hub 官方支持选择具体 Editor 版本及模块，未列出的版本�
 4. 模块、包和第三方依赖分开登记。Editor 自带 DLL 不能覆盖所有包命名空间；若命名空间只存在于由目标项目生成的程序集，当前无目标执行边界不能为其启动构建。应由维护者另交许可允许且版本可证明的预编译外部依赖，或明确缺失及部分语义范围；不得造占位 Unity 类型或加入目标自身已编译程序集掩盖源码缺失。
 5. 在工具侧新的独立 staging 中，把选定 DLL 作为根文件复制，计算原文件与复制文件摘要并比较，生成 `references.json`。不修改原 Editor、游戏目录、人工模型或先前版本包。
 6. ZIP 仅含根清单与 DLL 文件。ZIP 写入方式不能附带顶层文件夹或目录 entry；单独的来源/许可审阅记录放在受控存储的 sidecar，**不能塞进只接受 JSON/DLL 的 ZIP**。记录 ZIP 的真实 SHA256，按内容摘要创建不可变对象；不覆盖既有对象。
-7. 审阅者核对原清单、导出副本、ZIP 条目、两个级别的摘要、许可记录与访问范围。随后才由用户配置 Secret URL 与 SHA256 变量，执行接收端真实手测。最新已完成本地准确版本/上下文核对、导出和离线校验；尚未上传、配置私有下载或执行生产取用。
+7. 审阅者核对原清单、导出副本、ZIP 条目、两个级别的摘要、许可记录与访问范围。随后才由用户配置真实资产 ID（或另行批准的 Secret URL）与 SHA256 变量，执行接收端真实手测。发布依赖、配置存在和真实生产取用的证据分别交接；远端索引尚未验收时不得宣称已就绪。
 
 本次包目录保留固定输入的离线制作脚本和审阅清单，拒绝链接/越界/重名/已存在输出，复制后核对摘要并创建无目录 entry 的 ZIP；它不自动执行游戏、不上传、不安装 Editor、不决定托管许可、不伪造类型。接收核验继续复用 `ci-references.ps1` 和 `prepareReferences`，没有另写扫描器或新增通用供应平台。离线 ZIP 校验使用本地文件传输适配器，不能替代 HTTPS 私有下载测试。
 
