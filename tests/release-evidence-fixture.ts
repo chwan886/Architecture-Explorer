@@ -25,7 +25,7 @@ export function releaseEvidenceFixture(producerAttempt = '1'): ReleaseEvidenceIn
   const before = { head: gameSha, status: '', sourceHashes, sourceFingerprint: h(JSON.stringify(sourceHashes)), humanModels };
   const diagnostics = [{ code: 'CS_CS0246', severity: 'warning', message: 'Synthetic missing optional context; preserved as partial.' }];
   const metadata = { gitHead: gameSha, gitDirty: false, gitStatusHash: h(''), scopeId: 'game-demo-02:primary',
-    revision: h('revision'), analyzerVersion: 'synthetic-analyzer-1', schemaVersion: '1.0.0', generatedAt: '2026-10-22T01:00:00.000Z',
+    revision: h('revision').slice(0, 24), analyzerVersion: 'synthetic-analyzer-1', schemaVersion: '1.0.0', generatedAt: '2026-10-22T01:00:00.000Z',
     configFingerprint: h('config'), compilationFingerprint: h('compilation') };
   const fingerprints = [{ file: 'UnityEngine.CoreModule.dll', sha256: h('synthetic metadata') }];
   const refs = { unityVersion: '6000.6.5f1', defines: ['DEBUG'], references: fingerprints };

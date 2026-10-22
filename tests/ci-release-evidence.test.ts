@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { canonicalReleaseJson, isValidatedReleasePlan, releaseSha256, validateReleaseEvidence } from '../Tools/ci-release-evidence.ts';
 import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
 
@@ -12,6 +13,33 @@ const smokeDoc = (input: Fixture): any => Object.entries(input.artifacts.checks.
 function rejectMutation(label: string, mutate: (input: Fixture) => void, expected?: RegExp) {
   test(label, () => { const input = releaseEvidenceFixture(); mutate(input);
     if (expected) assert.throws(() => validateReleaseEvidence(input), expected); else assert.throws(() => validateReleaseEvidence(input)); });
+}
+
+test('release index revision matches the real indexer source contract, while fingerprints remain SHA256', async () => {
+  const producer = await readFile(new URL('../packages/indexer/src/indexer.ts', import.meta.url), 'utf8');
+  // This guard reads the production indexer, not the synthetic release fixture. A changed producer format must update its consumer deliberately.
+  const producerFormula = 'const revision = contentHash(`${scope.id}|${signature(snapshot.files)}|${configFingerprint}|${compilationFingerprint}|${after.head}|${after.statusHash}`).slice(0, 24);';
+  assert.ok(producer.includes(producerFormula), 'Recheck the real indexer revision contract before changing release validation');
+  const actualShapeRevision = releaseSha256('game-demo-02:primary|source-signature|config|compilation|head|clean-status').slice(0, 24);
+  const input = releaseEvidenceFixture(), snapshot = doc(input, 'index', '/manifest.json'), index = doc(input, 'index', '/index.json'), audit = doc(input, 'index', '/audit.json');
+  snapshot.index.revision = actualShapeRevision; index.metadata.revision = actualShapeRevision; audit.snapshot.sourceRevision = actualShapeRevision;
+  const plan = validateReleaseEvidence(input);
+  assert.equal((plan.releaseManifest as any).evidence.indexRevision, actualShapeRevision);
+  assert.equal(actualShapeRevision.length, 24);
+  for (const key of ['configFingerprint', 'compilationFingerprint', 'referenceFingerprint', 'sourceFingerprint']) {
+    assert.equal(snapshot.index[key].length, 64);
+    const bad = structuredClone(input); doc(bad, 'index', '/manifest.json').index[key] = 'a'.repeat(24);
+    if (key === 'configFingerprint' || key === 'compilationFingerprint') doc(bad, 'index', '/index.json').metadata[key] = 'a'.repeat(24);
+    assert.throws(() => validateReleaseEvidence(bad), /Snapshot .*invalid exact format/);
+  }
+});
+
+for (const revision of ['', 'a'.repeat(23), 'a'.repeat(25), 'a'.repeat(40), 'a'.repeat(64), 'A'.repeat(24), 'a'.repeat(24) + '\n']) {
+  rejectMutation(`rejects non-producer index revision ${JSON.stringify(revision)}`, input => {
+    doc(input, 'index', '/manifest.json').index.revision = revision;
+    doc(input, 'index', '/index.json').metadata.revision = revision;
+    doc(input, 'index', '/audit.json').snapshot.sourceRevision = revision;
+  });
 }
 
 test('successful exact bindings retain honest gaps, partial context, pending reviews and unchanged input', () => {

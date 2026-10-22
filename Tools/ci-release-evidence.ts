@@ -248,7 +248,8 @@ export function validateReleaseEvidence(input: ReleaseEvidenceInput): ValidatedR
   for (const key of ['revision', 'analyzerVersion', 'schemaVersion', 'generatedAt', 'configFingerprint', 'compilationFingerprint']) {
     text(metadata[key], `Index ${key}`); exact(snapshotIndex[key], metadata[key], `Snapshot/index ${key}`);
   }
-  for (const key of ['revision', 'configFingerprint', 'compilationFingerprint', 'referenceFingerprint', 'sourceFingerprint']) digest(snapshotIndex[key], `Snapshot ${key}`);
+  match(snapshotIndex.revision, /^[a-f0-9]{24}$/, 'Snapshot index revision');
+  for (const key of ['configFingerprint', 'compilationFingerprint', 'referenceFingerprint', 'sourceFingerprint']) digest(snapshotIndex[key], `Snapshot ${key}`);
   date(metadata.generatedAt, 'Index generated time');
   exact(before.head, gameSha, 'Read-only before HEAD'); exact(after.head, gameSha, 'Read-only after HEAD');
   exact(before.status, '', 'Read-only before clean'); exact(after.status, '', 'Read-only after clean');

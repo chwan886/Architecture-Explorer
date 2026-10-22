@@ -145,8 +145,9 @@ test('raw network errors and write errors are replaced with fixed diagnostics', 
   await assert.rejects(transferUnityReferenceAsset(input, token, async () => { throw Error(`raw ${token}`); }, valid.send), error => rejectsCode(error, 'UNITY_ASSET_OUTPUT_REJECTED'));
 });
 
-const stagingRoot = fileURLToPath(new URL('..', import.meta.url));
+const stagingRoot = fileURLToPath(new URL('../.tmp/', import.meta.url));
 async function withOutput(action: (root: string) => Promise<void>) {
+  await mkdir(stagingRoot, { recursive: true });
   const root = await mkdtemp(path.join(stagingRoot, '.test-output-'));
   try { await action(root); }
   finally { assert.equal(path.dirname(root), path.resolve(stagingRoot)); assert.ok(path.basename(root).startsWith('.test-output-')); await rm(root, { recursive: true }); }
