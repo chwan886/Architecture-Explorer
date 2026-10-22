@@ -1,8 +1,10 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { createSmokeDirectory, removeSmokeDirectory } from './ci-smoke-directories.ts';
+import { pathToFileURL } from 'node:url';
 
 const repositories = { tool: 'chwan886/Architecture-Explorer', game: 'chwan886/GameDemo02' } as const;
 type Repository = typeof repositories[keyof typeof repositories];
@@ -67,6 +69,7 @@ export function classifyTaskPushGitFailure(text: string): TaskPushGitDiagnostic 
 class GitFailure extends Error { constructor(readonly code: string) { super(code); } }
 function need(value: unknown, code: string): asserts value { if (!value) throw new GitFailure(code); }
 const prepared = new WeakSet<object>();
+const preparedMainFetch = new WeakMap<object, MainFetchSnapshot>();
 const temporaryRoot = path.join(TOOL_ROOT, '.tmp');
 const gitExecutable = 'C:\\Program Files\\Git\\cmd\\git.exe';
 const tokenVariable = 'EXPLORER_DEV_APP_GIT_TOKEN';
@@ -304,6 +307,227 @@ export async function runTaskPush(plan: TaskPushPlan, token: string): Promise<Ta
     if (temporary) {
       try { await removeScratch(temporary); }
       catch { proof.outcome = 'failed'; proof.failureCode = 'TASK_PUSH_CLEANUP_FAILED'; }
+    }
+  }
+  return proof;
+}
+
+export interface MainFetchInput {
+  repository: keyof typeof repositories | Repository;
+  workingDirectory: string;
+  /** Expected remote main, not the local worktree HEAD. */
+  expectedHead: string;
+}
+export interface MainFetchPlan {
+  readonly repository: Repository;
+  readonly workingDirectory: string;
+  readonly expectedHead: string;
+  readonly origin: string;
+  readonly localHead: string;
+}
+export interface MainFetchProof {
+  outcome: 'passed' | 'failed';
+  repository: Repository;
+  ref: 'refs/heads/main';
+  expectedHead: string;
+  fetchOutcome: 'not-attempted' | 'unconfirmed' | 'succeeded';
+  remoteHeadVerified: boolean;
+  localObjectImported: boolean;
+  localBoundaryVerified: boolean;
+  localHeadBefore: string;
+  localHeadAfter?: string;
+  ownerAuthenticationUsed: false;
+  secretRecorded: false;
+  failureCode?: string;
+  diagnosticCode?: TaskPushGitDiagnostic;
+  diagnosticStage?: 'initialization' | 'remote-head-check' | 'fetch' | 'import';
+  diagnosticExitCode?: number;
+  diagnosticTruncated?: boolean;
+}
+interface MainFetchSnapshot {
+  head: string;
+  fingerprint: string;
+  commonDirectory: string;
+  gitDirectory: string;
+}
+function validateMainFetchInput(input: MainFetchInput): Repository {
+  need(process.platform === 'win32', 'WINDOWS_REQUIRED');
+  const repository = input.repository === 'tool' || input.repository === 'game' ? repositories[input.repository] : input.repository;
+  need(Object.values(repositories).includes(repository as Repository), 'UNAPPROVED_REPOSITORY');
+  need(Object.keys(input).every(key => ['repository', 'workingDirectory', 'expectedHead', 'operation'].includes(key)) &&
+    (!('operation' in input) || input.operation === 'fetch-main'), 'MAIN_FETCH_ARGUMENTS_INVALID');
+  need(typeof input.expectedHead === 'string' && /^[a-f0-9]{40}$/.test(input.expectedHead) && input.expectedHead.length === 40,
+    'EXACT_MAIN_HEAD_REQUIRED');
+  need(typeof input.workingDirectory === 'string' && path.isAbsolute(input.workingDirectory) &&
+    /^[A-Za-z]:[\\/]/.test(input.workingDirectory) && !input.workingDirectory.slice(2).includes(':'), 'ABSOLUTE_WORKING_DIRECTORY_REQUIRED');
+  return repository as Repository;
+}
+async function noLinkedPath(absolutePath: string) {
+  let cursor = path.parse(absolutePath).root;
+  for (const part of path.relative(cursor, absolutePath).split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, part);
+    need(!(await lstat(cursor)).isSymbolicLink(), 'MAIN_FETCH_LINK_REJECTED');
+  }
+}
+async function noLinkedObjectEntries(directory: string, state = { count: 0 }) {
+  for (const name of await readdir(directory)) {
+    need(++state.count <= 250000, 'MAIN_FETCH_OBJECT_DATABASE_LIMIT');
+    const candidate = path.join(directory, name), entry = await lstat(candidate);
+    need(!entry.isSymbolicLink() && (entry.isDirectory() || entry.isFile()), 'MAIN_FETCH_OBJECT_LINK_REJECTED');
+    if (entry.isDirectory()) await noLinkedObjectEntries(candidate, state);
+  }
+}
+async function mainFetchSnapshot(input: MainFetchInput, hooks: string): Promise<MainFetchSnapshot & { repository: Repository; origin: string; workingDirectory: string }> {
+  const repository = validateMainFetchInput(input);
+  await noLinkedPath(path.resolve(input.workingDirectory));
+  const workingDirectory = await realpath(input.workingDirectory), env = taskPushEnvironment();
+  const prefix = [...taskPushGitArguments(hooks), '-c', `safe.directory=${workingDirectory}`, '-C', workingDirectory];
+  const read = async (...args: string[]) => {
+    const result = await git([...prefix, ...args], env, workingDirectory);
+    need(result.code === 0 && !result.failed, 'LOCAL_GIT_READ_FAILED');
+    return result.output;
+  };
+  const configText = await read('config', '--local', '--no-includes', '--list', '-z');
+  const config = localConfiguration(configText);
+  const commonPath = (await read('rev-parse', '--path-format=absolute', '--git-common-dir')).trim();
+  const gitPath = (await read('rev-parse', '--absolute-git-dir')).trim();
+  await noLinkedPath(commonPath); await noLinkedPath(gitPath);
+  const commonDirectory = await realpath(commonPath), gitDirectory = await realpath(gitPath);
+  let worktreeConfigText = '';
+  if (config.get('extensions.worktreeconfig')?.includes('true')) {
+    const worktreeFile = path.join(gitDirectory, 'config.worktree');
+    try {
+      await noLinkedPath(worktreeFile);
+      worktreeConfigText = await read('config', '--file', worktreeFile, '--no-includes', '--list', '-z');
+      localConfiguration(worktreeConfigText);
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }
+  const origin = `https://github.com/${repository}.git`;
+  need(config.get('remote.origin.url')?.length === 1 && config.get('remote.origin.url')?.[0] === origin &&
+    (await read('config', '--get-all', 'remote.origin.url')).trim() === origin, 'ORIGIN_MISMATCH');
+  const top = await realpath((await read('rev-parse', '--show-toplevel')).trim());
+  need(top.toLowerCase() === workingDirectory.toLowerCase(), 'WORKTREE_ROOT_REQUIRED');
+  const head = (await read('rev-parse', '--verify', 'HEAD')).trim();
+  need(/^[a-f0-9]{40}$/.test(head) && (await read('cat-file', '-t', head)).trim() === 'commit', 'LOCAL_COMMIT_REQUIRED');
+  const status = await read('status', '--porcelain=v1', '-z', '--untracked-files=all');
+  need(status.length === 0, 'MAIN_FETCH_WORKTREE_DIRTY');
+  try { need((await readFile(path.join(commonDirectory, 'info', 'grafts'), 'utf8')).trim().length === 0, 'GRAFTED_HISTORY_UNSUPPORTED'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  try { await lstat(path.join(commonDirectory, 'shallow')); throw new GitFailure('MAIN_FETCH_SHALLOW_UNSUPPORTED'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  await noLinkedPath(path.join(commonDirectory, 'objects'));
+  need((await lstat(path.join(commonDirectory, 'objects'))).isDirectory(), 'LOCAL_OBJECT_DATABASE_INVALID');
+  await noLinkedObjectEntries(path.join(commonDirectory, 'objects'));
+  const fingerprint = createHash('sha256');
+  for (const value of [head, status, configText, worktreeConfigText,
+    await read('for-each-ref', '--format=%(refname)%00%(objectname)%00%(symref)'),
+    await read('ls-files', '--stage', '-z'), await read('diff', '--no-ext-diff', '--no-textconv', '--raw', 'HEAD', '--')]) {
+    fingerprint.update(String(Buffer.byteLength(value))).update(':').update(value);
+  }
+  // The object database may grow; HEAD, index, refs, FETCH_HEAD and config may not change.
+  for (const filename of ['HEAD', 'index', 'FETCH_HEAD']) {
+    const filePath = (await read('rev-parse', '--path-format=absolute', '--git-path', filename)).trim();
+    fingerprint.update(filename).update(':');
+    try { await noLinkedPath(filePath); fingerprint.update(await readFile(filePath)); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') fingerprint.update('absent'); else throw error; }
+  }
+  return { repository, origin, workingDirectory, head, fingerprint: fingerprint.digest('hex'), commonDirectory, gitDirectory };
+}
+
+/** Local-only preflight. Existing changes are rejected before JWT/token creation. Detached HEAD is allowed. */
+export async function prepareMainFetch(input: MainFetchInput): Promise<MainFetchPlan> {
+  validateMainFetchInput(input);
+  const temporary = await scratch();
+  try {
+    const snapshot = await mainFetchSnapshot(input, temporary.hooks);
+    const plan = Object.freeze({ repository: snapshot.repository, workingDirectory: snapshot.workingDirectory,
+      origin: snapshot.origin, expectedHead: input.expectedHead, localHead: snapshot.head });
+    preparedMainFetch.set(plan, snapshot);
+    return plan;
+  } finally { await removeScratch(temporary); }
+}
+
+/** Fixed main only. Credential-bearing children use only a fresh isolated repository and empty home. */
+export async function runMainFetch(plan: MainFetchPlan, token: string, fixtureGit: typeof git = git): Promise<MainFetchProof> {
+  const proof: MainFetchProof = { outcome: 'failed', repository: plan.repository, ref: 'refs/heads/main', expectedHead: plan.expectedHead,
+    fetchOutcome: 'not-attempted', remoteHeadVerified: false, localObjectImported: false, localBoundaryVerified: false,
+    localHeadBefore: plan.localHead, ownerAuthenticationUsed: false, secretRecorded: false };
+  let temporary: Awaited<ReturnType<typeof scratch>> | undefined;
+  let current: Awaited<ReturnType<typeof mainFetchSnapshot>> | undefined;
+  const input = { repository: plan.repository, workingDirectory: plan.workingDirectory, expectedHead: plan.expectedHead };
+  try {
+    const preparedSnapshot = preparedMainFetch.get(plan);
+    need(preparedSnapshot, 'PREPARED_MAIN_FETCH_PLAN_REQUIRED');
+    need(typeof token === 'string' && token.length > 0 && token.length <= 16384 && !/[\x00-\x20\x7f]/.test(token), 'INSTALLATION_TOKEN_INVALID');
+    temporary = await scratch();
+    current = await mainFetchSnapshot(input, temporary.hooks);
+    need(current.fingerprint === preparedSnapshot.fingerprint && current.commonDirectory === preparedSnapshot.commonDirectory &&
+      current.gitDirectory === preparedSnapshot.gitDirectory && current.origin === plan.origin, 'MAIN_FETCH_PLAN_CHANGED');
+    const baseEnv = taskPushEnvironment(), isolated = path.join(temporary.root, 'transport.git');
+    const recordDiagnostic = (result: GitResult, stage: NonNullable<MainFetchProof['diagnosticStage']>) => {
+      proof.diagnosticCode = result.diagnosticCode; proof.diagnosticStage = stage;
+      proof.diagnosticExitCode = result.code; proof.diagnosticTruncated = result.diagnosticTruncated;
+    };
+    // The fixed Git runner is injectable only for offline fixtures; the CLI never accepts a runner, endpoint or command.
+    const init = await fixtureGit([...taskPushGitArguments(temporary.hooks), 'init', '--bare', '--template=', isolated], baseEnv, temporary.root);
+    if (init.code !== 0 || init.failed) recordDiagnostic(init, 'initialization');
+    need(init.code === 0 && !init.failed, 'ISOLATED_GIT_INIT_FAILED');
+    const helper = path.join(temporary.root, 'credential-helper.mjs'), home = path.join(temporary.root, 'empty-home');
+    await writeFile(helper, taskPushCredentialHelper, { flag: 'wx', mode: 0o600 }); await mkdir(home);
+    const isolatedEnv = { ...baseEnv, HOME: home, USERPROFILE: home, HOMEDRIVE: path.parse(home).root.slice(0, 2),
+      HOMEPATH: home.slice(2), XDG_CONFIG_HOME: home };
+    const tokenEnv = { ...isolatedEnv, [tokenVariable]: token, [repositoryVariable]: plan.repository };
+    const prefix = [...taskPushGitArguments(temporary.hooks, helper), '-c', `safe.directory=${isolated}`, '--git-dir', isolated];
+    const verifyRemoteMain = async () => {
+      const remote = await fixtureGit([...prefix, 'ls-remote', '--exit-code', plan.origin, 'refs/heads/main'], tokenEnv, temporary!.root);
+      if (remote.code !== 0 || remote.failed || remote.output.trim() !== `${plan.expectedHead}\trefs/heads/main`) {
+        recordDiagnostic(remote, 'remote-head-check'); proof.diagnosticCode ??= 'REMOTE_HEAD_MISMATCH';
+      }
+      need(remote.code === 0 && !remote.failed && remote.output.trim() === `${plan.expectedHead}\trefs/heads/main`, 'MAIN_HEAD_CHANGED_OR_MISMATCHED');
+    };
+    await verifyRemoteMain();
+    proof.fetchOutcome = 'unconfirmed';
+    const fetched = await fixtureGit([...prefix, 'fetch', '--no-write-fetch-head', '--no-tags', '--no-recurse-submodules', '--no-auto-maintenance', '--no-write-commit-graph',
+      '--refmap=', plan.origin, 'refs/heads/main:refs/heads/main'], tokenEnv, temporary.root, false, 120000);
+    if (fetched.code !== 0 || fetched.failed) recordDiagnostic(fetched, 'fetch');
+    need(fetched.code === 0 && !fetched.failed, 'MAIN_FETCH_UNCONFIRMED');
+    // These checks are tokenless too; an API/main advertisement alone never proves the fetched object.
+    const localPrefix = [...taskPushGitArguments(temporary.hooks), '--git-dir', isolated];
+    const fetchedHead = await fixtureGit([...localPrefix, 'rev-parse', '--verify', 'refs/heads/main'], isolatedEnv, temporary.root);
+    const fetchedType = await fixtureGit([...localPrefix, 'cat-file', '-t', plan.expectedHead], isolatedEnv, temporary.root);
+    need(fetchedHead.code === 0 && !fetchedHead.failed && fetchedHead.output.trim() === plan.expectedHead &&
+      fetchedType.code === 0 && !fetchedType.failed && fetchedType.output.trim() === 'commit', 'FETCHED_MAIN_OBJECT_MISMATCH');
+    await verifyRemoteMain();
+    proof.remoteHeadVerified = true; proof.fetchOutcome = 'succeeded';
+    const beforeImport = await mainFetchSnapshot(input, temporary.hooks);
+    need(beforeImport.fingerprint === current.fingerprint, 'MAIN_FETCH_LOCAL_STATE_CHANGED');
+    // The only file transport is tokenless and points to the fresh, owned isolated repository.
+    // An explicit SHA, empty refmap and no FETCH_HEAD writes import objects without updating local refs.
+    const imported = await fixtureGit([...taskPushGitArguments(temporary.hooks), '-c', 'protocol.https.allow=never', '-c', 'protocol.file.allow=always',
+      '-c', `safe.directory=${current.workingDirectory}`, '--git-dir', current.gitDirectory,
+      'fetch', '--no-write-fetch-head', '--no-tags', '--no-recurse-submodules', '--no-auto-maintenance', '--no-write-commit-graph', '--no-prune', '--no-prune-tags', '--refmap=',
+      pathToFileURL(isolated).href, plan.expectedHead], isolatedEnv, temporary.root, false, 120000);
+    if (imported.code !== 0 || imported.failed) recordDiagnostic(imported, 'import');
+    need(imported.code === 0 && !imported.failed, 'MAIN_OBJECT_IMPORT_FAILED');
+    const object = await fixtureGit([...taskPushGitArguments(temporary.hooks), '-c', `safe.directory=${current.workingDirectory}`,
+      '--git-dir', current.gitDirectory, 'cat-file', '-t', plan.expectedHead], isolatedEnv, temporary.root);
+    need(object.code === 0 && !object.failed && object.output.trim() === 'commit', 'IMPORTED_MAIN_OBJECT_MISMATCH');
+    proof.localObjectImported = true;
+    proof.outcome = 'passed';
+  } catch (error) { proof.failureCode = error instanceof GitFailure ? error.code : 'MAIN_FETCH_INTERNAL_FAILURE'; }
+  finally {
+    token = '';
+    if (temporary && current) {
+      try {
+        const after = await mainFetchSnapshot(input, temporary.hooks);
+        proof.localHeadAfter = after.head;
+        proof.localBoundaryVerified = after.fingerprint === current.fingerprint;
+        if (!proof.localBoundaryVerified) { proof.outcome = 'failed'; proof.failureCode = 'MAIN_FETCH_LOCAL_STATE_CHANGED'; }
+      } catch { proof.outcome = 'failed'; proof.failureCode = 'MAIN_FETCH_LOCAL_STATE_CHECK_FAILED'; }
+    }
+    if (temporary) {
+      try { await removeScratch(temporary); }
+      catch { proof.outcome = 'failed'; proof.failureCode = 'MAIN_FETCH_CLEANUP_FAILED'; }
     }
   }
   return proof;
