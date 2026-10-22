@@ -32,6 +32,7 @@ function fixture(repository: Repository, mutate?: (endpoint: string, result: any
       steps: [{ number: 1, name: 'Actual step', status: 'completed', conclusion: 'success' }] }] } };
     else if (endpoint.includes('/artifacts?')) result = { status: 200, data: { artifacts: [{ id: 11, name: 'actual-report', size_in_bytes: 123, expired: false,
       workflow_run: { id: 9, head_sha: head }, archive_download_url: `https://api.github.com/private?sig=${token}` }] } };
+    else if (endpoint.endsWith('/releases/tags/unity-references-6000.6.5f1-win64-dev-v1')) result = { status: 404 };
     else throw Error(`Unexpected fixture path: ${endpoint}`);
     return mutate ? mutate(endpoint, structuredClone(result)) : result;
   };
@@ -41,6 +42,32 @@ function fixture(repository: Repository, mutate?: (endpoint: string, result: any
   };
   return { calls, run };
 }
+
+test('Tool InspectMain projects the fixed dependency release through the existing single-repository session', async () => {
+  const repository = 'chwan886/Architecture-Explorer', tag = 'unity-references-6000.6.5f1-win64-dev-v1';
+  const f = fixture(repository, (endpoint, result) => endpoint.endsWith(`/releases/tags/${tag}`) ? { status: 200, data: {
+    id: 31, tag_name: tag, name: 'Private Unity metadata dependency', draft: false, published_at: '2026-10-21T20:10:11Z',
+    html_url: `https://github.com/${repository}/releases/tag/${tag}`, url: `https://api.github.com/repos/${repository}/releases/31`, body: token,
+    assets: [{ id: 41, name: 'unity-6000.6.5f1-win64-development-metadata.zip', size: 3797931, digest: `sha256:${'a'.repeat(64)}`, state: 'uploaded',
+      url: `https://api.github.com/repos/${repository}/releases/assets/41`, browser_download_url: `https://release-assets.githubusercontent.com/private?sig=${token}` }]
+  } } : result);
+  const result = await f.run();
+  assert.equal(result.unityDependencyRelease.status, 'found'); assert.equal(result.unityDependencyRelease.expectedAsset.id, 41);
+  assert.equal(result.unityDependencyRelease.artifactBytesVerified, false); assert.equal(result.productionReady, false);
+  assert.equal(f.calls.filter(call => call.endpoint.includes('/releases/')).length, 1);
+  assert.ok(f.calls.every(call => call.method === 'GET' && !call.endpoint.includes('GameDemo02')));
+});
+
+test('Tool InspectMain preserves denied dependency observations without claiming not-found or readiness', async () => {
+  for (const mode of ['denied', 'throw']) {
+    const f = fixture('chwan886/Architecture-Explorer', (endpoint, result) => {
+      if (endpoint.includes('/releases/')) { if (mode === 'throw') throw Error(token); return { status: 403, data: { token } }; }
+      return result;
+    });
+    const result = await f.run(); assert.equal(result.unityDependencyRelease.status, 'unreadable'); assert.equal(result.productionReady, false);
+    assert.notEqual(result.unityDependencyRelease.failureCode, undefined);
+  }
+});
 
 test('merged main inspection reads frozen files, exact main push run attempts and actual App author without granting readiness', async () => {
   for (const repository of ['chwan886/Architecture-Explorer', 'chwan886/GameDemo02'] as Repository[]) {
@@ -56,8 +83,14 @@ test('merged main inspection reads frozen files, exact main push run attempts an
       url: `https://github.com/${repository}/actions/runs/9/artifacts/11` });
     assert.ok(result.files.every((file: any) => /^[a-f0-9]{64}$/.test(file.sha256) && file.sourceSha === head && !('content' in file)));
     if (repository.endsWith('GameDemo02')) {
+      assert.equal(result.unityDependencyRelease, undefined);
+      assert.equal(f.calls.filter(call => call.endpoint.includes('/releases/')).length, 0);
       assert.equal(result.editorVersion, '6000.1.2f1');
       assert.equal(result.files.find((file: any) => file.path.endsWith('contract.json')).receiverReady, false);
+    } else {
+      assert.equal(result.unityDependencyRelease.status, 'not-found');
+      assert.equal(f.calls.filter(call => call.endpoint.includes('/releases/')).length, 1);
+      assert.ok(f.calls.every(call => !call.endpoint.includes('GameDemo02')));
     }
   }
 });

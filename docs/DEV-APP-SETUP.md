@@ -79,6 +79,8 @@ pwsh -NoLogo -NoProfile -NonInteractive -File E:/Codex/worktrees/cd84/Architectu
 
 回执的 `mainInspection.blockers` 保留不可读、缺保护、CI 缺失/失败、文件异常等缺项。空 run/jobs、失败/跳过的必需检查或错误 SHA/attempt不能成为成功；游戏 `dispatch-explorer` 因关闭开关而跳过可与成功的 `fast-gate` 区分。`mainInspection.mainCi` 表示已读到的 main CI 结论；顶层 `outcome=passed` 只表示本次核验会话和凭据撤销通过。`mainInspection.productionReady` 始终为 `false`，`sourceTupleControllerConfirmed` 也不因核验自动变为 true。Environment、生产身份、访问/绕过人工审核、Unity 供应和真实 Game SHA index 验收仍须另行补证。
 
+工具 `-InspectMain` 还以同一单仓只读会话读取固定 Unity 依赖标签 `unity-references-6000.6.5f1-win64-dev-v1` 的 Release 元数据。`mainInspection.unityDependencyRelease` 区分 found、not-found（404）与 unreadable，投影真实 Release/资产 ID、名称、大小、digest 和发布状态；不输出上传/下载 URL、正文或凭据。`expectedAsset` 只匹配既定 ZIP 名，缺失为 null；`artifactBytesVerified` 始终 false，因为元数据观察没有下载或核验 ZIP 字节。游戏会话不读取工具仓库的 Release。此观察不新增模式、权限、认证体系或生产就绪结论。
+
 以下保留首次合并后的历史命令及回执，不表示当前工具 main。该次工具快照为 `72a4493e3cc33e8299e2c9bf0ba7e42a2c929368`，游戏为 `3d448c5e4a6ac7148472a0e78b187674810fc118`，两仓 PR 均为真实 `#1`。**每次仍重新核验唯一 PEM、ACL 和无链接边界**。实际使用前核对本次准确 main/PR，并采用全新回执名；main 核验不构成生产就绪。
 
 ```powershell
