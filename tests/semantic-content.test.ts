@@ -37,7 +37,8 @@ test('reviewed flows preserve the original 35 steps and every flow retains preci
     }
     for (const step of flow.steps) {
       const sourceStep = source.steps.find(item => item.id === step.sourceStepIds[0])!;
-      assert.equal(step.bindings.length, 1);
+      const contactCandidate = flow.sourceFlowId === 'sword-hit-resolution' && sourceStep.id === 'sword-contact-gate';
+      assert.equal(step.bindings.length, contactCandidate ? 3 : 1);
       const binding = step.bindings[0];
       assert.equal(binding.role, 'implementation');
       assert.equal(binding.selector?.qualifiedName, sourceStep.selector?.qualifiedName);
@@ -47,6 +48,15 @@ test('reviewed flows preserve the original 35 steps and every flow retains preci
       assert.match(binding.expectedDeclarationHash ?? '', /^[a-f0-9]{64}$/);
       assert.ok(binding.anchorIds.every(id => anchors.has(id)));
       assert.ok(step.controls.every(control => control.anchorIds.every(id => anchors.has(id))));
+      if (contactCandidate) {
+        assert.equal(binding.expectedDeclarationHash, 'dcfebbc8a8ac0748d54f5ab304f0754c1348a44e32db31c536ef53e37c7a2307', 'Keep the stale baseline instead of confirming the new declaration');
+        assert.deepEqual(binding.anchorIds, ['review-contact-gate']);
+        assert.deepEqual(step.bindings.slice(1).map(item => ({ id: item.id, role: item.role, selector: item.selector, anchors: item.anchorIds, hash: item.expectedDeclarationHash })), [
+          { id: 'sword-contact-gate-decision-implementation', role: 'implementation', selector: { language: 'python', kinds: ['function'], qualifiedName: 'Server.sect_flight_interactions.decision', filePath: 'Server/sect_flight_interactions.py' }, anchors: [], hash: undefined },
+          { id: 'sword-contact-gate-projectile-hit-context', role: 'context', selector: { language: 'python', kinds: ['function'], qualifiedName: 'Server.sect_combat.step.projectile_hit', filePath: 'Server/sect_combat.py' }, anchors: [], hash: undefined },
+        ], 'Exact candidate implementation/context bindings must not invent reviewed hashes or broad selectors');
+        assert.match(step.detail, /历史待复核/);
+      }
     }
   }
 });
