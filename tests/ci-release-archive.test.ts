@@ -10,7 +10,7 @@ import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
 import { createNativeFixtureZip as createZip, type Item } from './release-native-zip-fixture.ts';
 
 const identity: ReleaseArchiveIdentity = { toolSha: 'a'.repeat(40), gameSha: 'b'.repeat(40), runId: '731', producerAttempt: '2' };
-const fixtureRoot = fileURLToPath(new URL('./.zip-fixtures/', import.meta.url));
+const fixtureRoot = fileURLToPath(new URL('../.tmp/release-native-zip-fixtures/', import.meta.url));
 async function withFixture(action: (directory: string, zip: string) => Promise<void>) {
   await mkdir(fixtureRoot, { recursive: true });
   const directory = await mkdtemp(path.join(fixtureRoot, 'archive-')), zip = path.join(directory, 'artifact.zip');
