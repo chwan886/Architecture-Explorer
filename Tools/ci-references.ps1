@@ -1,15 +1,24 @@
 # Download an administrator-approved, hash-pinned metadata-only ZIP. Never run files from it.
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
+$assetSelected=-not [string]::IsNullOrEmpty($env:UNITY_REFERENCES_ASSET_ID)
 $uri=$null
-if(![Uri]::TryCreate($env:UNITY_REFERENCES_URL,[UriKind]::Absolute,[ref]$uri) -or $uri.Scheme -ne 'https' -or $uri.UserInfo -or $uri.Fragment){throw 'Configure a protected HTTPS Unity metadata URL'}
+if(!$assetSelected -and (![Uri]::TryCreate($env:UNITY_REFERENCES_URL,[UriKind]::Absolute,[ref]$uri) -or $uri.Scheme -ne 'https' -or $uri.UserInfo -or $uri.Fragment)){throw 'Configure a protected HTTPS Unity metadata URL'}
 if($env:UNITY_REFERENCES_SHA256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Configure exact Unity metadata ZIP SHA256'}
 $destination=Join-Path $root '.ci-references'
 if(Test-Path -LiteralPath $destination){throw 'Unity reference directory already exists'}
 New-Item -ItemType Directory -Path $destination | Out-Null
 $archive=Join-Path $destination 'metadata.zip'
-try { Invoke-WebRequest -Uri $uri -OutFile $archive -MaximumRedirection 0 -TimeoutSec 120 -ErrorAction Stop }
-catch { throw 'Unity metadata download failed (network, authorization, redirect or expiry). The protected URL is omitted; review and refresh the approved URL/pin.' }
+if($assetSelected){
+  $lock=Get-Content -LiteralPath (Join-Path $root 'toolchain.lock.json') -Raw | ConvertFrom-Json
+  $node=Join-Path $root ('.tools/node-v'+$lock.node.version+'-win-x64/node.exe')
+  if(!(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Locked Node is unavailable for the selected Unity asset source'}
+  & $node (Join-Path $PSScriptRoot 'ci-reference-download.ts')
+  if($LASTEXITCODE -ne 0){throw 'Unity metadata asset download failed; the explicitly selected source was not replaced with a URL fallback'}
+}else{
+  try { Invoke-WebRequest -Uri $uri -OutFile $archive -MaximumRedirection 0 -TimeoutSec 120 -ErrorAction Stop }
+  catch { throw 'Unity metadata download failed (network, authorization, redirect or expiry). The protected URL is omitted; review and refresh the approved URL/pin.' }
+}
 if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:UNITY_REFERENCES_SHA256){throw 'Unity metadata ZIP fingerprint mismatch'}
 if((Get-Item -LiteralPath $archive).Length -gt 256MB){throw 'Unity metadata archive exceeds 256 MiB'}
 $zip=[IO.Compression.ZipFile]::OpenRead($archive)
