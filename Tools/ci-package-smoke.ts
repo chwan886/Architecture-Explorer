@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { canonical, ensureCacheDirectory, isWithin } from '../packages/indexer/src/security.ts';
-import { createSmokeDirectory, removeSmokeDirectory } from './ci-smoke-directories.ts';
+import { createSmokeDirectory, preparePrivateSmokeBridge, removeSmokeDirectory } from './ci-smoke-directories.ts';
 
 // Real package runtime check. All target code is an isolated tool-owned fixture, never the game checkout.
 assert.ok(process.env.CI_PACKAGE_ROOT, 'CI_PACKAGE_ROOT is required');
@@ -42,6 +42,7 @@ const fixture = ownedFixture.directory;
 // A fresh owned directory is removed at the end, never a pre-existing local index/cache.
 const ownedCache = await createSmokeDirectory(packageRoot, TOOL_ROOT, 'smoke-cache-');
 const cache = ownedCache.directory;
+await preparePrivateSmokeBridge(ownedCache); // Only this new fixture is initialized; packaged runtime still checks its real ACL before publishing.
 const reservation = createServer();
 await new Promise<void>((resolve, reject) => { reservation.once('error', reject); reservation.listen(0, '127.0.0.1', resolve); });
 const address = reservation.address(); assert.ok(address && typeof address !== 'string');
