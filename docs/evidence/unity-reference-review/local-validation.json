@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-22T00:01:11.714Z",
+  "localOnly": true,
+  "zipTransport": "Existing ci-references.ps1 with local file transport adapter; HTTPS not exercised",
+  "manifestValidator": "Existing prepareReferences",
+  "exactGameVersionBlobSha": "a6a51c744fd48e1d316541495fe4582d3f298d48",
+  "exactGameVersionSha256": "b3402f9d37aab37e8ad7676fff8d2f3b1333d857d2fade3fae888482e59d42ad",
+  "unityVersion": "6000.6.5f1",
+  "referenceFingerprint": "5841b62e2e51326b0526c1be4d6340597ff0c2ae709cdc19cce2c2076994d051",
+  "dllCount": 49,
+  "defines": [
+    "DEBUG"
+  ],
+  "zipSha256": "4d5371537010f078c70ba64616c238ef8b54a77a01920fa9d31a0773aa11b844",
+  "positiveProbe": {
+    "contextDiagnosticCount": 0,
+    "staticallyConfirmedCalls": 13
+  },
+  "controlledMissingUIReference": "diagnostic-observed",
+  "gameBefore": {
+    "head": "98cbf53babd8ad1dd00eee299940556acd663060",
+    "trackedStatus": ""
+  },
+  "gameAfter": {
+    "head": "98cbf53babd8ad1dd00eee299940556acd663060",
+    "trackedStatus": ""
+  },
+  "gameUnchanged": true,
+  "unityStarted": false,
+  "targetCodeExecuted": false,
+  "uploaded": false,
+  "productionIndexRun": null,
+  "productionReady": false
+}

@@ -83,9 +83,9 @@ GitHub 官方将 `merge_commit_sha` 从 REST `2026-03-10` 的 PR 响应中移除
 
 本地共用 `Tools/github-api-version.ts` 的 `githubApiVersion` 只对固定两仓的 `GET /repos/<repo>/pulls/<number>` 和 `GET /repos/<repo>/commits/<完整40位SHA>/pulls` 选择 `2022-11-28`，分页只允许已校验的 `page/per_page`；其他资源和方法保持 `2026-03-10`，包括 token 签发/撤销、PR 写操作及正式 workflow dispatch。后者继续要求当前版本实际返回目标 run 详情，不回退旧的 204 合同。开发入口与生产来源授权读取复用该选择函数；权限、精确 SHA、关联 PR、独立 Review、历史、来源 run/attempt 和只读门禁均未降低。
 
-这项兼容修复及五模式源码目前仅在本地工作区，尚未推送/进入 main；不能把本机核验成功写成 main 上生产来源授权已经修复。后续须由工具主控交付独立提交及审阅材料，经允许合入后，再使用准确来源七字段执行真实接收验证。
+这项兼容修复及五模式源码已在本地独立提交 `1319bcb8e186f853b70510243b397aab5fc5403c`，尚未推送/进入 main；不能把本机核验成功写成 main 上生产来源授权已经修复。后续须交付独立审阅材料，经允许合入后，再使用准确来源七字段执行真实接收验证。
 
-本轮新增实现的完整本地 `Tools/ci-check.ps1` 已 **368/368 通过，零失败、零跳过**，Typecheck、前端及 C# worker 构建成功；最新本地 JUnit 与日志位于工具 `test-results/`。这是独立于前轮 356 项历史的本地检查，不代表该兼容修复已在远端 main 执行，也不替代 Game SHA index 真实运行与产物验收。
+本轮新增实现的完整本地 `Tools/ci-check.ps1` 已 **Node 369/369 通过（JUnit 368 个 testcase），零失败、零跳过**，Typecheck、前端及 C# worker 构建成功；最新本地 JUnit 与日志位于工具 `test-results/`。这是独立于前轮 356 项历史的本地检查，不代表该兼容修复已在远端 main 执行，也不替代 Game SHA index 真实运行与产物验收。
 
 ## 凭据与 Git 传输边界
 

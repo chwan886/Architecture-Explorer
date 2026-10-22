@@ -27,10 +27,11 @@
   "checks": {
     "typecheck": "passed",
     "failures": 0,
-    "fullTests": 368,
     "skips": 0,
     "csharpWorkerBuild": "passed",
-    "frontendBuild": "passed"
+    "frontendBuild": "passed",
+    "nodeReportedTests": 369,
+    "junitTestcases": 368
   },
   "schemaVersion": 1,
   "automaticSenderEnabled": false,
