@@ -196,6 +196,7 @@ function producerAndEvidenceGates(text: string) {
   assert.equal(tool.child('with')['if-no-files-found'], 'error'); assert.equal(index.child('with')['if-no-files-found'], 'error');
   assert.equal(index.child('with').path, '|');
   assert.equal(literal(section(index.source, 8, 'with'), 10, 'path'), 'tool/.ci-output/*/*/index-evidence/\ntool/.ci-output/authorization/authorization.json');
+  assert.equal(index.child('with')['include-hidden-files'], 'true', 'Retain failed snapshot diagnostics under the narrow hidden .ci-output paths');
   const report = m.buildSteps.find(step => step.fields.name === 'Record independent build and index outcomes'); assert.ok(report);
   assert.equal(report.fields.if, 'always()'); assert.equal(report.child('env').PACKAGE_RUNTIME_OUTCOME, '${{ steps.package-runtime.outcome }}');
   assert.ok(report.run().includes("$env:PACKAGE_RUNTIME_OUTCOME -eq 'success'"));
@@ -232,6 +233,7 @@ for (const [name, before, after] of [
   ['game checkout silently tracks latest main', '          ref: ${{ inputs.source_sha }}', '          ref: refs/heads/main'],
   ['receiver gains a PR-target trigger', 'on:\n  workflow_dispatch:', 'on:\n  pull_request_target:\n  workflow_dispatch:'],
   ['index upload adds local configuration', '            tool/.ci-output/authorization/authorization.json', '            tool/.ci-output/authorization/authorization.json\n            tool/config/local.json'],
+  ['index upload drops hidden failure diagnostics', '            tool/.ci-output/authorization/authorization.json\n          include-hidden-files: true', '            tool/.ci-output/authorization/authorization.json\n          include-hidden-files: false'],
 ] as const) test(`security contract rejects regression: ${name}`, () => {
   const canonical = workflow.replaceAll('\r\n', '\n'); assert.ok(canonical.includes(before), `Mutation anchor missing: ${name}`);
   assert.throws(() => validate(canonical.replace(before, after)), name);

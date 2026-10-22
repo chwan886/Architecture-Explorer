@@ -1,27 +1,31 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { releaseHttp, runReleaseDraft } from '../Tools/ci-release-draft.ts';
 import type { ReleaseEvidenceInput } from '../Tools/ci-release-evidence.ts';
 import type { ReleasePublishHttpRequest, ReleasePublishRequest } from '../Tools/ci-release-publish.ts';
 import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
 import { releasePublisherFixture } from './release-publisher-fixture.ts';
-import { createNativeFixtureZip, type Item } from './release-native-zip-fixture.ts';
+import { createNativeFixtureZip, createNativeFixtureDirectory, closeNativeFixtureZipFactory, nativeFixtureFactoryStatus, type Item } from './release-native-zip-fixture.ts';
 
 const repository = 'chwan886/Architecture-Explorer', api = `https://api.github.com/repos/${repository}`;
 const token = 'offline-publisher-fixture-token-do-not-reflect';
 type Json = Record<string, any>;
 const hash = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 type Prepared = { root: string; input: ReleaseEvidenceInput; zipPaths: Record<'tool' | 'index' | 'checks', string>; zipPins: Record<string, string> };
+after(async () => {
+  await closeNativeFixtureZipFactory();
+  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 12, closed: true, childExited: true, spoolRemoved: true });
+});
 
 async function withPrepared(mode: 'valid' | 'missing-readme', run: (prepared: Prepared) => Promise<void>) {
   assert.equal(process.platform, 'win32', 'Native ZIP integration exercises the production Windows metadata adapter');
   const workspace = await realpath(process.cwd()), base = path.join(workspace, '.tmp');
   await mkdir(base, { recursive: true });
   assert.equal(await realpath(base), base); assert.equal((await lstat(base)).isSymbolicLink(), false);
-  const root = await mkdtemp(path.join(base, 'release-draft-integration-')), ownership = randomUUID();
+  const root = await createNativeFixtureDirectory(base, 'release-draft-integration-'), ownership = randomUUID();
   const marker = path.join(root, '.fixture-owner'); await writeFile(marker, ownership, { flag: 'wx' });
   const initial = await lstat(root, { bigint: true });
   try {

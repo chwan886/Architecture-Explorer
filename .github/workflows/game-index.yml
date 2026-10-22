@@ -197,6 +197,7 @@ jobs:
           path: |
             tool/.ci-output/*/*/index-evidence/
             tool/.ci-output/authorization/authorization.json
+          include-hidden-files: true
           retention-days: 14
           if-no-files-found: error
       - name: Link actual run and artifact outcomes

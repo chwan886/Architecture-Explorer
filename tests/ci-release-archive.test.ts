@@ -1,19 +1,19 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { appendFile, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, symlink, unlink } from 'node:fs/promises';
+import { appendFile, lstat, mkdir, open, readFile, readdir, realpath, rm, symlink, unlink } from 'node:fs/promises';
 import { readReleaseArchive, type ReleaseArchiveIdentity } from '../Tools/ci-release-archive.ts';
 import { validateReleaseEvidence } from '../Tools/ci-release-evidence.ts';
 import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
-import { createNativeFixtureZip as createZip, type Item } from './release-native-zip-fixture.ts';
+import { createNativeFixtureZip as createZip, createNativeFixtureDirectory, closeNativeFixtureZipFactory, nativeFixtureFactoryStatus, type Item } from './release-native-zip-fixture.ts';
 
 const identity: ReleaseArchiveIdentity = { toolSha: 'a'.repeat(40), gameSha: 'b'.repeat(40), runId: '731', producerAttempt: '2' };
 const fixtureRoot = fileURLToPath(new URL('../.tmp/release-native-zip-fixtures/', import.meta.url));
 async function withFixture(action: (directory: string, zip: string) => Promise<void>) {
   await mkdir(fixtureRoot, { recursive: true });
-  const directory = await mkdtemp(path.join(fixtureRoot, 'archive-')), zip = path.join(directory, 'artifact.zip');
+  const directory = await createNativeFixtureDirectory(fixtureRoot, 'archive-'), zip = path.join(directory, 'artifact.zip');
   try { await action(directory, zip); }
   finally {
     const resolved = await realpath(directory);
@@ -26,12 +26,21 @@ const manifest = { name: 'build-manifest.json', json: { toolSha: identity.toolSh
 const smoke = `package-smoke-tool-${identity.toolSha}-${identity.runId}-${identity.producerAttempt}.json`;
 const indexPrefix = `${identity.gameSha}/${identity.runId}-${identity.producerAttempt}/index-evidence/`;
 const indexNames = ['manifest', 'index', 'audit', 'read-only-before', 'read-only-after', 'references'].map(name => `${indexPrefix}${name}.json`).concat('authorization/authorization.json');
+after(async () => {
+  await closeNativeFixtureZipFactory();
+  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 32, closed: true, childExited: true, spoolRemoved: true });
+  await closeNativeFixtureZipFactory(); // Closing is idempotent; no second process is started.
+  await assert.rejects(createZip(path.join(fixtureRoot, 'closed.zip'), [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+});
 
 test('real native tool ZIP returns exact raw pins, safe complete metadata and only selected JSON without extraction', async () => withFixture(async (directory, zip) => {
   assert.equal(process.platform, 'win32');
   const executable = Buffer.from('MZ fixture bytes must never execute');
   await createZip(zip, [manifest, { name: 'bin/' }, { name: 'bin/tool.exe', raw: executable.toString('base64'), attributes: 0x81a40000 },
     { name: 'unselected.json', json: { neverReturned: true } }]);
+  await assert.rejects(createZip(zip, [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/, 'Factory must never overwrite an existing ZIP');
+  await assert.rejects(createZip(path.join(fixtureRoot, 'unowned.zip'), [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+  await assert.rejects(createZip(path.join(directory, 'bad.zip'), [manifest], 200001), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
   const before = await readdir(directory), bytes = await readFile(zip), result = await readReleaseArchive(zip, 'tool', identity);
   assert.equal(result.actualZipSha256, createHash('sha256').update(bytes).digest('hex')); assert.equal(result.actualZipBytes, bytes.length);
   assert.deepEqual(Object.keys(result.documents), ['build-manifest.json']); assert.deepEqual(result.documents['build-manifest.json'], manifest.json);
@@ -142,10 +151,14 @@ test('file and ancestor links, wrong identities and wrong kinds reject without r
   await assert.rejects(readReleaseArchive(zip, 'other' as any, identity), /^Error: RELEASE_ARCHIVE_KIND_INVALID$/);
   await assert.rejects(readReleaseArchive('relative.zip', 'tool', identity), /^Error: RELEASE_ARCHIVE_PATH_INVALID$/);
   const link = path.join(directory, 'linked.zip'); await symlink(zip, link, 'file');
-  try { await assert.rejects(readReleaseArchive(link, 'tool', identity), /^Error: RELEASE_ARCHIVE_LINK_REJECTED$/); }
+  try { await assert.rejects(createZip(link, [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+    await assert.rejects(readReleaseArchive(link, 'tool', identity), /^Error: RELEASE_ARCHIVE_LINK_REJECTED$/); }
   finally { await unlink(link); }
   const junction = path.join(directory, 'junction'); await symlink(directory, junction, 'junction');
-  try { await assert.rejects(readReleaseArchive(path.join(junction, 'artifact.zip'), 'tool', identity), /^Error: RELEASE_ARCHIVE_LINK_REJECTED$/); }
+  try { await assert.rejects(createNativeFixtureDirectory(path.join(junction, 'unexpected-directory'), 'archive-'), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+    await assert.rejects(lstat(path.join(directory, 'unexpected-directory')), { code: 'ENOENT' });
+    await assert.rejects(createZip(path.join(junction, 'new.zip'), [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+    await assert.rejects(readReleaseArchive(path.join(junction, 'artifact.zip'), 'tool', identity), /^Error: RELEASE_ARCHIVE_LINK_REJECTED$/); }
   finally { await unlink(junction); }
 }));
 
