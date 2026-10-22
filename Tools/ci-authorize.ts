@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { githubApiVersion } from './github-api-version.ts';
 
 const game = 'chwan886/GameDemo02', tool = 'chwan886/Architecture-Explorer';
 const toolCheckContext = 'Tool / typecheck, tests and builds';
@@ -184,7 +185,7 @@ async function main() {
     const token = repository === game ? process.env.GAME_READ_TOKEN : process.env.TOOL_POLICY_READ_TOKEN;
     assert.ok(token, `Missing read-only authorization for ${repository}`);
     const response = await fetch(`https://api.github.com/repos/${repository}${endpoint}`, { redirect: 'error', signal: AbortSignal.timeout(30000),
-      headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10' } });
+      headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': githubApiVersion('GET', `/repos/${repository}${endpoint}`) } });
     assert.ok(response.ok, `GitHub authorization read failed: ${repository}${endpoint} HTTP ${response.status}`);
     return response.json();
   };

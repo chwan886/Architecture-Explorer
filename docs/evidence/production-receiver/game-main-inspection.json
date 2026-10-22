@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 2,
+  "mode": "inspect-main",
+  "repository": "chwan886/GameDemo02",
+  "checkedAt": "2026-10-21T23:54:33.091Z",
+  "outcome": "passed",
+  "app": {
+    "id": 5417611,
+    "clientId": "Iv23lil3cvGyWUbx4yfS",
+    "slug": "chwan-dev-agent",
+    "owner": "chwan886",
+    "verified": true,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "installation": {
+    "verifiedTargetMembership": [
+      "chwan886/GameDemo02"
+    ],
+    "exactRepositorySetVerified": false,
+    "exactRepositorySet": "not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories",
+    "id": 173913073,
+    "repositorySelection": "selected",
+    "observedPermissions": {
+      "shape": "object",
+      "known": {
+        "contents": "write",
+        "metadata": "read",
+        "pull_requests": "write",
+        "workflows": "write",
+        "actions": "read"
+      },
+      "unexpectedPermissionCount": 0
+    },
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "token": {
+    "requestedRepositories": [
+      "chwan886/GameDemo02"
+    ],
+    "requestedPermissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read"
+    },
+    "issued": true,
+    "secretRecorded": false,
+    "revocation": "confirmed-204",
+    "revokedTokenProbe": "rejected-401",
+    "revokedTokenProbeStatuses": [
+      401
+    ],
+    "revokedTokenProbes": [
+      {
+        "status": 401,
+        "elapsedMs": 94,
+        "requestId": "C1D0:133F18:4827AA:E7311C:6AD950BB"
+      }
+    ],
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read",
+      "metadata": "read"
+    },
+    "expiresAt": "2026-10-22T00:54:33.000Z",
+    "visibleRepositories": [
+      "chwan886/GameDemo02"
+    ]
+  },
+  "ownerAuthenticationUsed": false,
+  "performedOperations": {
+    "push": false,
+    "createPr": false,
+    "updatePr": false
+  },
+  "forbiddenOperations": {
+    "pushMain": false,
+    "forcePush": false,
+    "approve": false,
+    "merge": false,
+    "dispatch": false,
+    "modifyGitConfiguration": false
+  },
+  "readProbe": {
+    "repository": "chwan886/GameDemo02",
+    "ref": "refs/heads/main",
+    "sha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+    "contentsReadVerified": true
+  },
+  "mainInspection": {
+    "repository": "chwan886/GameDemo02",
+    "mainSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+    "inspectedRef": "refs/heads/main",
+    "inspectionOnly": true,
+    "sourceTupleControllerConfirmed": false,
+    "blockers": [],
+    "productionReady": false,
+    "repositoryMetadata": {
+      "id": 1421542395,
+      "defaultBranch": "main",
+      "private": true,
+      "archived": false
+    },
+    "branch": {
+      "protected": true,
+      "frozenShaMatches": true
+    },
+    "prObservation": {
+      "state": "closed",
+      "numberMatches": true,
+      "merged": true,
+      "validMergeTimestamp": true,
+      "urlMatches": true,
+      "mergeShaValid": true,
+      "headShaValid": true,
+      "authorIdValid": true,
+      "mergeShaShape": "string",
+      "mergeShaLength": 40,
+      "baseMatches": true,
+      "headRepositoryMatches": true,
+      "appBotMatches": true
+    },
+    "mergedPr": {
+      "number": 1,
+      "url": "https://github.com/chwan886/GameDemo02/pull/1",
+      "mergedAt": "2026-10-21T23:33:30.000Z",
+      "mergeSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+      "headSha": "98cbf53babd8ad1dd00eee299940556acd663060",
+      "author": {
+        "login": "chwan-dev-agent[bot]",
+        "id": 346053751,
+        "type": "Bot"
+      },
+      "appAuthorVerified": true,
+      "mergeInMainHistory": true,
+      "mainTreeSha": "c5c2cc1232973b3196b9f8e8859cca1c2a157e7f",
+      "headTreeSha": "c5c2cc1232973b3196b9f8e8859cca1c2a157e7f",
+      "headTreeMatchesMain": true
+    },
+    "effectiveRules": {
+      "readable": true,
+      "ruleCount": 4,
+      "approvingReviewCount": 1,
+      "codeOwner": true,
+      "dismissStale": true,
+      "lastPushApproval": true,
+      "conversationResolution": true,
+      "strictChecks": true,
+      "requiredCheckContexts": [],
+      "bypassReview": "not-proven-by-effective-rule-response"
+    },
+    "files": [
+      {
+        "path": ".github/workflows/architecture.yml",
+        "gitBlobSha": "e9d8abde07e9a89944ccde36ea98e971e0befbf1",
+        "sha256": "e8aefabd746f582aa11507b3651c1e89d0bfb5c3c34a466c27455e39a7e93af2",
+        "bytes": 6610,
+        "sourceSha": "3d448c5e4a6ac7148472a0e78b187674810fc118"
+      },
+      {
+        "path": "Tools/explorer-dispatch-contract.json",
+        "gitBlobSha": "f78f23da04cb09503cb92870699d09505065d416",
+        "sha256": "4f142b94d59a2eaef3d19a9614ea508fdcbace052a8d99cf538b06726ddafd3f",
+        "bytes": 571,
+        "sourceSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+        "receiverReady": false,
+        "receiverCommit": null,
+        "receiverValidationRunUrl": null
+      },
+      {
+        "path": "ProjectSettings/ProjectVersion.txt",
+        "gitBlobSha": "a6a51c744fd48e1d316541495fe4582d3f298d48",
+        "sha256": "b3402f9d37aab37e8ad7676fff8d2f3b1333d857d2fade3fae888482e59d42ad",
+        "bytes": 83,
+        "sourceSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+        "editorVersion": "6000.6.5f1"
+      }
+    ],
+    "editorVersion": "6000.6.5f1",
+    "workflows": [
+      {
+        "id": 390107654,
+        "path": ".github/workflows/architecture.yml",
+        "state": "active"
+      }
+    ],
+    "mainPushRuns": [
+      {
+        "id": 39694183685,
+        "url": "https://github.com/chwan886/GameDemo02/actions/runs/39694183685",
+        "path": ".github/workflows/architecture.yml",
+        "attempt": 1,
+        "headSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+        "status": "completed",
+        "conclusion": "success",
+        "jobsReadable": true,
+        "jobs": [
+          {
+            "id": 119547433725,
+            "runId": 39694183685,
+            "headSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+            "attempt": 1,
+            "name": "fast-gate",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "number": 1,
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 2,
+                "name": "Checkout tested revision",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 3,
+                "name": "Set up Python",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 4,
+                "name": "Use a canonical temporary directory outside the checkout",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 5,
+                "name": "Record run and checkout identity",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 6,
+                "name": "Run content, migration, protocol, architecture and documentation gates",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 7,
+                "name": "Run tools and documentation contract regression tests",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 8,
+                "name": "Ensure verification leaves tracked sources unchanged",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 9,
+                "name": "Collect allowlisted evidence and step outcomes",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 10,
+                "name": "Upload verification evidence",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 11,
+                "name": "Explain Explorer automatic build state",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 21,
+                "name": "Post Set up Python",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 22,
+                "name": "Post Checkout tested revision",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 23,
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ],
+            "url": "https://github.com/chwan886/GameDemo02/actions/runs/39694183685/job/119547433725"
+          },
+          {
+            "id": 119551745052,
+            "runId": 39694183685,
+            "headSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+            "attempt": 1,
+            "name": "dispatch-explorer",
+            "status": "completed",
+            "conclusion": "skipped",
+            "steps": [],
+            "url": "https://github.com/chwan886/GameDemo02/actions/runs/39694183685/job/119551745052"
+          }
+        ],
+        "artifactsReadable": true,
+        "artifacts": [
+          {
+            "id": 12390490997,
+            "name": "fast-evidence-39694183685-1",
+            "sizeBytes": 3796,
+            "expired": false,
+            "url": "https://github.com/chwan886/GameDemo02/actions/runs/39694183685/artifacts/12390490997"
+          }
+        ]
+      }
+    ],
+    "mainCi": "success",
+    "manualPrerequisites": [
+      "Environment/main-only rules",
+      "Production read App and secret names",
+      "Artifact audience and bypass review",
+      "Unity reference supply",
+      "Controller-confirmed exact source tuple"
+    ]
+  },
+  "privateKeyAcl": {
+    "checked": true,
+    "owner": "Administrators",
+    "allowPrincipals": [
+      "current-user",
+      "SYSTEM",
+      "Administrators"
+    ],
+    "inherited": true,
+    "scope": "directory-and-file",
+    "linksRejected": true
+  }
+}

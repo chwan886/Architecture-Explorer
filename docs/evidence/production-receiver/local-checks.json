@@ -1,0 +1,40 @@
+{
+  "sourceParent": "72fa752fc499fc2a047daa79f6bc943e0695d6ed",
+  "checkedAt": "2026-10-21T23:56:52.1893661Z",
+  "branch": "codex/receiver-production-readiness",
+  "sourceFingerprints": [
+    {
+      "path": "Tools/dev-app-auth.ps1",
+      "sha256": "46144c2c485696fe304d87bf8d36f892ec0c6a56379583b1c8cf670fefd68068"
+    },
+    {
+      "path": "Tools/dev-app-auth.ts",
+      "sha256": "7be976709894f200590f90d0fe01c7b8c8eb798a5ff074c1ba0d55cb35d5f133"
+    },
+    {
+      "path": "Tools/dev-app-main.ts",
+      "sha256": "2a557488a483fdd85d079f2979dac62ef1f5fbade2824cbdc65d5f5402399d5f"
+    },
+    {
+      "path": "Tools/github-api-version.ts",
+      "sha256": "c22c5f7c38e7133bb7ea344b540529f34d9142c9f00ddb13662ecb016f910381"
+    },
+    {
+      "path": "Tools/ci-authorize.ts",
+      "sha256": "f9cdecf35c734c43aa736d91bed25a16ca9b2622214b643bb47195cc16a59674"
+    }
+  ],
+  "checks": {
+    "typecheck": "passed",
+    "failures": 0,
+    "skips": 0,
+    "csharpWorkerBuild": "passed",
+    "frontendBuild": "passed",
+    "nodeReportedTests": 369,
+    "junitTestcases": 368
+  },
+  "schemaVersion": 1,
+  "automaticSenderEnabled": false,
+  "productionIndexRun": null,
+  "sourceDirty": true
+}

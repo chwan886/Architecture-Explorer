@@ -67,11 +67,24 @@ test('invalid repository, main/ref injection, malformed exact SHA and PEM PR tex
     { ...prOptions(), branch: 'codex/../main' }, { ...prOptions(), expectedHead: sha + '\n' }, { ...prOptions(), expectedHead: 'abc' },
     { ...prOptions(), body: '-----BEGIN RSA PRIVATE KEY-----' }, { ...prOptions(), body: '-----BEGIN PGP PRIVATE KEY BLOCK-----' },
     { ...prOptions(), body: '-----begin private key-----' }, { ...prOptions(), prNumber: 0 },
+    { operation: 'inspect-main', repository: 'chwan886/GameDemo02', expectedHead: 'abc', prNumber: 1 },
+    { operation: 'inspect-main', repository: 'chwan886/GameDemo02', expectedHead: sha, prNumber: 0 },
   ]) {
     let calls = 0;
     const result = await runDevelopmentApp(options as AppOperation, () => { calls++; return jwt; }, async () => { calls++; throw Error('must not request'); });
     assert.equal(result.outcome, 'failed'); assert.equal(calls, 0);
   }
+});
+
+test('main inspection requests only one repository read permissions and rejects a changed main before inspecting it', async () => {
+  const options: AppOperation = { operation: 'inspect-main', repository: 'chwan886/GameDemo02', prNumber: 1, expectedHead: sha };
+  const f = fixture(options, { actionsRead: true }), result = await f.run();
+  assert.equal(result.failureCode, 'MAIN_HEAD_CHANGED_OR_MISMATCHED');
+  assert.deepEqual(f.calls.find(call => call.endpoint.endsWith('/access_tokens'))?.body,
+    { repositories: ['GameDemo02'], permissions: { contents: 'read', pull_requests: 'read', actions: 'read' } });
+  assert.equal(result.token.revocation, 'confirmed-204');
+  assert.equal(result.token.revokedTokenProbe, 'rejected-401');
+  assert.ok(!f.calls.some(call => call.endpoint.includes('/actions/') || call.endpoint.includes('/pulls/') || call.method === 'PATCH'));
 });
 
 test('PR creation uses exact branch/head and main, and binds the returned author to the actual App bot ID', async () => {

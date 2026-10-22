@@ -1,0 +1,1159 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-22T00:05:52.9174365+00:00",
+  "reviewer": "production_receiver_checklist independent agent",
+  "status": "passed-with-explicit-limitations",
+  "scope": "Read-only ZIP/digests/filesystem and recorded metadata consistency; no Unity/DLL execution, authentication or game changes",
+  "packageRoot": "E:/Codex/worktrees/cd84/Architecture-Explorer/.ci-output/unity-reference-packages/3d448c5e4a6ac7148472a0e78b187674810fc118/6000.6.5f1-development-review-1",
+  "gameSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+  "unityVersion": "6000.6.5f1",
+  "defines": [
+    "DEBUG"
+  ],
+  "zip": {
+    "path": "E:\\Codex\\worktrees\\cd84\\Architecture-Explorer\\.ci-output\\unity-reference-packages\\3d448c5e4a6ac7148472a0e78b187674810fc118\\6000.6.5f1-development-review-1\\unity-6000.6.5f1-win64-development-metadata.zip",
+    "sha256": "4d5371537010f078c70ba64616c238ef8b54a77a01920fa9d31a0773aa11b844",
+    "bytes": 3797931,
+    "entries": [
+      {
+        "name": "Microsoft.Win32.Registry.dll",
+        "bytes": 41352,
+        "sha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "externalAttributes": 0
+      },
+      {
+        "name": "mscorlib.dll",
+        "bytes": 47480,
+        "sha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "externalAttributes": 0
+      },
+      {
+        "name": "netstandard.dll",
+        "bytes": 1556344,
+        "sha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "externalAttributes": 0
+      },
+      {
+        "name": "references.json",
+        "bytes": 7191,
+        "sha256": "7ae537879e76008e6620cc38ddc86f696691cf252d89fb3176b2a88807e94eaa",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Buffers.dll",
+        "bytes": 13688,
+        "sha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.CodeDom.dll",
+        "bytes": 184936,
+        "sha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Collections.Immutable.dll",
+        "bytes": 252680,
+        "sha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.ComponentModel.Composition.dll",
+        "bytes": 13688,
+        "sha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Core.dll",
+        "bytes": 18808,
+        "sha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Data.dll",
+        "bytes": 18296,
+        "sha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.dll",
+        "bytes": 40312,
+        "sha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Drawing.dll",
+        "bytes": 14200,
+        "sha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.IO.Compression.FileSystem.dll",
+        "bytes": 13688,
+        "sha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Memory.dll",
+        "bytes": 14712,
+        "sha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Net.dll",
+        "bytes": 15224,
+        "sha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Numerics.dll",
+        "bytes": 13688,
+        "sha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Reflection.Metadata.dll",
+        "bytes": 487584,
+        "sha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Runtime.CompilerServices.Unsafe.dll",
+        "bytes": 19256,
+        "sha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Runtime.Serialization.dll",
+        "bytes": 15224,
+        "sha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Security.AccessControl.dll",
+        "bytes": 58992,
+        "sha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Security.Principal.Windows.dll",
+        "bytes": 37768,
+        "sha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.ServiceModel.Web.dll",
+        "bytes": 14200,
+        "sha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Transactions.dll",
+        "bytes": 14712,
+        "sha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Web.dll",
+        "bytes": 13688,
+        "sha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Windows.dll",
+        "bytes": 14200,
+        "sha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Xml.dll",
+        "bytes": 21880,
+        "sha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Xml.Linq.dll",
+        "bytes": 14200,
+        "sha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "externalAttributes": 0
+      },
+      {
+        "name": "System.Xml.Serialization.dll",
+        "bytes": 14712,
+        "sha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "externalAttributes": 0
+      },
+      {
+        "name": "Unity.Scripting.dll",
+        "bytes": 59904,
+        "sha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.AnimationModule.dll",
+        "bytes": 221184,
+        "sha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.AudioModule.dll",
+        "bytes": 141312,
+        "sha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.BurstModule.dll",
+        "bytes": 373760,
+        "sha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.CoreModule.dll",
+        "bytes": 2212864,
+        "sha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.DirectorModule.dll",
+        "bytes": 38400,
+        "sha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.HierarchyCoreModule.dll",
+        "bytes": 102912,
+        "sha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.ImageConversionModule.dll",
+        "bytes": 30720,
+        "sha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.IMGUIModule.dll",
+        "bytes": 193536,
+        "sha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.InputForUIModule.dll",
+        "bytes": 46592,
+        "sha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.InputLegacyModule.dll",
+        "bytes": 39424,
+        "sha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.JSONSerializeModule.dll",
+        "bytes": 24576,
+        "sha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.MathematicsModule.dll",
+        "bytes": 732672,
+        "sha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.PhysicsModule.dll",
+        "bytes": 178176,
+        "sha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.PropertiesModule.dll",
+        "bytes": 114176,
+        "sha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.ScriptingModule.dll",
+        "bytes": 61440,
+        "sha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.TextCoreFontEngineModule.dll",
+        "bytes": 76288,
+        "sha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.TextCoreTextEngineModule.dll",
+        "bytes": 307200,
+        "sha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.TextRenderingModule.dll",
+        "bytes": 29696,
+        "sha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.UIElementsModule.dll",
+        "bytes": 2593280,
+        "sha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.UIModule.dll",
+        "bytes": 53248,
+        "sha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "externalAttributes": 0
+      },
+      {
+        "name": "UnityEngine.UnityWebRequestModule.dll",
+        "bytes": 77312,
+        "sha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "externalAttributes": 0
+      }
+    ],
+    "entryCount": 50,
+    "dllCount": 49,
+    "manifestSha256": "7ae537879e76008e6620cc38ddc86f696691cf252d89fb3176b2a88807e94eaa",
+    "rootNamesUniqueAndNoLinksOrDirectories": true
+  },
+  "sources": {
+    "root": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\",
+    "verifiedDlls": [
+      {
+        "fileName": "Microsoft.Win32.Registry.dll",
+        "relativeSourcePath": "NetStandard/EditorExtensions/Microsoft.Win32.Registry.dll",
+        "assemblyName": "Microsoft.Win32.Registry",
+        "assemblyVersion": "5.0.0.0",
+        "bytes": 41352,
+        "zipSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "manifestSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "provenanceSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "hashListSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "sourceSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "stagingSha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "mscorlib.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll",
+        "assemblyName": "mscorlib",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 47480,
+        "zipSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "manifestSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "provenanceSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "hashListSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "sourceSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "stagingSha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "netstandard.dll",
+        "relativeSourcePath": "NetStandard/ref/2.1.0/netstandard.dll",
+        "assemblyName": "netstandard",
+        "assemblyVersion": "2.1.0.0",
+        "bytes": 1556344,
+        "zipSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "manifestSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "provenanceSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "hashListSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "sourceSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "stagingSha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Buffers.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netstandard/System.Buffers.dll",
+        "assemblyName": "System.Buffers",
+        "assemblyVersion": "4.0.3.0",
+        "bytes": 13688,
+        "zipSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "manifestSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "provenanceSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "hashListSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "sourceSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "stagingSha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.CodeDom.dll",
+        "relativeSourcePath": "NetStandard/EditorExtensions/System.CodeDom.dll",
+        "assemblyName": "System.CodeDom",
+        "assemblyVersion": "6.0.0.0",
+        "bytes": 184936,
+        "zipSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "manifestSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "provenanceSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "hashListSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "sourceSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "stagingSha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Collections.Immutable.dll",
+        "relativeSourcePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Collections.Immutable.dll",
+        "assemblyName": "System.Collections.Immutable",
+        "assemblyVersion": "8.0.0.0",
+        "bytes": 252680,
+        "zipSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "manifestSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "provenanceSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "hashListSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "sourceSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "stagingSha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.ComponentModel.Composition.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.ComponentModel.Composition.dll",
+        "assemblyName": "System.ComponentModel.Composition",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 13688,
+        "zipSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "manifestSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "provenanceSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "hashListSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "sourceSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "stagingSha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Core.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Core.dll",
+        "assemblyName": "System.Core",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 18808,
+        "zipSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "manifestSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "provenanceSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "hashListSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "sourceSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "stagingSha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Data.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Data.dll",
+        "assemblyName": "System.Data",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 18296,
+        "zipSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "manifestSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "provenanceSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "hashListSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "sourceSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "stagingSha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.dll",
+        "assemblyName": "System",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 40312,
+        "zipSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "manifestSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "provenanceSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "hashListSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "sourceSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "stagingSha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Drawing.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Drawing.dll",
+        "assemblyName": "System.Drawing",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14200,
+        "zipSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "manifestSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "provenanceSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "hashListSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "sourceSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "stagingSha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.IO.Compression.FileSystem.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.IO.Compression.FileSystem.dll",
+        "assemblyName": "System.IO.Compression.FileSystem",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 13688,
+        "zipSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "manifestSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "provenanceSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "hashListSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "sourceSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "stagingSha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Memory.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netstandard/System.Memory.dll",
+        "assemblyName": "System.Memory",
+        "assemblyVersion": "4.0.2.0",
+        "bytes": 14712,
+        "zipSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "manifestSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "provenanceSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "hashListSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "sourceSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "stagingSha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Net.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Net.dll",
+        "assemblyName": "System.Net",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 15224,
+        "zipSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "manifestSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "provenanceSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "hashListSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "sourceSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "stagingSha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Numerics.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Numerics.dll",
+        "assemblyName": "System.Numerics",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 13688,
+        "zipSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "manifestSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "provenanceSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "hashListSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "sourceSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "stagingSha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Reflection.Metadata.dll",
+        "relativeSourcePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Reflection.Metadata.dll",
+        "assemblyName": "System.Reflection.Metadata",
+        "assemblyVersion": "8.0.0.0",
+        "bytes": 487584,
+        "zipSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "manifestSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "provenanceSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "hashListSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "sourceSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "stagingSha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Runtime.CompilerServices.Unsafe.dll",
+        "relativeSourcePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Runtime.CompilerServices.Unsafe.dll",
+        "assemblyName": "System.Runtime.CompilerServices.Unsafe",
+        "assemblyVersion": "6.0.0.0",
+        "bytes": 19256,
+        "zipSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "manifestSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "provenanceSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "hashListSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "sourceSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "stagingSha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Runtime.Serialization.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Runtime.Serialization.dll",
+        "assemblyName": "System.Runtime.Serialization",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 15224,
+        "zipSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "manifestSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "provenanceSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "hashListSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "sourceSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "stagingSha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Security.AccessControl.dll",
+        "relativeSourcePath": "NetStandard/EditorExtensions/System.Security.AccessControl.dll",
+        "assemblyName": "System.Security.AccessControl",
+        "assemblyVersion": "6.0.0.0",
+        "bytes": 58992,
+        "zipSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "manifestSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "provenanceSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "hashListSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "sourceSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "stagingSha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Security.Principal.Windows.dll",
+        "relativeSourcePath": "NetStandard/EditorExtensions/System.Security.Principal.Windows.dll",
+        "assemblyName": "System.Security.Principal.Windows",
+        "assemblyVersion": "5.0.0.0",
+        "bytes": 37768,
+        "zipSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "manifestSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "provenanceSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "hashListSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "sourceSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "stagingSha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.ServiceModel.Web.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.ServiceModel.Web.dll",
+        "assemblyName": "System.ServiceModel.Web",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14200,
+        "zipSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "manifestSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "provenanceSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "hashListSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "sourceSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "stagingSha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Transactions.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Transactions.dll",
+        "assemblyName": "System.Transactions",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14712,
+        "zipSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "manifestSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "provenanceSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "hashListSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "sourceSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "stagingSha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Web.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Web.dll",
+        "assemblyName": "System.Web",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 13688,
+        "zipSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "manifestSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "provenanceSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "hashListSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "sourceSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "stagingSha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Windows.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Windows.dll",
+        "assemblyName": "System.Windows",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14200,
+        "zipSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "manifestSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "provenanceSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "hashListSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "sourceSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "stagingSha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Xml.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.dll",
+        "assemblyName": "System.Xml",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 21880,
+        "zipSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "manifestSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "provenanceSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "hashListSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "sourceSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "stagingSha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Xml.Linq.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.Linq.dll",
+        "assemblyName": "System.Xml.Linq",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14200,
+        "zipSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "manifestSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "provenanceSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "hashListSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "sourceSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "stagingSha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "System.Xml.Serialization.dll",
+        "relativeSourcePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.Serialization.dll",
+        "assemblyName": "System.Xml.Serialization",
+        "assemblyVersion": "4.0.0.0",
+        "bytes": 14712,
+        "zipSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "manifestSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "provenanceSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "hashListSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "sourceSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "stagingSha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "Unity.Scripting.dll",
+        "relativeSourcePath": "Managed/UnityEngine/Unity.Scripting.dll",
+        "assemblyName": "Unity.Scripting",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 59904,
+        "zipSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "manifestSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "provenanceSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "hashListSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "sourceSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "stagingSha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.AnimationModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.AnimationModule.dll",
+        "assemblyName": "UnityEngine.AnimationModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 221184,
+        "zipSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "manifestSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "provenanceSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "hashListSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "sourceSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "stagingSha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.AudioModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.AudioModule.dll",
+        "assemblyName": "UnityEngine.AudioModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 141312,
+        "zipSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "manifestSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "provenanceSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "hashListSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "sourceSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "stagingSha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.BurstModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.BurstModule.dll",
+        "assemblyName": "UnityEngine.BurstModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 373760,
+        "zipSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "manifestSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "provenanceSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "hashListSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "sourceSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "stagingSha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.CoreModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.CoreModule.dll",
+        "assemblyName": "UnityEngine.CoreModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 2212864,
+        "zipSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "manifestSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "provenanceSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "hashListSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "sourceSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "stagingSha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.DirectorModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.DirectorModule.dll",
+        "assemblyName": "UnityEngine.DirectorModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 38400,
+        "zipSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "manifestSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "provenanceSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "hashListSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "sourceSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "stagingSha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.HierarchyCoreModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.HierarchyCoreModule.dll",
+        "assemblyName": "UnityEngine.HierarchyCoreModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 102912,
+        "zipSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "manifestSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "provenanceSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "hashListSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "sourceSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "stagingSha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.ImageConversionModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.ImageConversionModule.dll",
+        "assemblyName": "UnityEngine.ImageConversionModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 30720,
+        "zipSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "manifestSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "provenanceSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "hashListSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "sourceSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "stagingSha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.IMGUIModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.IMGUIModule.dll",
+        "assemblyName": "UnityEngine.IMGUIModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 193536,
+        "zipSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "manifestSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "provenanceSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "hashListSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "sourceSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "stagingSha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.InputForUIModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.InputForUIModule.dll",
+        "assemblyName": "UnityEngine.InputForUIModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 46592,
+        "zipSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "manifestSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "provenanceSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "hashListSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "sourceSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "stagingSha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.InputLegacyModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.InputLegacyModule.dll",
+        "assemblyName": "UnityEngine.InputLegacyModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 39424,
+        "zipSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "manifestSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "provenanceSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "hashListSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "sourceSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "stagingSha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.JSONSerializeModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.JSONSerializeModule.dll",
+        "assemblyName": "UnityEngine.JSONSerializeModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 24576,
+        "zipSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "manifestSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "provenanceSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "hashListSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "sourceSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "stagingSha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.MathematicsModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.MathematicsModule.dll",
+        "assemblyName": "UnityEngine.MathematicsModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 732672,
+        "zipSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "manifestSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "provenanceSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "hashListSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "sourceSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "stagingSha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.PhysicsModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.PhysicsModule.dll",
+        "assemblyName": "UnityEngine.PhysicsModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 178176,
+        "zipSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "manifestSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "provenanceSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "hashListSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "sourceSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "stagingSha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.PropertiesModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.PropertiesModule.dll",
+        "assemblyName": "UnityEngine.PropertiesModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 114176,
+        "zipSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "manifestSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "provenanceSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "hashListSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "sourceSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "stagingSha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.ScriptingModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.ScriptingModule.dll",
+        "assemblyName": "UnityEngine.ScriptingModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 61440,
+        "zipSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "manifestSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "provenanceSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "hashListSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "sourceSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "stagingSha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.TextCoreFontEngineModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.TextCoreFontEngineModule.dll",
+        "assemblyName": "UnityEngine.TextCoreFontEngineModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 76288,
+        "zipSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "manifestSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "provenanceSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "hashListSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "sourceSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "stagingSha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.TextCoreTextEngineModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.TextCoreTextEngineModule.dll",
+        "assemblyName": "UnityEngine.TextCoreTextEngineModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 307200,
+        "zipSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "manifestSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "provenanceSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "hashListSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "sourceSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "stagingSha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.TextRenderingModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.TextRenderingModule.dll",
+        "assemblyName": "UnityEngine.TextRenderingModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 29696,
+        "zipSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "manifestSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "provenanceSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "hashListSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "sourceSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "stagingSha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.UIElementsModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.UIElementsModule.dll",
+        "assemblyName": "UnityEngine.UIElementsModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 2593280,
+        "zipSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "manifestSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "provenanceSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "hashListSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "sourceSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "stagingSha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.UIModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.UIModule.dll",
+        "assemblyName": "UnityEngine.UIModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 53248,
+        "zipSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "manifestSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "provenanceSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "hashListSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "sourceSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "stagingSha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+        "ordinarySource": true
+      },
+      {
+        "fileName": "UnityEngine.UnityWebRequestModule.dll",
+        "relativeSourcePath": "Managed/UnityEngine/UnityEngine.UnityWebRequestModule.dll",
+        "assemblyName": "UnityEngine.UnityWebRequestModule",
+        "assemblyVersion": "0.0.0.0",
+        "bytes": 77312,
+        "zipSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "manifestSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "provenanceSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "hashListSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "sourceSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "stagingSha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+        "ordinarySource": true
+      }
+    ],
+    "editorExePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Unity.exe",
+    "editorExeSha256": "35de3c28bd96c521c396251d18acfd2b67eb1b1c68711023232955abb4b705af",
+    "editorExeLength": 279984,
+    "authenticode": "Provenance records Valid; not independently rechecked"
+  },
+  "dependencyClosure": {
+    "method": "Recomputed from recorded PEReader/MetadataReader assembly identities/references; no independent PE parse in this review",
+    "assemblyNameClosureComplete": true,
+    "exactRequestedAssemblyVersionClosure": false,
+    "missing": [],
+    "requestedVersionDifferenceCount": 15,
+    "requestedVersionDifferences": [
+      {
+        "from": "Microsoft.Win32.Registry",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "Microsoft.Win32.Registry",
+        "dependency": "System.Security.AccessControl",
+        "requested": "5.0.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "Microsoft.Win32.Registry",
+        "requested": "4.1.0.0",
+        "selected": "5.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "System.Security.Principal.Windows",
+        "requested": "4.1.0.0",
+        "selected": "5.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "System.Security.AccessControl",
+        "requested": "4.1.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "System",
+        "dependency": "System.CodeDom",
+        "requested": "4.0.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "System.CodeDom",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "System.Memory",
+        "requested": "4.0.1.2",
+        "selected": "4.0.2.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "System.Buffers",
+        "requested": "4.0.2.0",
+        "selected": "4.0.3.0"
+      },
+      {
+        "from": "System.Reflection.Metadata",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Reflection.Metadata",
+        "dependency": "System.Memory",
+        "requested": "4.0.1.2",
+        "selected": "4.0.2.0"
+      },
+      {
+        "from": "System.Runtime.CompilerServices.Unsafe",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Security.AccessControl",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Security.Principal.Windows",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      }
+    ],
+    "recordedDifferencesPreserved": true
+  },
+  "existingEvidenceReadOnly": {
+    "method": "Prior outputs read, not rerun by this reviewer",
+    "localValidationPath": "E:/Codex/worktrees/cd84/Architecture-Explorer/.ci-output/unity-reference-packages/3d448c5e4a6ac7148472a0e78b187674810fc118/6000.6.5f1-development-review-1/local-validation.json",
+    "transportValidationPath": "E:/Codex/worktrees/cd84/Architecture-Explorer/.ci-output/unity-reference-packages/3d448c5e4a6ac7148472a0e78b187674810fc118/6000.6.5f1-development-review-1/transport-validation.json",
+    "transport": "local-copy adapter; no HTTPS request",
+    "staticallyConfirmedCallCount": 13,
+    "positiveContextDiagnosticCount": 0,
+    "missingUIReferenceDiagnosticCodes": [
+      "CS_CS0246",
+      "CS_CS0234",
+      "CS_CS0246",
+      "CS_UNRESOLVED_CALLS",
+      "CS_STATIC_SCOPE",
+      "incremental-parser"
+    ],
+    "gameBefore": {
+      "head": "98cbf53babd8ad1dd00eee299940556acd663060",
+      "trackedStatus": ""
+    },
+    "gameAfter": {
+      "head": "98cbf53babd8ad1dd00eee299940556acd663060",
+      "trackedStatus": ""
+    },
+    "gameUnchangedRecorded": true
+  },
+  "limitations": [
+    "49 assembly names close the recorded dependency-name graph; 15 requested assembly version differences remain and are preserved.",
+    "DEBUG only; full Unity built-in define set and effective backend remain unproved.",
+    "Single Roslyn context does not reproduce per-asmdef compilation, Unity Full or complete semantic coverage.",
+    "No Editor, Tests, UNITY_EDITOR or UNITY_INCLUDE_TESTS slice.",
+    "Existing ci-references transport used local-copy adapter; HTTPS/hosting/license/audience and production download remain unverified.",
+    "No production Game SHA index run is evidenced by this package."
+  ],
+  "unityStarted": false,
+  "targetDllExecuted": false,
+  "gameWritten": false,
+  "authenticationPerformed": false,
+  "uploaded": false,
+  "productionReady": false,
+  "failures": []
+}

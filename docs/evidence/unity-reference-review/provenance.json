@@ -1,0 +1,1713 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-22T00:00:45.8892667Z",
+  "purpose": "local-review-only",
+  "gameSha": "3d448c5e4a6ac7148472a0e78b187674810fc118",
+  "unityVersion": "6000.6.5f1",
+  "editor": {
+    "signerSubject": "CN=Unity Technologies SF, O=Unity Technologies SF, L=San Francisco, S=California, C=US, SERIALNUMBER=3183233, OID.2.5.4.15=Private Organization, OID.1.3.6.1.4.1.311.60.2.1.2=California, OID.1.3.6.1.4.1.311.60.2.1.3=US",
+    "sha256": "35de3c28bd96c521c396251d18acfd2b67eb1b1c68711023232955abb4b705af",
+    "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Unity.exe",
+    "productVersion": "6000.6.5f1_3ff58d469c8a",
+    "authenticodeStatus": "Valid",
+    "fileVersion": "6000.6.5.4191629",
+    "signerThumbprint": "228FB6411B0A144478C86AAA3CD9473C43A8ABA7",
+    "length": 279984,
+    "timestampSubject": "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1, O=\"DigiCert, Inc.\", C=US"
+  },
+  "apiProfile": {
+    "absolutePath": "C:/Program Files/Unity/Hub/Editor/6000.6.5f1/Editor/Data/Managed/UnityEngine/UnityEditor.CoreModule.dll",
+    "length": 10922496,
+    "sha256": "49e760261bd99651240f3eb4e095fc5c0c49d902dba553900d6581b022e93d70",
+    "readMethod": "PEReader/MetadataReader type fields and constants, no Assembly.Load",
+    "enums": [
+      {
+        "type": "UnityEditor.ScriptingImplementation",
+        "constants": [
+          {
+            "name": "Mono2x",
+            "constantType": "Int32",
+            "value": 0
+          },
+          {
+            "name": "IL2CPP",
+            "constantType": "Int32",
+            "value": 1
+          },
+          {
+            "name": "WinRTDotNET",
+            "constantType": "Int32",
+            "value": 2
+          },
+          {
+            "name": "CoreCLR",
+            "constantType": "Int32",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "type": "UnityEditor.ApiCompatibilityLevel",
+        "constants": [
+          {
+            "name": "NET_2_0",
+            "constantType": "Int32",
+            "value": 1
+          },
+          {
+            "name": "NET_2_0_Subset",
+            "constantType": "Int32",
+            "value": 2
+          },
+          {
+            "name": "NET_4_6",
+            "constantType": "Int32",
+            "value": 3
+          },
+          {
+            "name": "NET_Web",
+            "constantType": "Int32",
+            "value": 4
+          },
+          {
+            "name": "NET_Micro",
+            "constantType": "Int32",
+            "value": 5
+          },
+          {
+            "name": "NET_Standard_2_0",
+            "constantType": "Int32",
+            "value": 6
+          },
+          {
+            "name": "NET_Standard",
+            "constantType": "Int32",
+            "value": 6
+          },
+          {
+            "name": "NET_Unity_4_8",
+            "constantType": "Int32",
+            "value": 3
+          },
+          {
+            "name": "NET",
+            "constantType": "Int32",
+            "value": 7
+          }
+        ]
+      }
+    ],
+    "backendGetterMetadata": [
+      {
+        "name": "GetScriptingBackend",
+        "relativeVirtualAddress": 1947926,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Public, Static, HideBySig"
+      },
+      {
+        "name": "GetDefaultScriptingBackend",
+        "relativeVirtualAddress": 1947953,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Public, Static, HideBySig"
+      },
+      {
+        "name": "GetScriptingBackendInternal",
+        "relativeVirtualAddress": 1948924,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Private, Static, HideBySig"
+      },
+      {
+        "name": "GetScriptingBackend",
+        "relativeVirtualAddress": 1949012,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Public, Static, HideBySig"
+      },
+      {
+        "name": "GetDefaultScriptingBackendForGroup",
+        "relativeVirtualAddress": 0,
+        "implementationAttributes": "InternalCall",
+        "methodAttributes": "Assembly, Static, HideBySig"
+      },
+      {
+        "name": "GetDefaultScriptingBackend",
+        "relativeVirtualAddress": 1949131,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Public, Static, HideBySig"
+      },
+      {
+        "name": "GetScriptingBackend_Internal",
+        "relativeVirtualAddress": 1954664,
+        "implementationAttributes": "IL",
+        "methodAttributes": "Assembly, Static, HideBySig"
+      },
+      {
+        "name": "GetScriptingBackendInternal_Injected",
+        "relativeVirtualAddress": 0,
+        "implementationAttributes": "InternalCall",
+        "methodAttributes": "Private, Static, HideBySig"
+      },
+      {
+        "name": "GetScriptingBackend_Internal_Injected",
+        "relativeVirtualAddress": 0,
+        "implementationAttributes": "InternalCall",
+        "methodAttributes": "Private, Static, HideBySig"
+      }
+    ],
+    "defaultBackendProven": false,
+    "defaultBackendReason": "Enum values describe choices, not the project/default selection; no serialized backend value and no Unity execution"
+  },
+  "dependencyClosure": {
+    "exactRequestedAssemblyVersionClosure": false,
+    "assemblyNameClosureComplete": true,
+    "requestedVersionDifferences": [
+      {
+        "from": "Microsoft.Win32.Registry",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "Microsoft.Win32.Registry",
+        "dependency": "System.Security.AccessControl",
+        "requested": "5.0.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "Microsoft.Win32.Registry",
+        "requested": "4.1.0.0",
+        "selected": "5.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "System.Security.Principal.Windows",
+        "requested": "4.1.0.0",
+        "selected": "5.0.0.0"
+      },
+      {
+        "from": "mscorlib",
+        "dependency": "System.Security.AccessControl",
+        "requested": "4.1.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "System",
+        "dependency": "System.CodeDom",
+        "requested": "4.0.0.0",
+        "selected": "6.0.0.0"
+      },
+      {
+        "from": "System.CodeDom",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "System.Memory",
+        "requested": "4.0.1.2",
+        "selected": "4.0.2.0"
+      },
+      {
+        "from": "System.Collections.Immutable",
+        "dependency": "System.Buffers",
+        "requested": "4.0.2.0",
+        "selected": "4.0.3.0"
+      },
+      {
+        "from": "System.Reflection.Metadata",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Reflection.Metadata",
+        "dependency": "System.Memory",
+        "requested": "4.0.1.2",
+        "selected": "4.0.2.0"
+      },
+      {
+        "from": "System.Runtime.CompilerServices.Unsafe",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Security.AccessControl",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      },
+      {
+        "from": "System.Security.Principal.Windows",
+        "dependency": "netstandard",
+        "requested": "2.0.0.0",
+        "selected": "2.1.0.0"
+      }
+    ],
+    "note": "Same Editor supplied metadata; version differences retained for static-binding review"
+  },
+  "target": "StandaloneWindows64 Development Player static review slice",
+  "defines": [
+    "DEBUG"
+  ],
+  "backend": "unknown/no-explicit-override",
+  "fullUnityBuiltinDefines": "not-observed",
+  "framework": "Editor-supplied .NET Standard 2.1 references with netfx compatibility shims",
+  "references": [
+    {
+      "relativePath": "NetStandard/EditorExtensions/Microsoft.Win32.Registry.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\EditorExtensions\\Microsoft.Win32.Registry.dll",
+      "fileName": "Microsoft.Win32.Registry.dll",
+      "assemblyName": "Microsoft.Win32.Registry",
+      "assemblyVersion": "5.0.0.0",
+      "assemblyIdentity": "Microsoft.Win32.Registry, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "editor-framework-extension",
+      "length": 41352,
+      "sha256": "340933ad6701077ae9b8035e4671803d86074ab32f2de8165acfdb954bd260f6",
+      "fileVersion": "5.0.20.51904",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 42,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        },
+        {
+          "name": "System.Security.AccessControl",
+          "version": "5.0.0.0"
+        },
+        {
+          "name": "System.Security.Principal.Windows",
+          "version": "5.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\mscorlib.dll",
+      "fileName": "mscorlib.dll",
+      "assemblyName": "mscorlib",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 47480,
+      "sha256": "fb7ac3d0534282d14c3256e66f8d273ea016055ea1307c0f70021e7a236d6c33",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 1079,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "Microsoft.Win32.Registry",
+          "version": "4.1.0.0"
+        },
+        {
+          "name": "System.Security.Principal.Windows",
+          "version": "4.1.0.0"
+        },
+        {
+          "name": "System.Security.AccessControl",
+          "version": "4.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/ref/2.1.0/netstandard.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\ref\\2.1.0\\netstandard.dll",
+      "fileName": "netstandard.dll",
+      "assemblyName": "netstandard",
+      "assemblyVersion": "2.1.0.0",
+      "assemblyIdentity": "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+      "kind": "framework-reference",
+      "length": 1556344,
+      "sha256": "79a49049c360a3ff282e747c311fcd567834efde564a96689872564164756e84",
+      "fileVersion": "1.100.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 2595,
+      "exportedTypeCount": 0,
+      "assemblyReferences": []
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.dll",
+      "fileName": "System.dll",
+      "assemblyName": "System",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 40312,
+      "sha256": "2886c15559ef9f2f2c06389d204176ef86f74344416e680d450ac210d40656aa",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 784,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "System.CodeDom",
+          "version": "4.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netstandard/System.Buffers.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netstandard\\System.Buffers.dll",
+      "fileName": "System.Buffers.dll",
+      "assemblyName": "System.Buffers",
+      "assemblyVersion": "4.0.3.0",
+      "assemblyIdentity": "System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+      "kind": "netstandard-compatibility-shim",
+      "length": 13688,
+      "sha256": "d0648fc3d820c8b225fe991d55d506f3210b698cc02beaf8aa31d990cd990772",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 1,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/EditorExtensions/System.CodeDom.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\EditorExtensions\\System.CodeDom.dll",
+      "fileName": "System.CodeDom.dll",
+      "assemblyName": "System.CodeDom",
+      "assemblyVersion": "6.0.0.0",
+      "assemblyIdentity": "System.CodeDom, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+      "kind": "editor-framework-extension",
+      "length": 184936,
+      "sha256": "3772e9c431fe84eb53580225ba8fe1dca549e76037375f5ba2be0903733fb716",
+      "fileVersion": "6.0.21.52210",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 137,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Collections.Immutable.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\BCLExtensions\\TargetingPacks\\netstandard2.1\\ref\\System.Collections.Immutable.dll",
+      "fileName": "System.Collections.Immutable.dll",
+      "assemblyName": "System.Collections.Immutable",
+      "assemblyVersion": "8.0.0.0",
+      "assemblyIdentity": "System.Collections.Immutable, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "BCL-reference",
+      "length": 252680,
+      "sha256": "5b1b1c83ba3d135c2fdfe425842fbe9c7432878b7e468623acb554c69b4c130f",
+      "fileVersion": "8.0.23.53103",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 215,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        },
+        {
+          "name": "System.Memory",
+          "version": "4.0.1.2"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        },
+        {
+          "name": "System.Buffers",
+          "version": "4.0.2.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.ComponentModel.Composition.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.ComponentModel.Composition.dll",
+      "fileName": "System.ComponentModel.Composition.dll",
+      "assemblyName": "System.ComponentModel.Composition",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.ComponentModel.Composition, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 13688,
+      "sha256": "3d9e953036e19ba57ee12c1148a35e067442063c86ad9d40ff393fb289421914",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 1,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Core.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Core.dll",
+      "fileName": "System.Core.dll",
+      "assemblyName": "System.Core",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 18808,
+      "sha256": "83c8c06c5e59955aad7ef4acc13b63d702764f5b4e20cefb3a431cb2f75a12ed",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 169,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Data.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Data.dll",
+      "fileName": "System.Data.dll",
+      "assemblyName": "System.Data",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 18296,
+      "sha256": "722b754ca36e903c69519e8906ebc0f96f14525d847f73f3b5f2ac765499715b",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 151,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Drawing.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Drawing.dll",
+      "fileName": "System.Drawing.dll",
+      "assemblyName": "System.Drawing",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "netfx-compatibility-shim",
+      "length": 14200,
+      "sha256": "c9a3ea4bcb020c63a986fd72a31ce997e62a5f8d04460a32548e6fa31ae8f910",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 7,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.IO.Compression.FileSystem.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.IO.Compression.FileSystem.dll",
+      "fileName": "System.IO.Compression.FileSystem.dll",
+      "assemblyName": "System.IO.Compression.FileSystem",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.IO.Compression.FileSystem, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 13688,
+      "sha256": "2511e6d2df543140d45bf45d8df2cb34b8590db5193157e970021136c20173d6",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 2,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netstandard/System.Memory.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netstandard\\System.Memory.dll",
+      "fileName": "System.Memory.dll",
+      "assemblyName": "System.Memory",
+      "assemblyVersion": "4.0.2.0",
+      "assemblyIdentity": "System.Memory, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+      "kind": "netstandard-compatibility-shim",
+      "length": 14712,
+      "sha256": "34abf197fbf191fb83e983571a6f3a6fc460fa80f32038c94d54e96966678f88",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 26,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Net.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Net.dll",
+      "fileName": "System.Net.dll",
+      "assemblyName": "System.Net",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "netfx-compatibility-shim",
+      "length": 15224,
+      "sha256": "b99d8f30be2f3ef351b7e00b6cd6b4c09826dfc3ba334999cfbc2899d87204e8",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 47,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Numerics.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Numerics.dll",
+      "fileName": "System.Numerics.dll",
+      "assemblyName": "System.Numerics",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Numerics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 13688,
+      "sha256": "ff69f92af7abae62302e0b29e7562d3f7392bc11d95d75e587b4ca6f1ceb8cbe",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 2,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Reflection.Metadata.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\BCLExtensions\\TargetingPacks\\netstandard2.1\\ref\\System.Reflection.Metadata.dll",
+      "fileName": "System.Reflection.Metadata.dll",
+      "assemblyName": "System.Reflection.Metadata",
+      "assemblyVersion": "8.0.0.0",
+      "assemblyIdentity": "System.Reflection.Metadata, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "BCL-reference",
+      "length": 487584,
+      "sha256": "afcfd6c166fe0d59f45cc6363082806f6a7ea8ceed9dc6c75eec9fd79ccb5717",
+      "fileVersion": "8.0.1024.46610",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 532,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        },
+        {
+          "name": "System.Memory",
+          "version": "4.0.1.2"
+        },
+        {
+          "name": "System.Collections.Immutable",
+          "version": "8.0.0.0"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "BCLExtensions/TargetingPacks/netstandard2.1/ref/System.Runtime.CompilerServices.Unsafe.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\BCLExtensions\\TargetingPacks\\netstandard2.1\\ref\\System.Runtime.CompilerServices.Unsafe.dll",
+      "fileName": "System.Runtime.CompilerServices.Unsafe.dll",
+      "assemblyName": "System.Runtime.CompilerServices.Unsafe",
+      "assemblyVersion": "6.0.0.0",
+      "assemblyIdentity": "System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "BCL-reference",
+      "length": 19256,
+      "sha256": "fd67abc4c4af10affbcd42fd68a2a7bc361b26714afe6965d4d0d139459d8297",
+      "fileVersion": "6.100.225.20307",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 6,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Runtime.Serialization.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Runtime.Serialization.dll",
+      "fileName": "System.Runtime.Serialization.dll",
+      "assemblyName": "System.Runtime.Serialization",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Runtime.Serialization, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 15224,
+      "sha256": "618f378d908436c7e143ec0ffe95ea791431a728a29815eaa1618ec5906aa05f",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 42,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/EditorExtensions/System.Security.AccessControl.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\EditorExtensions\\System.Security.AccessControl.dll",
+      "fileName": "System.Security.AccessControl.dll",
+      "assemblyName": "System.Security.AccessControl",
+      "assemblyVersion": "6.0.0.0",
+      "assemblyIdentity": "System.Security.AccessControl, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "editor-framework-extension",
+      "length": 58992,
+      "sha256": "b122549811ca87f86f4cf651357bc312af01aa93a2f27750daf434cbe5901471",
+      "fileVersion": "6.0.21.52210",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 71,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        },
+        {
+          "name": "System.Security.Principal.Windows",
+          "version": "5.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/EditorExtensions/System.Security.Principal.Windows.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\EditorExtensions\\System.Security.Principal.Windows.dll",
+      "fileName": "System.Security.Principal.Windows.dll",
+      "assemblyName": "System.Security.Principal.Windows",
+      "assemblyVersion": "5.0.0.0",
+      "assemblyIdentity": "System.Security.Principal.Windows, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "editor-framework-extension",
+      "length": 37768,
+      "sha256": "7828dfd952a9fd49404477baff714849177d9f18c0654adafadbdcafb4b21f47",
+      "fileVersion": "5.0.20.51904",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 34,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.ServiceModel.Web.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.ServiceModel.Web.dll",
+      "fileName": "System.ServiceModel.Web.dll",
+      "assemblyName": "System.ServiceModel.Web",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.ServiceModel.Web, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+      "kind": "netfx-compatibility-shim",
+      "length": 14200,
+      "sha256": "ef71e6e462f783e8a9ae8d019c7c737256b3d1593659e9831583af4c1b3747e9",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 4,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Transactions.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Transactions.dll",
+      "fileName": "System.Transactions.dll",
+      "assemblyName": "System.Transactions",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Transactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 14712,
+      "sha256": "a518484c7988530007547406cc8d14b1cde92fc26f373d49ea155cab472a6131",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 34,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Web.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Web.dll",
+      "fileName": "System.Web.dll",
+      "assemblyName": "System.Web",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Web, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "netfx-compatibility-shim",
+      "length": 13688,
+      "sha256": "2c1b3298574d95c3232a45a073d39dae0908e89dacfbfb42e4f44ebf06368fe4",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 1,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Windows.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Windows.dll",
+      "fileName": "System.Windows.dll",
+      "assemblyName": "System.Windows",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Windows, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+      "kind": "netfx-compatibility-shim",
+      "length": 14200,
+      "sha256": "a1bc4b5483e459783cde59c72f9213d13136695ebbba1b9e6093d50d675d741d",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 9,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Xml.dll",
+      "fileName": "System.Xml.dll",
+      "assemblyName": "System.Xml",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Xml, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 21880,
+      "sha256": "1191d6b547783fb32061de561a9379fbe7c788518510cc22c71d3c4646dd65f5",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 248,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.Linq.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Xml.Linq.dll",
+      "fileName": "System.Xml.Linq.dll",
+      "assemblyName": "System.Xml.Linq",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Xml.Linq, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 14200,
+      "sha256": "9649dcf62b2882648a5b5de48b931b8c7080da8e8a96fc853e87801fae8d892d",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 25,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "NetStandard/compat/2.1.0/shims/netfx/System.Xml.Serialization.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\NetStandard\\compat\\2.1.0\\shims\\netfx\\System.Xml.Serialization.dll",
+      "fileName": "System.Xml.Serialization.dll",
+      "assemblyName": "System.Xml.Serialization",
+      "assemblyVersion": "4.0.0.0",
+      "assemblyIdentity": "System.Xml.Serialization, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+      "kind": "netfx-compatibility-shim",
+      "length": 14712,
+      "sha256": "41738a9f79bbe5dfcf9b5d75960caa091d5b4a7cd276e7176c9d03df260737e7",
+      "fileVersion": "4.700.19.46205",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1,
+      "exportedTypeCount": 27,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/Unity.Scripting.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\Unity.Scripting.dll",
+      "fileName": "Unity.Scripting.dll",
+      "assemblyName": "Unity.Scripting",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "Unity.Scripting, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 59904,
+      "sha256": "087c052dc68097b323a78e7ed7d579fc3566e351677c44d930791c578b712055",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 86,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.AnimationModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.AnimationModule.dll",
+      "fileName": "UnityEngine.AnimationModule.dll",
+      "assemblyName": "UnityEngine.AnimationModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 221184,
+      "sha256": "6d859f7538222212fcfa93d23c97005c3d1b179c32a344eed73bcce010b5af7b",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 135,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.AudioModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.AudioModule.dll",
+      "fileName": "UnityEngine.AudioModule.dll",
+      "assemblyName": "UnityEngine.AudioModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 141312,
+      "sha256": "f6512de22784e618f49d4b7d6b81854bd2924beb2b19194c9fad051b6847dc28",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 149,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.BurstModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.BurstModule.dll",
+      "fileName": "UnityEngine.BurstModule.dll",
+      "assemblyName": "UnityEngine.BurstModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.BurstModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 373760,
+      "sha256": "4ad125f291e46ed2bee4338ef75fd35ffeb3a6e50f52df292fadcb984c1a6b4a",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 113,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.CoreModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.CoreModule.dll",
+      "fileName": "UnityEngine.CoreModule.dll",
+      "assemblyName": "UnityEngine.CoreModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 2212864,
+      "sha256": "a575473c494efdc06d6e066ced4eefd3368e5040e8199d7c5155611672151a2a",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 1793,
+      "exportedTypeCount": 11,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.MathematicsModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "System.Reflection.Metadata",
+          "version": "8.0.0.0"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        },
+        {
+          "name": "UnityEngine.BurstModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.DirectorModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.DirectorModule.dll",
+      "fileName": "UnityEngine.DirectorModule.dll",
+      "assemblyName": "UnityEngine.DirectorModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.DirectorModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 38400,
+      "sha256": "0ec77b97bda45e79fd90a529183d44eaa5d0ee32b5048c084029b5e98eff5e8b",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 16,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.HierarchyCoreModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.HierarchyCoreModule.dll",
+      "fileName": "UnityEngine.HierarchyCoreModule.dll",
+      "assemblyName": "UnityEngine.HierarchyCoreModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.HierarchyCoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 102912,
+      "sha256": "d530910275aa74e1cf98a1f11f609ce37f39edfcc1ebbe7d1b01b2ac606e3f48",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 71,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.ImageConversionModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.ImageConversionModule.dll",
+      "fileName": "UnityEngine.ImageConversionModule.dll",
+      "assemblyName": "UnityEngine.ImageConversionModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 30720,
+      "sha256": "4be7e6330915fa09cf4ecf8ecdef82394607d903d465ca3f9a1aa990f7b56bcf",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 4,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.IMGUIModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.IMGUIModule.dll",
+      "fileName": "UnityEngine.IMGUIModule.dll",
+      "assemblyName": "UnityEngine.IMGUIModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 193536,
+      "sha256": "149e62aee1c76362315a9276d57840ad092c6460b8454e56117f74b5ed96755d",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 76,
+      "exportedTypeCount": 1,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextCoreTextEngineModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextRenderingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.InputLegacyModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.InputForUIModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.InputForUIModule.dll",
+      "fileName": "UnityEngine.InputForUIModule.dll",
+      "assemblyName": "UnityEngine.InputForUIModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.InputForUIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 46592,
+      "sha256": "b31ce69deeec57c4eafd5dfc62da7e40e0ac5fed8401fcb71f7092622d997bd0",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 55,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.IMGUIModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.InputLegacyModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.InputLegacyModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.InputLegacyModule.dll",
+      "fileName": "UnityEngine.InputLegacyModule.dll",
+      "assemblyName": "UnityEngine.InputLegacyModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.InputLegacyModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 39424,
+      "sha256": "34dee873cde86c797cc94a4eb8cc1122e51e616915cb282586ba99c10bd2f881",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 21,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.JSONSerializeModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.JSONSerializeModule.dll",
+      "fileName": "UnityEngine.JSONSerializeModule.dll",
+      "assemblyName": "UnityEngine.JSONSerializeModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.JSONSerializeModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 24576,
+      "sha256": "491c91206305930b28e628d92a599b00558884e4083f11deae24dbbdf88e3864",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 4,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.MathematicsModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.MathematicsModule.dll",
+      "fileName": "UnityEngine.MathematicsModule.dll",
+      "assemblyName": "UnityEngine.MathematicsModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.MathematicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 732672,
+      "sha256": "f6ba7ca5812b6ff6e100d6522d06ec4e0d55c099792a65f5ebbeff10a0e33500",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 98,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.PhysicsModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.PhysicsModule.dll",
+      "fileName": "UnityEngine.PhysicsModule.dll",
+      "assemblyName": "UnityEngine.PhysicsModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 178176,
+      "sha256": "a5792c4e5b52753b1c5200902bba7d26515745b33dd9291c9d269674c1f842f6",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 105,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.PropertiesModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.PropertiesModule.dll",
+      "fileName": "UnityEngine.PropertiesModule.dll",
+      "assemblyName": "UnityEngine.PropertiesModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.PropertiesModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 114176,
+      "sha256": "25176245abb0c0c19a67a8da679555bf40e88380286da94ffdd105c76de835aa",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 216,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.ScriptingModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.ScriptingModule.dll",
+      "fileName": "UnityEngine.ScriptingModule.dll",
+      "assemblyName": "UnityEngine.ScriptingModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.ScriptingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 61440,
+      "sha256": "6eeb689fbc008c7a4008c97fc0c8de798d853507d06a7ec42efb5d191bdbf0f7",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 100,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.TextCoreFontEngineModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.TextCoreFontEngineModule.dll",
+      "fileName": "UnityEngine.TextCoreFontEngineModule.dll",
+      "assemblyName": "UnityEngine.TextCoreFontEngineModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.TextCoreFontEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 76288,
+      "sha256": "4ae3bea60c7966d32588e95250ef7773cf10be8dad383d274b80daf5bb40adb7",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 54,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextRenderingModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.TextCoreTextEngineModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.TextCoreTextEngineModule.dll",
+      "fileName": "UnityEngine.TextCoreTextEngineModule.dll",
+      "assemblyName": "UnityEngine.TextCoreTextEngineModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 307200,
+      "sha256": "2027554989a81e91240d3f7b31ddadc5507ec5e5d9602d296135ef1886fdeffb",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 130,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextCoreFontEngineModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextRenderingModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.TextRenderingModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.TextRenderingModule.dll",
+      "fileName": "UnityEngine.TextRenderingModule.dll",
+      "assemblyName": "UnityEngine.TextRenderingModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 29696,
+      "sha256": "81dd34bc3389d20bac87c29967d8b1d88b9cc7ca22d3e53070872fb717ea6c6d",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 21,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.UIElementsModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.UIElementsModule.dll",
+      "fileName": "UnityEngine.UIElementsModule.dll",
+      "assemblyName": "UnityEngine.UIElementsModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.UIElementsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 2593280,
+      "sha256": "b1176fe6d880c8d9988a7d3e6c160f73d8f6ec5de270119a132746bee84a7eb6",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 2145,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.PropertiesModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.IMGUIModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.HierarchyCoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextCoreTextEngineModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextRenderingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.PhysicsModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.InputLegacyModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.InputForUIModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.AnimationModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextCoreFontEngineModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.UIModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.JSONSerializeModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "version": "6.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.UIModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.UIModule.dll",
+      "fileName": "UnityEngine.UIModule.dll",
+      "assemblyName": "UnityEngine.UIModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 53248,
+      "sha256": "1d12dc6b19d30bf59cd29e2acdaaae22647f6068a0eb2eb540abe2e1cd4ce239",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 19,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.TextRenderingModule",
+          "version": "0.0.0.0"
+        }
+      ]
+    },
+    {
+      "relativePath": "Managed/UnityEngine/UnityEngine.UnityWebRequestModule.dll",
+      "absolutePath": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.5f1\\Editor\\Data\\Managed\\UnityEngine\\UnityEngine.UnityWebRequestModule.dll",
+      "fileName": "UnityEngine.UnityWebRequestModule.dll",
+      "assemblyName": "UnityEngine.UnityWebRequestModule",
+      "assemblyVersion": "0.0.0.0",
+      "assemblyIdentity": "UnityEngine.UnityWebRequestModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+      "kind": "engine-runtime-candidate",
+      "length": 77312,
+      "sha256": "cfd882396c5e1e910c79e586f9a24846cf907ceea5a21e65e7f4935fa75e7af6",
+      "fileVersion": "0.0.0.0",
+      "hasReparsePoint": false,
+      "metadataOnly": true,
+      "typeDefinitionCount": 49,
+      "exportedTypeCount": 0,
+      "assemblyReferences": [
+        {
+          "name": "netstandard",
+          "version": "2.1.0.0"
+        },
+        {
+          "name": "UnityEngine.ScriptingModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "UnityEngine.CoreModule",
+          "version": "0.0.0.0"
+        },
+        {
+          "name": "Unity.Scripting",
+          "version": "0.0.0.0"
+        }
+      ]
+    }
+  ],
+  "zipPath": "E:\\Codex\\worktrees\\cd84\\Architecture-Explorer\\.ci-output\\unity-reference-packages\\3d448c5e4a6ac7148472a0e78b187674810fc118\\6000.6.5f1-development-review-1\\unity-6000.6.5f1-win64-development-metadata.zip",
+  "zipSha256": "4d5371537010f078c70ba64616c238ef8b54a77a01920fa9d31a0773aa11b844",
+  "zipBytes": 3797931,
+  "unityStarted": false,
+  "targetAssembliesExecuted": false,
+  "gameModified": false,
+  "uploaded": false,
+  "productionReady": false,
+  "limitations": [
+    "Single Roslyn context does not reproduce per-asmdef Unity compilation",
+    "No Editor/Tests or UNITY_EDITOR/UNITY_INCLUDE_TESTS slice",
+    "No proof of effective backend or full built-in define set",
+    "Local package is not CI download or index success",
+    "CI hosting/license/audience review remains pending"
+  ]
+}
