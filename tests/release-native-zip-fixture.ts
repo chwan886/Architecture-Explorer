@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 
-export type Item = { name: string; raw?: string; json?: unknown; attributes?: number; declaredBytes?: number };
+export type Item = { name: string; raw?: string; json?: unknown; attributes?: number; declaredBytes?: number; padToBytes?: number };
 const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 const code = 'NATIVE_ZIP_FIXTURE_REJECTED', requestBudget = 60000;
 const owned = new Map<string, { dev: bigint; ino: bigint }>();
@@ -56,13 +56,14 @@ function normalize(items: Item[], repeatEntries: number) {
   let bytes = 0;
   return items.map(item => {
     need(item !== null && typeof item === 'object' && typeof item.name === 'string' && item.name.length > 0 && item.name.length <= 4096);
-    need(Object.keys(item).every(key => ['name', 'raw', 'json', 'attributes', 'declaredBytes'].includes(key)));
+    need(Object.keys(item).every(key => ['name', 'raw', 'json', 'attributes', 'declaredBytes', 'padToBytes'].includes(key)));
     need(item.attributes === undefined || Number.isInteger(item.attributes) && item.attributes >= 0 && item.attributes <= 0xffffffff);
     need(item.declaredBytes === undefined || Number.isSafeInteger(item.declaredBytes) && item.declaredBytes >= 0 && item.declaredBytes <= 2147483649);
     const raw = item.raw ?? Buffer.from(item.json === undefined ? '' : JSON.stringify(item.json)).toString('base64');
     need(typeof raw === 'string' && Buffer.from(raw, 'base64').toString('base64') === raw); bytes += raw.length; need(bytes <= 16 * 1024 * 1024);
+    need(item.padToBytes === undefined || Number.isSafeInteger(item.padToBytes) && item.padToBytes >= Buffer.from(raw, 'base64').length && item.padToBytes <= 40 * 1024 * 1024 && item.declaredBytes === undefined);
     return { name: item.name, raw, ...(item.attributes === undefined ? {} : { attributes: item.attributes }),
-      ...(item.declaredBytes === undefined ? {} : { declaredBytes: item.declaredBytes }) };
+      ...(item.declaredBytes === undefined ? {} : { declaredBytes: item.declaredBytes }), ...(item.padToBytes === undefined ? {} : { padToBytes: item.padToBytes }) };
   });
 }
 // Fixed trusted writer: all hostile names remain ZIP metadata; no extraction or caller-controlled scripts/paths.
@@ -86,7 +87,15 @@ try {
       foreach($item in $request.items){
         $entry=$zip.CreateEntry($item.name,[IO.Compression.CompressionLevel]::Optimal)
         $bytes=[Convert]::FromBase64String($item.raw); $stream=$entry.Open()
-        try {$stream.Write($bytes,0,$bytes.Length)} finally {$stream.Dispose()}
+        try {
+          $stream.Write($bytes,0,$bytes.Length)
+          if($null -ne $item.padToBytes){
+            if($item.padToBytes -lt $bytes.Length -or $item.padToBytes -gt 40MB -or $null -ne $item.declaredBytes){throw 'reject'}
+            $padding=[byte[]]::new(65536); for($position=0;$position -lt $padding.Length;$position++){$padding[$position]=32}
+            $remaining=[long]$item.padToBytes-$bytes.Length
+            while($remaining -gt 0){$count=[int][Math]::Min($remaining,$padding.Length);$stream.Write($padding,0,$count);$remaining-=$count}
+          }
+        } finally {$stream.Dispose()}
         if($null -ne $item.attributes){$entry.ExternalAttributes=[BitConverter]::ToInt32([BitConverter]::GetBytes([uint32]$item.attributes),0)}
         if($null -ne $item.declaredBytes){
           $field=[IO.Compression.ZipArchiveEntry].GetField('_uncompressedSize',[Reflection.BindingFlags]'NonPublic,Instance')

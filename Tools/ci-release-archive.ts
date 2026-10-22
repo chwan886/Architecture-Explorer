@@ -8,8 +8,11 @@ import { lstat, open } from 'node:fs/promises';
 export type ReleaseArchiveKind = 'tool' | 'index' | 'checks';
 export interface ReleaseArchiveIdentity { toolSha: string; gameSha: string; runId: string; producerAttempt: string }
 export interface ReleaseArchiveEntry { path: string; size: number; externalAttributes: number; isDirectory: boolean }
+/** Raw uncompressed bytes of the fixed full index entry, hashed without parsing or buffering it as JSON. */
+export interface ReleaseIndexFileObservation { path: string; size: number; sha256: string }
 export interface ReleaseArchiveObservation {
   actualZipSha256: string; actualZipBytes: number; entries: ReleaseArchiveEntry[]; documents: Record<string, unknown>;
+  indexFile?: ReleaseIndexFileObservation;
 }
 const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 const compressedLimit = 512 * 1024 * 1024, expandedLimit = 2 * 1024 * 1024 * 1024;
@@ -29,7 +32,10 @@ function selectedDocuments(kind: ReleaseArchiveKind, identity: ReleaseArchiveIde
   if (kind === 'tool') return ['build-manifest.json'];
   if (kind === 'checks') return ['delivery-result.json', `package-smoke-tool-${identity.toolSha}-${identity.runId}-${identity.producerAttempt}.json`];
   const prefix = `${identity.gameSha}/${identity.runId}-${identity.producerAttempt}/index-evidence/`;
-  return ['manifest', 'index', 'audit', 'read-only-before', 'read-only-after', 'references'].map(name => `${prefix}${name}.json`).concat('authorization/authorization.json');
+  return ['manifest', 'audit', 'read-only-before', 'read-only-after', 'references'].map(name => `${prefix}${name}.json`).concat('authorization/authorization.json');
+}
+function fullIndexPath(kind: ReleaseArchiveKind, identity: ReleaseArchiveIdentity): string | undefined {
+  return kind === 'index' ? `${identity.gameSha}/${identity.runId}-${identity.producerAttempt}/index-evidence/index.json` : undefined;
 }
 async function regularArchive(archive: string) {
   need(typeof archive === 'string' && path.isAbsolute(archive) && /^[A-Za-z]:[\\/]/.test(archive) &&
@@ -80,11 +86,12 @@ const archiveScript = String.raw`
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
-$file=$null; $zip=$null; $sha=$null
+$file=$null; $zip=$null; $sha=$null; $indexSha=$null
 try {
   Add-Type -AssemblyName System.IO.Compression
   $selected=[string[]](ConvertFrom-Json $env:AE_RELEASE_DOCUMENT_PATHS)
-  if($selected.Count -lt 1 -or $selected.Count -gt 7){throw 'reject'}
+  if($selected.Count -lt 1 -or $selected.Count -gt 6){throw 'reject'}
+  $indexPath=[string]$env:AE_RELEASE_INDEX_PATH; $indexEntry=$null
   $file=[IO.File]::Open($env:AE_RELEASE_ARCHIVE_PATH,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
   if($file.Length -lt 1 -or $file.Length -gt 512MB){throw 'reject'}
   $bytes=$file.Length; $sha=[Security.Cryptography.SHA256]::Create()
@@ -112,6 +119,10 @@ try {
       $selectedTotal+=$entry.Length; if($selectedTotal -gt 64MB){throw 'reject'}
       $selectedEntries.Add($name,$entry)
     }
+    if($indexPath -and $name -ceq $indexPath){
+      if($directory -or $entry.Length -lt 1){throw 'reject'}
+      $indexEntry=$entry
+    }
     $entries.Add(@{path=$name;size=$entry.Length;externalAttributes=$attributes;isDirectory=$directory})
   }
   foreach($name in $names.Keys){
@@ -137,21 +148,39 @@ try {
       $documents[$name]=[Convert]::ToBase64String($raw)
     } finally { if($stream){$stream.Dispose()}; if($memory){$memory.Dispose()} }
   }
+  $indexFile=$null
+  if($indexPath){
+    if(!$indexEntry){throw 'reject'}
+    $stream=$null; $readTotal=0L; $indexSha=[Security.Cryptography.SHA256]::Create()
+    try {
+      $stream=$indexEntry.Open()
+      while(($count=$stream.Read($buffer,0,$buffer.Length)) -gt 0){
+        $readTotal+=$count
+        if($readTotal -gt $indexEntry.Length -or $readTotal -gt 2GB){throw 'reject'}
+        $null=$indexSha.TransformBlock($buffer,0,$count,$buffer,0)
+      }
+      if($readTotal -ne $indexEntry.Length){throw 'reject'}
+      $null=$indexSha.TransformFinalBlock([byte[]]::new(0),0,0)
+      $indexFile=@{path=$indexPath;size=$readTotal;sha256=[BitConverter]::ToString($indexSha.Hash).Replace('-','').ToLowerInvariant()}
+    } finally { if($stream){$stream.Dispose()}; $indexSha.Dispose(); $indexSha=$null }
+  }
   $zip.Dispose(); $zip=$null; $file.Position=0
   $afterHash=[BitConverter]::ToString($sha.ComputeHash($file)).Replace('-','').ToLowerInvariant()
   if($beforeHash -cne $afterHash -or $file.Length -ne $bytes){throw 'reject'}
   $result=@{actualZipSha256=$afterHash;actualZipBytes=$bytes;entries=$entries.ToArray();documents=$documents}
+  if($indexFile){$result.indexFile=$indexFile}
   $json=ConvertTo-Json -InputObject $result -Compress -Depth 5
   if([Text.Encoding]::UTF8.GetByteCount($json) -gt 160MB){throw 'reject'}
   [Console]::Write($json)
 } catch { [Console]::Error.Write('RELEASE_ARCHIVE_NATIVE_REJECTED'); exit 1 }
-finally { if($zip){$zip.Dispose()}; if($file){$file.Dispose()}; if($sha){$sha.Dispose()} }
+finally { if($zip){$zip.Dispose()}; if($file){$file.Dispose()}; if($sha){$sha.Dispose()}; if($indexSha){$indexSha.Dispose()} }
 `;
 
 /** Observe the exact raw download-artifact ZIP without extracting or executing any target bytes. */
 async function observeReleaseArchive(absoluteZIPPath: string, kind: ReleaseArchiveKind, identity: ReleaseArchiveIdentity): Promise<ReleaseArchiveObservation> {
   need(process.platform === 'win32', 'RELEASE_ARCHIVE_WINDOWS_REQUIRED');
   const selected = selectedDocuments(kind, identity);
+  const indexPath = fullIndexPath(kind, identity);
   need(typeof absoluteZIPPath === 'string' && absoluteZIPPath.length <= 32000 && path.isAbsolute(absoluteZIPPath), 'RELEASE_ARCHIVE_PATH_INVALID');
   const archive = path.resolve(absoluteZIPPath);
   const before = await regularArchive(archive), beforeHash = await zipDigest(archive);
@@ -161,7 +190,7 @@ async function observeReleaseArchive(absoluteZIPPath: string, kind: ReleaseArchi
     const result = await promisify(execFile)(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(archiveScript, 'utf16le').toString('base64')], {
       windowsHide: true, timeout: 120000, maxBuffer: nativeOutputLimit, encoding: 'utf8',
       env: { SystemRoot: 'C:\\Windows', WINDIR: 'C:\\Windows', PATH: 'C:\\Windows\\System32;C:\\Windows', TEMP: os.tmpdir(), TMP: os.tmpdir(),
-        AE_RELEASE_ARCHIVE_PATH: archive, AE_RELEASE_DOCUMENT_PATHS: JSON.stringify(selected) },
+        AE_RELEASE_ARCHIVE_PATH: archive, AE_RELEASE_DOCUMENT_PATHS: JSON.stringify(selected), AE_RELEASE_INDEX_PATH: indexPath ?? '' },
     });
     need(!result.stderr, 'RELEASE_ARCHIVE_NATIVE_REJECTED'); output = result.stdout;
   } catch { fail('RELEASE_ARCHIVE_NATIVE_REJECTED'); }
@@ -194,9 +223,18 @@ async function observeReleaseArchive(absoluteZIPPath: string, kind: ReleaseArchi
       need(bytes.toString('base64') === encoded && bytes.length === entry.size && bytes.length <= documentLimit && total <= documentsLimit, 'RELEASE_ARCHIVE_DOCUMENT_LIMIT');
       documents[name] = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); bytes.fill(0);
     }
+    let indexFile: ReleaseIndexFileObservation | undefined;
+    if (indexPath) {
+      const pin = observed.indexFile, entry = names.get(indexPath.toLowerCase());
+      need(pin !== null && typeof pin === 'object' && !Array.isArray(pin) && Object.keys(pin).sort().join(',') === 'path,sha256,size' &&
+        pin.path === indexPath && entry && entry.path === indexPath && !entry.isDirectory &&
+        Number.isSafeInteger(pin.size) && pin.size > 0 && pin.size <= expandedLimit && pin.size === entry.size &&
+        exact(pin.sha256, /^[a-f0-9]{64}$/), 'RELEASE_ARCHIVE_INDEX_PIN_INVALID');
+      indexFile = { path: pin.path, size: pin.size, sha256: pin.sha256 };
+    } else need(!Object.hasOwn(observed, 'indexFile'), 'RELEASE_ARCHIVE_INDEX_PIN_INVALID');
     const afterHash = await zipDigest(archive), after = await regularArchive(archive);
     need(sameFile(before, after) && beforeHash === afterHash, 'RELEASE_ARCHIVE_CHANGED');
-    return { actualZipSha256: beforeHash, actualZipBytes: Number(before.size), entries, documents };
+    return { actualZipSha256: beforeHash, actualZipBytes: Number(before.size), entries, documents, ...(indexFile ? { indexFile } : {}) };
   } catch (error) {
     if (error instanceof Error && /^RELEASE_ARCHIVE_[A-Z_]+$/.test(error.message)) throw error;
     fail('RELEASE_ARCHIVE_OBSERVATION_INVALID');

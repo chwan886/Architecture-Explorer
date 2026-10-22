@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import type { ReleaseIndexFileObservation } from './ci-release-archive.ts';
 
 export const RELEASE_REPOSITORY = 'chwan886/Architecture-Explorer' as const;
 export const RELEASE_GAME_REPOSITORY = 'chwan886/GameDemo02' as const;
@@ -19,6 +20,8 @@ export interface ReleaseArtifactEvidence {
   entries: readonly ReleaseZipEntry[];
   /** Only selected, bounded JSON objects read from the same pinned archive, keyed by exact ZIP entry path. */
   documents: Readonly<Record<string, unknown>>;
+  /** Only the index archive carries the independently streamed full-index byte observation. */
+  indexFile?: ReleaseIndexFileObservation;
 }
 export interface ReleaseEvidenceInput {
   context: { repository: string; repositoryId: number; serverUrl: string; isPrivate: boolean; visibility: string; defaultBranch: string;
@@ -186,6 +189,7 @@ export function validateReleaseEvidence(input: ReleaseEvidenceInput): ValidatedR
     exact(runMeta.repository_id, c.repositoryId, `${kind} artifact repository ID`); exact(runMeta.head_repository_id, c.repositoryId, `${kind} artifact head repository`);
     exact(runMeta.head_branch, 'main', `${kind} artifact branch`); exact(runMeta.head_sha, toolSha, `${kind} artifact tool SHA`);
     record(artifact.documents, `${kind} bounded JSON observations`); indexes[kind] = zipEntries(artifact, kind);
+    if (kind !== 'index') exact(artifact.indexFile, undefined, `${kind} cannot supply an index byte pin`);
   }
   const tool = input.artifacts.tool, index = input.artifacts.index, checks = input.artifacts.checks;
   for (const name of indexes.tool.keys()) {
@@ -238,15 +242,36 @@ export function validateReleaseEvidence(input: ReleaseEvidenceInput): ValidatedR
   assert.deepEqual(snapshot.dispatch, { contractVersion: '1', sourceRef: 'refs/heads/main' }, 'Snapshot dispatch binding');
   assert.deepEqual(snapshot.sourceRun, { id: sourceRunId, attempt: sourceAttempt, url: sourceUrl, attemptUrl: `${sourceUrl}/attempts/${sourceAttempt}` }, 'Snapshot source attempt');
   assert.deepEqual(snapshot.targetRun, { id: runId, attempt: producerAttempt, url: producerUrl }, 'Snapshot producer attempt');
-  const indexJson = document(index, indexes.index, prefix + 'index.json'), metadata = record(indexJson.metadata, 'Index metadata');
+  assert.deepEqual(Object.keys(index.documents).sort(), ['manifest', 'audit', 'read-only-before', 'read-only-after', 'references']
+    .map(name => `${prefix}${name}.json`).concat('authorization/authorization.json').sort(), 'Exactly six bounded index JSON observations required');
+  // The protected, successful producer validates the complete index before serializing these same bytes.
+  // This projection is accepted only after the producer/repository/attempt/artifact API pins above;
+  // the fixed native adapter independently streams the complete entry and binds it below.
+  const snapshotIndex = record(snapshot.index, 'Snapshot index fingerprint'), metadata = snapshotIndex;
   exact(sha(metadata.gitHead, 'Index HEAD'), gameSha, 'Exact index game HEAD'); exact(metadata.gitDirty, false, 'Index clean');
   exact(metadata.gitStatusHash, releaseSha256(''), 'Git status was actually read clean'); exact(metadata.scopeId, 'game-demo-02:primary', 'Index scope');
-  assert.ok(array(indexJson.files, 'Index files').length > 0, 'Empty game index');
-  const diagnostics = array(indexJson.diagnostics, 'Index diagnostics');
+  assert.ok(integer(metadata.fileCount, 'Index file count') <= 50000, 'Index file count exceeds the unchanged 50000-item limit');
+  const diagnosticCount = integer(metadata.diagnosticCount, 'Full index diagnostic count', 0);
+  assert.ok(diagnosticCount <= 50000, 'Index diagnostic count exceeds the unchanged 50000-item limit');
+  exact(metadata.gitUnavailable, false, 'Index Git-read attestation');
+  const diagnostics = array(metadata.diagnostics, 'Index diagnostic projection');
+  assert.ok(diagnostics.length <= diagnosticCount, 'Projected diagnostics exceed the full index diagnostic count');
   assert.ok(!diagnostics.some(item => record(item, 'Index diagnostic').code === 'git-unavailable'), 'Git read failure cannot pass');
-  const snapshotIndex = record(snapshot.index, 'Snapshot index fingerprint');
+  for (const item of diagnostics) {
+    const diagnostic = record(item, 'Projected index diagnostic');
+    assert.ok(typeof diagnostic.code === 'string' && diagnostic.code.startsWith('CS_') && ['warning', 'error'].includes(diagnostic.severity), 'Unexpected index diagnostic projection');
+  }
+  const fullIndex = record(snapshotIndex.fullIndex, 'Full index byte attestation'), indexFile = record(index.indexFile, 'Streamed full index byte observation');
+  assert.deepEqual(Object.keys(fullIndex).sort(), ['path', 'sha256', 'size'], 'Exact full index attestation fields');
+  assert.deepEqual(Object.keys(indexFile).sort(), ['path', 'sha256', 'size'], 'Exact streamed index observation fields');
+  exact(fullIndex.path, 'index.json', 'Fixed attested index entry'); exact(indexFile.path, prefix + 'index.json', 'Fixed streamed index entry');
+  const fullIndexEntry = indexes.index.get(prefix + 'index.json'); assert.ok(fullIndexEntry && !fullIndexEntry.isDirectory, 'Full index ZIP entry required');
+  const indexSize = integer(fullIndex.size, 'Full index byte size'); assert.ok(indexSize <= 2 * 1024 * 1024 * 1024, 'Full index exceeds the unchanged expanded ZIP limit');
+  exact(integer(indexFile.size, 'Streamed index byte size'), indexSize, 'Streamed/attested index size');
+  exact(fullIndexEntry.size, indexSize, 'ZIP/attested index size');
+  exact(digest(indexFile.sha256, 'Streamed index SHA256'), digest(fullIndex.sha256, 'Attested index SHA256'), 'Full index byte digest mismatch');
   for (const key of ['revision', 'analyzerVersion', 'schemaVersion', 'generatedAt', 'configFingerprint', 'compilationFingerprint']) {
-    text(metadata[key], `Index ${key}`); exact(snapshotIndex[key], metadata[key], `Snapshot/index ${key}`);
+    text(metadata[key], `Index ${key}`);
   }
   match(snapshotIndex.revision, /^[a-f0-9]{24}$/, 'Snapshot index revision');
   for (const key of ['configFingerprint', 'compilationFingerprint', 'referenceFingerprint', 'sourceFingerprint']) digest(snapshotIndex[key], `Snapshot ${key}`);
@@ -317,6 +342,7 @@ export function validateReleaseEvidence(input: ReleaseEvidenceInput): ValidatedR
     producerRun: { id: runId, attempt: producerAttempt, url: producerUrl, workflow: workflowPath, job: buildJobName }, packageId, tagName,
     assets, checksArtifact: { id: record(checks.metadata, 'Checks artifact').id, name: artifactNames.checks, sha256: checks.actualZipSha256 },
     evidence: { indexRevision: metadata.revision, analyzerVersion: metadata.analyzerVersion, indexSchemaVersion: metadata.schemaVersion,
+      fullIndex: { path: indexFile.path, size: indexSize, sha256: indexFile.sha256 },
       configFingerprint: snapshotIndex.configFingerprint, compilationFingerprint: snapshotIndex.compilationFingerprint,
       referenceFingerprint: snapshotIndex.referenceFingerprint, unityVersion: snapshotIndex.unityVersion, sourceFingerprint,
       humanModelFingerprint: snapshot.humanModelFingerprint, readOnlyVerified: true, auditResult: audit.result, reviews,

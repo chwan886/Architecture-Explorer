@@ -95,6 +95,23 @@ export function assertIndexCommit(index: ArchitectureIndex, expectedSha: string,
   assert.ok(index.files.length > 0, 'An empty index is not a successful game scan');
 }
 
+/** The protected producer validates the full object, then binds its exact serialized UTF-8 bytes to a small manifest projection. */
+export function prepareIndexEvidence(value: unknown, expectedSha: string, before: ReadOnlyState) {
+  validateIndex(value); assertIndexCommit(value, expectedSha, before);
+  const index = value;
+  assert.ok(index.files.length <= 50000 && index.diagnostics.length <= 50000, 'Index exceeds the unchanged release file/diagnostic count budget');
+  const json = JSON.stringify(index);
+  const diagnostics = index.diagnostics.filter(item => item.code === 'git-unavailable' || item.code.startsWith('CS_') && item.severity !== 'info');
+  return { index, json, manifestIndex: {
+    revision: index.metadata.revision, analyzerVersion: index.metadata.analyzerVersion, schemaVersion: index.metadata.schemaVersion,
+    generatedAt: index.metadata.generatedAt, configFingerprint: index.metadata.configFingerprint, compilationFingerprint: index.metadata.compilationFingerprint,
+    gitHead: index.metadata.gitHead, gitDirty: index.metadata.gitDirty, gitStatusHash: index.metadata.gitStatusHash, scopeId: index.metadata.scopeId,
+    fileCount: index.files.length, diagnosticCount: index.diagnostics.length,
+    gitUnavailable: index.diagnostics.some(item => item.code === 'git-unavailable'), diagnostics,
+    fullIndex: { path: 'index.json' as const, size: Buffer.byteLength(json, 'utf8'), sha256: contentHash(json) },
+  } };
+}
+
 interface ReferenceEntry { path: string; sha256: string }
 export interface ReferenceManifest { unityVersion: string; references: ReferenceEntry[]; defines?: string[] }
 export async function prepareReferences(manifestPath: string, gameRoot: string, toolRoot = TOOL_ROOT) {
@@ -186,14 +203,15 @@ export async function runSnapshot(input: SnapshotInput): Promise<string> {
     await executeStage('verify', ['apps/server/src/cli.ts', 'verify', ...scopeArgs], logs);
     await executeStage('audit', ['Tools/audit-evidence.ts', ...scopeArgs], logs);
     const manager = new IndexManager(await loadConfig(configPath));
-    let index: ArchitectureIndex;
+    let preparedIndex: ReturnType<typeof prepareIndexEvidence>;
     try {
       await manager.initialize(); const scope = manager.scope(projectScope);
       const value: unknown = JSON.parse((await readFile(path.join(scope.cachePath, 'lastgood.json'))).toString('utf8'));
-      validateIndex(value); index = value; assertIndexCommit(index, input.gameSha, before);
-      assert.equal(canonical(index.metadata.rootPath), canonical(gameRoot), 'Index root differs from attested checkout');
+      preparedIndex = prepareIndexEvidence(value, input.gameSha, before);
+      assert.equal(canonical(preparedIndex.index.metadata.rootPath), canonical(gameRoot), 'Index root differs from attested checkout');
       for (const name of ['architecture.json', 'semantics.json']) await copyFile(path.join(scope.cachePath, name), path.join(evidence, name));
     } finally { await manager.close(); }
+    const index = preparedIndex.index;
     const auditPath = path.join(output, 'cache', 'evidence-audit', 'game-demo-02-primary.json');
     const audit: EvidenceAuditReport = JSON.parse(await readFile(auditPath, 'utf8'));
     assert.equal(audit.snapshot.gitHead, input.gameSha, 'Audit SHA differs from requested game SHA');
@@ -206,7 +224,7 @@ export async function runSnapshot(input: SnapshotInput): Promise<string> {
       'This scan parses target source and reads assembly metadata; it executes no target Python, target assembly or game build.',
       'Remote Fast checks do not establish Unity Full. Daily Full is landscape only; portrait validation belongs to Release.',
       ...(semanticDiagnostics.length ? [`Partial C# semantic context: ${semanticDiagnostics.length} compiler/context warnings are preserved in index diagnostics; this is not a successful Unity compilation.`] : ['Configured Unity metadata was available; actual Unity assembly-by-assembly compilation was not performed.'])];
-    await writeFile(path.join(evidence, 'index.json'), JSON.stringify(index));
+    await writeFile(path.join(evidence, 'index.json'), preparedIndex.json, { encoding: 'utf8', flag: 'wx' });
     await copyFile(auditPath, path.join(evidence, 'audit.json'));
     await writeFile(path.join(evidence, 'references.json'), JSON.stringify({ unityVersion: references.unityVersion, defines: references.defines, references: references.fingerprints }, null, 2));
     for (const [relative] of modelBefore) {
@@ -217,8 +235,7 @@ export async function runSnapshot(input: SnapshotInput): Promise<string> {
       tool: { repository: TOOL_REPOSITORY, sha: input.toolSha }, game: { repository: GAME_REPOSITORY, sha: input.gameSha },
       dispatch: { contractVersion: input.contractVersion, sourceRef: input.sourceRef },
       sourceRun: { id: input.sourceRunId, attempt: input.sourceRunAttempt, url: input.sourceRunUrl, attemptUrl: `${input.sourceRunUrl}/attempts/${input.sourceRunAttempt}` }, targetRun: { id: input.runId, attempt: input.runAttempt, url: input.runUrl },
-      index: { revision: index.metadata.revision, analyzerVersion: index.metadata.analyzerVersion, schemaVersion: index.metadata.schemaVersion,
-        generatedAt: index.metadata.generatedAt, configFingerprint: index.metadata.configFingerprint, compilationFingerprint: index.metadata.compilationFingerprint,
+      index: { ...preparedIndex.manifestIndex,
         referenceFingerprint: references.referenceFingerprint, unityVersion: references.unityVersion, sourceFingerprint: before.sourceFingerprint },
       semanticCoverage: semanticDiagnostics.length ? 'partial-semantic-context' : 'configured-static-analysis', semanticDiagnostics,
       auditResult: audit.result, reviews: audit.coverage.reviews, humanModelFingerprint: contentHash(JSON.stringify(modelBefore)),

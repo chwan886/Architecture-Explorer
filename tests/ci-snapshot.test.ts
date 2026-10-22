@@ -4,7 +4,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { snapshotInput, captureReadOnlyState, assertReadOnlyState, assertIndexCommit, prepareReferences, GAME_REPOSITORY } from '../Tools/ci-snapshot.ts';
+import { snapshotInput, captureReadOnlyState, assertReadOnlyState, assertIndexCommit, prepareIndexEvidence, prepareReferences, GAME_REPOSITORY } from '../Tools/ci-snapshot.ts';
+import { contentHash } from '../packages/schema/src/index.ts';
 import { git } from '../packages/indexer/src/git.ts';
 import { TOOL_ROOT, IndexManager, loadConfig } from '../packages/indexer/src/index.ts';
 
@@ -87,15 +88,42 @@ test('real fixture Scan and Verify preserve game files; SHA mismatch and empty G
     await manager.requestScan('game-demo-02:primary', true);
     const scope = manager.scope('game-demo-02:primary'); assert.notEqual(scope.status.state, 'failed', scope.status.message);
     assert.ok(scope.index); assertIndexCommit(scope.index, f.head, before);
+    const prepared = prepareIndexEvidence(scope.index, f.head, before);
+    assert.equal(prepared.json, JSON.stringify(scope.index));
+    assert.deepEqual(prepared.manifestIndex.fullIndex, { path: 'index.json', size: Buffer.byteLength(prepared.json, 'utf8'), sha256: contentHash(prepared.json) });
+    assert.equal(prepared.manifestIndex.gitHead, f.head); assert.equal(prepared.manifestIndex.gitDirty, false);
+    assert.equal(prepared.manifestIndex.gitStatusHash, contentHash('')); assert.equal(prepared.manifestIndex.scopeId, 'game-demo-02:primary');
+    assert.equal(prepared.manifestIndex.fileCount, scope.index.files.length); assert.equal(prepared.manifestIndex.gitUnavailable, false);
+    assert.equal(prepared.manifestIndex.diagnosticCount, scope.index.diagnostics.length);
+    const projected = structuredClone(scope.index);
+    projected.diagnostics.push({ id: 'info-only', code: 'CS_INFO', severity: 'info', message: 'Informational static context' },
+      { id: 'context-warning', code: 'CS_CONTEXT', severity: 'warning', message: 'A preserved context warning' },
+      { id: 'context-error', code: 'CS_ERROR', severity: 'error', message: 'A preserved context error' },
+      { id: 'other-warning', code: 'OTHER', severity: 'warning', message: 'Unrelated diagnostic' });
+    const projection = prepareIndexEvidence(projected, f.head, before);
+    assert.equal(projection.manifestIndex.diagnosticCount, projected.diagnostics.length);
+    assert.deepEqual(projection.manifestIndex.diagnostics, projected.diagnostics.filter(d => d.code === 'git-unavailable' || d.code.startsWith('CS_') && d.severity !== 'info'));
+    assert.equal(projection.json, JSON.stringify(projected), 'Projection filtering must not rewrite full source-bearing index bytes');
+    projected.diagnostics.push({ id: 'git-failed', code: 'git-unavailable', severity: 'warning', message: 'Git unavailable despite apparently clean metadata' });
+    assert.throws(() => prepareIndexEvidence(projected, f.head, before), /unavailable Git metadata/);
+    const tooManyFiles = structuredClone(scope.index);
+    tooManyFiles.files = [...scope.index.files, ...Array.from({ length: 50001 - scope.index.files.length }, (_, ordinal) => ({ ...scope.index!.files[0], path: `src/synthetic-${ordinal}.py` }))];
+    assert.throws(() => prepareIndexEvidence(tooManyFiles, f.head, before), /unchanged release file\/diagnostic count budget/);
+    const tooManyDiagnostics = structuredClone(scope.index);
+    tooManyDiagnostics.diagnostics = Array.from({ length: 50001 }, (_, ordinal) => ({ id: `info-${ordinal}`, code: 'SYNTHETIC', severity: 'info', message: 'Synthetic bounded diagnostic' }));
+    assert.throws(() => prepareIndexEvidence(tooManyDiagnostics, f.head, before), /unchanged release file\/diagnostic count budget/);
     assert.deepEqual((await manager.verify('game-demo-02:primary')).reasons, []);
     assertReadOnlyState(before, await captureReadOnlyState(f.root, f.head, project));
     assert.equal(await readFile(path.join(f.root, 'src/sample.py'), 'utf8'), 'value = 1\ndef sample():\n    return value\n');
     const wrong = structuredClone(scope.index); wrong.metadata.gitHead = sha;
     assert.throws(() => assertIndexCommit(wrong, f.head, before), /does not match dispatched/);
+    assert.throws(() => prepareIndexEvidence(wrong, f.head, before), /does not match dispatched/);
     wrong.metadata.gitHead = ''; wrong.metadata.gitDirty = false;
     assert.throws(() => assertIndexCommit(wrong, f.head, before), /nonempty/);
+    assert.throws(() => prepareIndexEvidence(wrong, f.head, before), /nonempty/);
     wrong.metadata.gitHead = f.head; wrong.metadata.gitStatusHash = 'unavailable';
     assert.throws(() => assertIndexCommit(wrong, f.head, before), /confirmed clean/);
+    assert.throws(() => prepareIndexEvidence(wrong, f.head, before), /confirmed clean/);
   } finally { await manager?.close(); await f.cleanup(); }
 });
 

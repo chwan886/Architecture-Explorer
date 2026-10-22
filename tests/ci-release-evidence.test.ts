@@ -21,15 +21,14 @@ test('release index revision matches the real indexer source contract, while fin
   const producerFormula = 'const revision = contentHash(`${scope.id}|${signature(snapshot.files)}|${configFingerprint}|${compilationFingerprint}|${after.head}|${after.statusHash}`).slice(0, 24);';
   assert.ok(producer.includes(producerFormula), 'Recheck the real indexer revision contract before changing release validation');
   const actualShapeRevision = releaseSha256('game-demo-02:primary|source-signature|config|compilation|head|clean-status').slice(0, 24);
-  const input = releaseEvidenceFixture(), snapshot = doc(input, 'index', '/manifest.json'), index = doc(input, 'index', '/index.json'), audit = doc(input, 'index', '/audit.json');
-  snapshot.index.revision = actualShapeRevision; index.metadata.revision = actualShapeRevision; audit.snapshot.sourceRevision = actualShapeRevision;
+  const input = releaseEvidenceFixture(), snapshot = doc(input, 'index', '/manifest.json'), audit = doc(input, 'index', '/audit.json');
+  snapshot.index.revision = actualShapeRevision; audit.snapshot.sourceRevision = actualShapeRevision;
   const plan = validateReleaseEvidence(input);
   assert.equal((plan.releaseManifest as any).evidence.indexRevision, actualShapeRevision);
   assert.equal(actualShapeRevision.length, 24);
   for (const key of ['configFingerprint', 'compilationFingerprint', 'referenceFingerprint', 'sourceFingerprint']) {
     assert.equal(snapshot.index[key].length, 64);
     const bad = structuredClone(input); doc(bad, 'index', '/manifest.json').index[key] = 'a'.repeat(24);
-    if (key === 'configFingerprint' || key === 'compilationFingerprint') doc(bad, 'index', '/index.json').metadata[key] = 'a'.repeat(24);
     assert.throws(() => validateReleaseEvidence(bad), /Snapshot .*invalid exact format/);
   }
 });
@@ -37,7 +36,6 @@ test('release index revision matches the real indexer source contract, while fin
 for (const revision of ['', 'a'.repeat(23), 'a'.repeat(25), 'a'.repeat(40), 'a'.repeat(64), 'A'.repeat(24), 'a'.repeat(24) + '\n']) {
   rejectMutation(`rejects non-producer index revision ${JSON.stringify(revision)}`, input => {
     doc(input, 'index', '/manifest.json').index.revision = revision;
-    doc(input, 'index', '/index.json').metadata.revision = revision;
     doc(input, 'index', '/audit.json').snapshot.sourceRevision = revision;
   });
 }
@@ -84,7 +82,7 @@ test('serialized/frozen lookalikes and arbitrary objects have no validated-plan 
 
 test('consistent configured static context is accepted without pretending runtime/Unity Full evidence', () => {
   const input = releaseEvidenceFixture(), snapshot = doc(input, 'index', '/manifest.json');
-  doc(input, 'index', '/index.json').diagnostics = [];
+  snapshot.index.diagnostics = [];
   snapshot.semanticDiagnostics = []; snapshot.semanticCoverage = 'configured-static-analysis'; snapshot.auditResult = 'consistent';
   doc(input, 'index', '/audit.json').result = 'consistent';
   const plan = validateReleaseEvidence(input), manifest = plan.releaseManifest as any;
@@ -185,6 +183,34 @@ test('real human-model copy contract includes both maintained READMEs without br
   assert.ok(entries.some(entry => entry.path.endsWith('/human-models/architecture/semantics/game-demo-02/README.md')));
   assert.equal(isValidatedReleasePlan(validateReleaseEvidence(f)), true);
 });
+test('source-bearing index stays outside JSON documents while its independent native pin is required', () => {
+  const input = releaseEvidenceFixture(), snapshot = doc(input, 'index', '/manifest.json');
+  assert.ok(!Object.keys(input.artifacts.index.documents).some(name => name.endsWith('/index.json')));
+  assert.equal(snapshot.index.fullIndex.path, 'index.json');
+  assert.equal(input.artifacts.index.indexFile!.sha256, snapshot.index.fullIndex.sha256);
+  assert.equal(input.artifacts.index.indexFile!.size, snapshot.index.fullIndex.size);
+  assert.equal(isValidatedReleasePlan(validateReleaseEvidence(input)), true);
+});
+for (const [label, mutate] of [
+  ['missing manifest pin', (f: Fixture) => { delete doc(f, 'index', '/manifest.json').index.fullIndex; }],
+  ['pin relative path changed', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fullIndex.path = 'other.json'; }],
+  ['pin absolute path', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fullIndex.path = 'C:/index.json'; }],
+  ['pin full archive path instead of literal filename', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fullIndex.path = f.artifacts.index.indexFile!.path; }],
+  ['pin digest differs from native stream', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fullIndex.sha256 = 'f'.repeat(64); }],
+  ['pin size differs from native stream', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fullIndex.size++; }],
+  ['pin missing digest', (f: Fixture) => { delete doc(f, 'index', '/manifest.json').index.fullIndex.sha256; }],
+  ['pin missing size', (f: Fixture) => { delete doc(f, 'index', '/manifest.json').index.fullIndex.size; }],
+  ['missing native observation', (f: Fixture) => { delete f.artifacts.index.indexFile; }],
+  ['native wrong path', (f: Fixture) => { f.artifacts.index.indexFile!.path = 'index.json'; }],
+  ['native wrong attempt', (f: Fixture) => { f.artifacts.index.indexFile!.path = f.artifacts.index.indexFile!.path.replace('/9001-1/', '/9001-2/'); }],
+  ['native changed digest', (f: Fixture) => { f.artifacts.index.indexFile!.sha256 = 'f'.repeat(64); }],
+  ['native changed size', (f: Fixture) => { f.artifacts.index.indexFile!.size++; }],
+  ['native zero size', (f: Fixture) => { f.artifacts.index.indexFile!.size = 0; }],
+  ['archive entry size differs from native and pin', (f: Fixture) => { (f.artifacts.index.entries.find(entry => entry.path.endsWith('/index.json')) as any).size++; }],
+  ['archive full index entry missing', (f: Fixture) => { (f.artifacts.index as any).entries = f.artifacts.index.entries.filter(entry => !entry.path.endsWith('/index.json')); }],
+  ['tool carries an index observation', (f: Fixture) => { f.artifacts.tool.indexFile = { ...f.artifacts.index.indexFile! }; }],
+  ['checks carry an index observation', (f: Fixture) => { f.artifacts.checks.indexFile = { ...f.artifacts.index.indexFile! }; }],
+] as const) rejectMutation(`full index rejects ${label}`, mutate);
 rejectMutation('unrelated Markdown is not accepted as maintained human evidence', f => {
   const prefix = `${f.dispatch.source_sha}/${f.producer.runId}-${f.producer.attempt}/index-evidence/`;
   (f.artifacts.index.entries as any[]).push({ path: prefix + 'human-models/unrelated.md', size: 1, externalAttributes: 0, isDirectory: false });
@@ -215,12 +241,23 @@ for (const [label, mutate] of [
   ['snapshot incomplete', (f: Fixture) => { doc(f, 'index', '/manifest.json').incomplete = true; }],
   ['snapshot other target attempt', (f: Fixture) => { doc(f, 'index', '/manifest.json').targetRun.attempt = '2'; }],
   ['snapshot other source attempt', (f: Fixture) => { doc(f, 'index', '/manifest.json').sourceRun.attempt = '3'; }],
-  ['index empty Git HEAD', (f: Fixture) => { doc(f, 'index', '/index.json').metadata.gitHead = ''; }],
-  ['index other game SHA', (f: Fixture) => { doc(f, 'index', '/index.json').metadata.gitHead = '4'.repeat(40); }],
-  ['index dirty', (f: Fixture) => { doc(f, 'index', '/index.json').metadata.gitDirty = true; }],
-  ['index clean flag without clean Git fingerprint', (f: Fixture) => { doc(f, 'index', '/index.json').metadata.gitStatusHash = releaseSha256(' M source.cs'); }],
-  ['index Git read failure', (f: Fixture) => { doc(f, 'index', '/index.json').diagnostics.push({ code: 'git-unavailable', severity: 'warning' }); }],
-  ['empty index files', (f: Fixture) => { doc(f, 'index', '/index.json').files = []; }],
+  ['index empty Git HEAD', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.gitHead = ''; }],
+  ['index other game SHA', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.gitHead = '4'.repeat(40); }],
+  ['index dirty', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.gitDirty = true; }],
+  ['index clean flag without clean Git fingerprint', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.gitStatusHash = releaseSha256(' M source.cs'); }],
+  ['index Git read failure despite false summary flag', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnostics.push({ code: 'git-unavailable', severity: 'warning' }); }],
+  ['empty index files', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fileCount = 0; }],
+  ['index missing Git availability flag', (f: Fixture) => { delete doc(f, 'index', '/manifest.json').index.gitUnavailable; }],
+  ['index unreadable Git flag despite empty diagnostic projection', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.gitUnavailable = true; }],
+  ['index unapproved scope', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.scopeId = 'other:primary'; }],
+  ['index fractional file count', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fileCount = 1.5; }],
+  ['index string file count', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fileCount = '1'; }],
+  ['index file count exceeds preserved 50000 bound', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.fileCount = 50001; }],
+  ['index missing complete diagnostic count', (f: Fixture) => { delete doc(f, 'index', '/manifest.json').index.diagnosticCount; }],
+  ['index complete diagnostic count exceeds preserved 50000 bound', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnosticCount = 50001; }],
+  ['index negative complete diagnostic count', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnosticCount = -1; }],
+  ['index string complete diagnostic count', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnosticCount = '1'; }],
+  ['index diagnostic projection exceeds complete count', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnosticCount = 0; }],
   ['modified game bytes', (f: Fixture) => { doc(f, 'index', '/read-only-after.json').sourceHashes[0][1] = releaseSha256('changed'); }],
   ['modified game HEAD', (f: Fixture) => { doc(f, 'index', '/read-only-after.json').head = '4'.repeat(40); }],
   ['untracked game change', (f: Fixture) => { doc(f, 'index', '/read-only-after.json').status = '?? new.py'; }],
@@ -233,6 +270,7 @@ for (const [label, mutate] of [
   ['audit false runtime claim', (f: Fixture) => { doc(f, 'index', '/audit.json').coverage.runtimeVerificationClaimedByAudit = true; }],
   ['pending reviews rewritten in manifest', (f: Fixture) => { doc(f, 'index', '/manifest.json').reviews.entities.pending = 0; }],
   ['partial diagnostics silently removed', (f: Fixture) => { doc(f, 'index', '/manifest.json').semanticDiagnostics = []; }],
+  ['partial index diagnostic projection silently removed', (f: Fixture) => { doc(f, 'index', '/manifest.json').index.diagnostics = []; }],
   ['partial scope falsely called complete', (f: Fixture) => { doc(f, 'index', '/manifest.json').semanticCoverage = 'configured-static-analysis'; }],
   ['references pin mismatch', (f: Fixture) => { doc(f, 'index', '/references.json').references[0].sha256 = releaseSha256('different DLL'); }],
   ['wrong Unity metadata version', (f: Fixture) => { doc(f, 'index', '/references.json').unityVersion = '6000.6.6f1'; }],
