@@ -1,6 +1,6 @@
 # 两仓共享开发 App 入口
 
-状态：**共享入口已实现并通过本地验证；真实工具和游戏单仓 Verify 已通过。** 已核实 App ID `5417611`、Client ID `Iv23lil3cvGyWUbx4yfS`、slug `chwan-dev-agent`、Installation ID `173913073`，以及两仓属于该 selected 安装。合并后本地新增只读 `-InspectMain`，复用原认证与撤销流程；五模式及本轮 API 适配源码尚未推送或进入工具 main。工具 PR/CI、main 核验及生产缺项分别以真实回执为准；本文不把功能实现等同于远端写入、CI 通过或生产就绪。
+状态：**现有五模式及 PR 来源 API 适配已随 PR #2 合入工具 main；本变更新增单仓只读 `-FetchMain`。** 已核实 App ID `5417611`、Client ID `Iv23lil3cvGyWUbx4yfS`、slug `chwan-dev-agent`、Installation ID `173913073`。真实工具和游戏单仓 Verify，以及工具准确 main 的 FetchMain 已通过。入口复用同一认证、权限核验及撤销流程；功能实现和本地检查不等于生产索引就绪。动态 PR、CI、配置与生产缺项以最新交接回执为准。
 
 上一阶段用户授权使用 App **只推送 Architecture-Explorer 本次任务分支并创建以 main 为 base 的 PR**，不合并；游戏侧由工具主控执行的操作仅只读 Verify。共享入口交给游戏主控后，游戏推送/PR 仍由其取得对应授权再使用；工具主控不直接推游戏。随后用户报告两仓 PR 已合并，授权核验工具 main、整理生产接收端与 Unity 引用缺项，并在配置完成后使用游戏主控提供的准确 SHA/run/attempt 手动验收。`chwan886` 保留最终独立批准，自动发送继续关闭；该阶段没有扩大开发 App 权限。
 
@@ -17,9 +17,9 @@ App 初次核实的注册和安装权限为 Contents、Pull requests、Workflows
 
 本机私钥目录使用 `C:/Users/chwan/AppData/Local/ChwanDevAgent/keys`，不把 PEM 放入仓库、worktree、`.tmp`、构建包或聊天附件。开发 App 的私钥/token 不放入任何 GitHub Actions secret，不给 PR 检查。生产发送 App 和游戏只读 App 仍各自独立，使用各自 main 专用 Environment；不得复用开发身份替代它们。
 
-## 五模式接口
+## 六模式接口
 
-两个主控均从同一绝对入口调用 `Tools/dev-app-auth.ps1`，使用工具仓库锁定的 Node/tsx；无需复制私钥或脚本到游戏工作区。`-Verify`、`-Push`、`-PullRequest`、`-Status`、`-InspectMain` 五选一。`-Repository` 仅接受上述两个完整仓库名，默认工具库以兼容原 Verify 命令；不接受任意 owner/repo、URL、API endpoint 或命令回调。
+两个主控均从同一绝对入口调用 `Tools/dev-app-auth.ps1`，使用工具仓库锁定的 Node/tsx；无需复制私钥或脚本到游戏工作区。`-Verify`、`-Push`、`-PullRequest`、`-Status`、`-InspectMain`、`-FetchMain` 六选一。`-Repository` 仅接受上述两个完整仓库名，默认工具库以兼容原 Verify 命令；不接受任意 owner/repo、URL、API endpoint 或命令回调。
 
 | 模式 | 必需参数与行为 | 单次 IAT 权限 |
 | --- | --- | --- |
@@ -28,6 +28,7 @@ App 初次核实的注册和安装权限为 Contents、Pull requests、Workflows
 | `-PullRequest` | `-Branch codex/...`、`-ExpectedHead`、`-Title`、`-BodyFile`；可选 `-PrNumber` 更新已有 PR；base 固定 `main`，无 base 参数 | `contents:read`、`pull_requests:write` |
 | `-Status` | `-ExpectedHead`、`-PrNumber`；先确认 PR 与准确 head，再读取实际可见的 CI 结果 | `contents:read`、`pull_requests:read`；仅 App 已实际具备时附 `actions:read` |
 | `-InspectMain` | `-ExpectedHead` 为主控核实的完整 main SHA、`-PrNumber` 为真实已合并 PR；实读 main 必须相等，随后只读冻结 SHA 的合并/历史、规则、文件指纹和 main push CI | `contents:read`、`pull_requests:read`；仅 App 已实际具备时附 `actions:read` |
+| `-FetchMain` | `-WorkingDirectory` 为所选仓库干净工作树绝对根、`-ExpectedHead` 为已核实的完整远端 main SHA；固定获取 main，只向本地对象库导入准确提交，不切换或更新分支 | `contents:read`，允许隐含 `metadata:read` |
 
 每个 token 只指定本次一个仓库，响应仓库集合、实际 permissions、到期时间和 `/installation/repositories` 必须符合请求。不会因 App 安装在两仓就默认取得两仓 token；不会省略 permissions 继承全部写权限。不固定 token 的长度或格式。[Installation token 契约](https://docs.github.com/en/rest/apps/apps?apiVersion=2026-03-10#create-an-installation-access-token-for-an-app)
 
@@ -52,6 +53,22 @@ pwsh -NoLogo -NoProfile -File $entry -Status -Repository chwan886/Architecture-E
 
 更新既有 App PR 时，在同一 `-PullRequest` 模式加 `-PrNumber '<真实编号>'`；仍只更新 title/body。省略 `-ReceiptPath` 时只输出脱敏 JSON；交接和实际验收应保存全新回执。不要直接调用 TypeScript 入口，不运行 `gh auth login/setup-git`，不读取或回退到 Owner/GCM/CLI 现有凭据。
 
+## 准确 main 的只读对象同步
+
+`-FetchMain` 解决已核实远端 main 尚不在本地对象库的问题。它要求干净工作树，允许 detached HEAD；任何已有未提交或未跟踪改动均在申请 token 前拒绝并保留。`ExpectedHead` 指远端 main，不要求本地 HEAD 已等于它。该模式不接受 Branch、PR、任意 ref 或命令参数。
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1 -FetchMain -Repository chwan886/Architecture-Explorer -WorkingDirectory E:/Codex/worktrees/cd84/Architecture-Explorer -ExpectedHead 60b0eda68a22cfd084be0f465023e2b8bd32f6bd -ReceiptPath E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/fetch-tool-main-new.json
+```
+
+这里的 SHA 是一次真实核验快照。使用前以新的 `-Verify` 回执确认本次预期 main；若变更，重新核对目标，不把失败改为临时拉取 latest。每次 ReceiptPath 使用已存在工具子目录内的全新路径。游戏主控可在相应授权下将 Repository 和 WorkingDirectory 同时换成游戏仓库；一次 token 仍仅覆盖一个仓库。
+
+流程：验证 origin、原始 Git 配置、根路径和干净状态 → 申请单仓 Contents read → 在工具侧新建隔离 bare/空 HOME，用固定 HTTPS host/path 的既有静态 helper 获取 main → 核对远端广告及实际 commit 的准确 SHA → 无 token 的本地 file transport 导入对象 → 比较前后边界并撤销 token。拒绝 shallow/grafts、对象库内链接和危险配置；关闭 hooks、tags、prune、commit-graph 和自动维护。带 token 的进程不加载源仓库配置，不执行游戏代码。
+
+会话前后核对 HEAD、index、FETCH_HEAD、refs、配置和工作区；允许的本地变化只有 Git 对象库增长。不会更新 main、origin/main、origin URL、全局配置或 Owner 登录。CLI 不提供传输 runner；离线测试的固定 runner 仅将测试 GitHub 地址映射到夹具仓库。
+
+新增七项离线夹具覆盖两仓准确对象导入、无凭据导入后对象可读、前后边界、远端改变/错误 fetched SHA 不导入、危险路径与配置、窄权限和失败撤销。2026-10-22 UTC 的真实工具只读会话 `.tmp/production-onboarding/tool-main-fetch-1.json` 通过：准确 main `60b0eda68a22cfd084be0f465023e2b8bd32f6bd`、Contents read 加隐含 Metadata read、本地边界一致、撤销 204 与原 token 401。此实测未推送、创建 PR、读取生产 Secret 或执行 Game SHA index；游戏 FetchMain 的网络实测尚未在本次执行。
+
 ## 合并后的 main 只读核验
 
 `-Status` 面向仍开放的 App PR 及 PR head；PR 合并后应使用 `-InspectMain`。后者要求显式 `-ExpectedHead` 和 `-PrNumber`：先取得单仓 main reference，与期望完整 SHA 精确比较；不一致即 `MAIN_HEAD_CHANGED_OR_MISMATCHED`，不临时改用新 main。后续内容读取固定该 SHA，main 分支读取发生变化也保留阻塞。它不会把核验时的 main SHA 自动选为正式索引的来源。
@@ -62,7 +79,7 @@ pwsh -NoLogo -NoProfile -File $entry -Status -Repository chwan886/Architecture-E
 
 回执的 `mainInspection.blockers` 保留不可读、缺保护、CI 缺失/失败、文件异常等缺项。空 run/jobs、失败/跳过的必需检查或错误 SHA/attempt不能成为成功；游戏 `dispatch-explorer` 因关闭开关而跳过可与成功的 `fast-gate` 区分。`mainInspection.mainCi` 表示已读到的 main CI 结论；顶层 `outcome=passed` 只表示本次核验会话和凭据撤销通过。`mainInspection.productionReady` 始终为 `false`，`sourceTupleControllerConfirmed` 也不因核验自动变为 true。Environment、生产身份、访问/绕过人工审核、Unity 供应和真实 Game SHA index 验收仍须另行补证。
 
-以下两条是完整绝对入口命令，已真实核验的工具 main 快照为 `72a4493e3cc33e8299e2c9bf0ba7e42a2c929368`，游戏 main 为 `3d448c5e4a6ac7148472a0e78b187674810fc118`，两仓 PR 均为真实 `#1`。用户已处理默认私钥目录，后续实测通过；命令可使用该真实目录，**每次仍重新核验唯一 PEM、ACL 和无链接边界**。调用前须确认这两个 SHA 仍是本次预期 main，并为每次回执采用全新文件名。main 核验不构成七字段 dispatch 输入已验收或生产接收端就绪。
+以下保留首次合并后的历史命令及回执，不表示当前工具 main。该次工具快照为 `72a4493e3cc33e8299e2c9bf0ba7e42a2c929368`，游戏为 `3d448c5e4a6ac7148472a0e78b187674810fc118`，两仓 PR 均为真实 `#1`。**每次仍重新核验唯一 PEM、ACL 和无链接边界**。实际使用前核对本次准确 main/PR，并采用全新回执名；main 核验不构成生产就绪。
 
 ```powershell
 pwsh -NoLogo -NoProfile -NonInteractive -File E:/Codex/worktrees/cd84/Architecture-Explorer/Tools/dev-app-auth.ps1 -InspectMain -Repository chwan886/Architecture-Explorer -ExpectedHead 72a4493e3cc33e8299e2c9bf0ba7e42a2c929368 -PrNumber 1 -PrivateKeyDirectory C:/Users/chwan/AppData/Local/ChwanDevAgent/keys -ReceiptPath E:/Codex/worktrees/cd84/Architecture-Explorer/.tmp/main-inspection-tool-001.json
@@ -73,7 +90,7 @@ pwsh -NoLogo -NoProfile -NonInteractive -File E:/Codex/worktrees/cd84/Architectu
 
 恢复后的默认目录必须持续只含经确认属于 `chwan-dev-agent` 的一份 PEM，并满足原 ACL 和无链接要求。今后如需更换目录，由维护者处理真实文件并明确 `-PrivateKeyDirectory`；工具不按文件名、时间或逐个尝试决定身份，不擅自移动、删除、复制密钥或修复 ACL，不回退 Owner。生产游戏读取 App/发送 App 的私钥应与开发身份隔离。不得把 PEM 内容、签名 URL 或 token 发到聊天中。
 
-当前真实核验回执为工具 `.tmp/production-main-tool-inspect-6.json` 与游戏 `.tmp/production-main-game-inspect-4.json`，两次均为单仓只读 token，最终 DELETE 204 且原 token 401。工具 PR #1 的 `mergeSha` 等于上述工具 main；main 运行的检查 job 成功，但生产打包 job 失败，整体 `mainCi=failure`，不能称完整 main CI 或生产接收已就绪。
+历史核验回执为工具 `.tmp/production-main-tool-inspect-6.json` 与游戏 `.tmp/production-main-game-inspect-4.json`，两次均为单仓只读 token，最终 DELETE 204 且原 token 401。工具 PR #1 当次 main 检查成功、生产打包失败；不能用这些历史回执替代后续部署的实际结果。
 
 游戏回执核实 PR #1 的 `mergeSha` 精确等于游戏 main；被审阅 head `98cbf53babd8ad1dd00eee299940556acd663060` 与 main 的 tree 均为 `c5c2cc1232973b3196b9f8e8859cca1c2a157e7f`，`headTreeMatchesMain=true`。[实际 main run](https://github.com/chwan886/GameDemo02/actions/runs/39694183685) 的 attempt 1 中 `fast-gate=success`、`dispatch-explorer=skipped`；这是关闭发送时的实际 CI 结果，不是 Unity Full、Release 或游戏运行时验证。游戏主控已另在交接消息确认准确七字段来源，但 Review、绕过名单及必需 context 仍待证明；不由该确认推导为生产就绪。人工合同仍为 `receiver_ready=false`；没有生成正式索引就绪证明。回执中的 `productionReady=false` 和来源主控确认标记不会被这些读取自动改为 true。
 
@@ -83,7 +100,7 @@ GitHub 官方将 `merge_commit_sha` 从 REST `2026-03-10` 的 PR 响应中移除
 
 本地共用 `Tools/github-api-version.ts` 的 `githubApiVersion` 只对固定两仓的 `GET /repos/<repo>/pulls/<number>` 和 `GET /repos/<repo>/commits/<完整40位SHA>/pulls` 选择 `2022-11-28`，分页只允许已校验的 `page/per_page`；其他资源和方法保持 `2026-03-10`，包括 token 签发/撤销、PR 写操作及正式 workflow dispatch。后者继续要求当前版本实际返回目标 run 详情，不回退旧的 204 合同。开发入口与生产来源授权读取复用该选择函数；权限、精确 SHA、关联 PR、独立 Review、历史、来源 run/attempt 和只读门禁均未降低。
 
-这项兼容修复及五模式源码已在本地独立提交 `1319bcb8e186f853b70510243b397aab5fc5403c`，尚未推送/进入 main；不能把本机核验成功写成 main 上生产来源授权已经修复。后续须交付独立审阅材料，经允许合入后，再使用准确来源七字段执行真实接收验证。
+这项兼容修复及五模式源码来自独立提交 `1319bcb8e186f853b70510243b397aab5fc5403c`，已随 [PR #2](https://github.com/chwan886/Architecture-Explorer/pull/2) 合入工具 main。生产来源授权和完整交付是否成功，仍须以准确七字段的真实 Game SHA index 运行证明。
 
 本轮新增实现的完整本地 `Tools/ci-check.ps1` 已 **Node 369/369 通过（JUnit 368 个 testcase），零失败、零跳过**，Typecheck、前端及 C# worker 构建成功；最新本地 JUnit 与日志位于工具 `test-results/`。这是独立于前轮 356 项历史的本地检查，不代表该兼容修复已在远端 main 执行，也不替代 Game SHA index 真实运行与产物验收。
 
@@ -127,9 +144,10 @@ App 已配置并实际授予 Actions read 时，Status 读取准确 head 的真�
 | 游戏 Verify | 真实游戏单仓只读验证已通过，见已入库脱敏回执；不直接推游戏 |
 | 工具 Push / PR | 本轮已授权仅本次工具任务分支和 main PR；准确 SHA、App 作者 PR URL 和实际操作结果以本机回交报告/回执为准 |
 | Status / 远端 CI | Actions read 已经真实 API 核实；已读到 PR #1 准确 head 的真实运行和失败 job，后续修复和最终 head 结果以本机回交报告为准 |
-| InspectMain / 合并后核验 | 已新增本地单仓只读实现；main 必须匹配显式 ExpectedHead，不能等同生产就绪。历史两份 PEM 预检阻塞已由用户处理；最新工具6/游戏4真实会话通过认证与撤销，来源与结果见上文，源码尚未推送 |
-| main / Code Owner 规则 | 待独立设置及实际验收，App 无 bypass |
-| 生产身份 / Environment / Unity 引用 | 与开发 App 分离，仍按原交付合同接入与手测 |
+| InspectMain / 合并后核验 | 已随 PR #2 合入；main 必须匹配显式 ExpectedHead，核验会话不等同生产就绪。历史两 PEM 阻塞已解除 |
+| FetchMain / 同步必要依赖 | 本变更独立新增；七项离线夹具及工具真实单仓只读 fetch 通过，见上文；不与烟测修复混为同一功能 |
+| main / Code Owner 规则 | 两仓现有 main 规则已完成；保持独立批准、受保护 main 和 App 无 bypass，按真实运行重新核验 |
+| 生产身份 / Environment / Unity 引用 | 生产读取 App、main 专用 Environment 和普通变量已确认；Secret 内容与私有引用下载可用性仍需真实接收运行证明 |
 | 自动发送 | 继续关闭，不随开发 App 验证、推送或建 PR 自动开启 |
 
 未填项目不得替换成成功、虚构编号或链接；新增实际结果由工具主控按回执补录。权限不足或身份不符就报告，不自动扩大权限、改用 Owner、改写历史或撤销已经合并的游戏。
