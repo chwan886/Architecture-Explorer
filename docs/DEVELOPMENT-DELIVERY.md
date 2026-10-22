@@ -107,7 +107,7 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 | 工具 Environment | 变量 `GAME_READ_APP_CLIENT_ID`；秘密 `GAME_READ_APP_PRIVATE_KEY` | 只记录名称与归属，不输出值 |
 | 工具 Environment 访问确认 | 审核工具仓库本身、日志/报告、工具包和索引读者均不超过游戏读者，才设 `INDEX_ACCESS_APPROVED=true`；缺失时包与索引均不能交付 | 双仓读者集合审阅日期、维护者与证据；同为 private 不足以确认 |
 | 工具 Environment 绕过审阅 | 审核两仓 main 规则中全部管理员、App、机器人绕过项，只保留明确必要的特定身份或空名单，再设 `RULE_BYPASS_REVIEWED=true` | 维护者/日期、规则及绕过清单回执；变量不构成程序验证“从未绕过”的证明 |
-| 工具 Unity 引用 | Secret `UNITY_REFERENCES_URL` 保存短期私有只读 HTTPS URL；变量 `UNITY_REFERENCES_SHA256` 保存不可变 ZIP 摘要 | [供应方案](UNITY-REFERENCE-SUPPLY.md)中的版本/许可、DLL/ZIP 指纹、有效期与续期责任；不能把签名 URL 当普通变量或输出到日志 |
+| 工具 Unity 引用 | 变量 `UNITY_REFERENCES_ASSET_ID` 指定本私有工具仓库已发布依赖 Release 的准确资产；变量 `UNITY_REFERENCES_SHA256` 保存不可变 ZIP 摘要。仅空资产 ID 时沿用 Secret `UNITY_REFERENCES_URL` 的直接 HTTPS 接口 | [供应方案](UNITY-REFERENCE-SUPPLY.md)中的版本/许可、DLL/ZIP 指纹和读者范围；资产失败不回退 URL，签名 URL 不进入日志或普通变量 |
 | 工具产物权限 | 工具读者不超游戏读者；检查 Actions artifact retention 与下载权限 | 权限集合审阅和一次非授权访问被拒绝的证据 |
 
 构建和索引 job 的工具 `GITHUB_TOKEN` 只授予自身所需 `contents: read`，不用于跨仓库。独立的私有工具草稿 job 仅在成功 producer 之后使用本仓 `contents: write` 与 `actions: read`，核验冻结产物后创建未发布 Release 草稿；不批准、合并或自动发布。其重跑、人工发布边界及所需真实验收见 [私有工具 Release 草稿](RELEASE-DRAFT.md)。App 私钥只在受保护 Environment 中；令牌按需生成、限制单仓/显式权限、job 结束自动吊销，不使用管理员 PAT。官方 [create-github-app-token](https://github.com/actions/create-github-app-token) 提供短期令牌；[Environment 文档](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)说明秘密只在保护规则满足后可用，私有仓库功能受账户方案约束。

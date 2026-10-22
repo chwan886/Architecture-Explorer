@@ -144,6 +144,8 @@ jobs:
           submodules: false
       - name: Prepare pinned Unity metadata references on tool side
         env:
+          UNITY_REFERENCES_ASSET_ID: ${{ vars.UNITY_REFERENCES_ASSET_ID }}
+          UNITY_REFERENCES_READ_TOKEN: ${{ github.token }}
           UNITY_REFERENCES_URL: ${{ secrets.UNITY_REFERENCES_URL }}
           UNITY_REFERENCES_SHA256: ${{ vars.UNITY_REFERENCES_SHA256 }}
         run: ./Tools/ci-references.ps1
