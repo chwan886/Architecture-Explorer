@@ -4464,6 +4464,15 @@
       "description": "非瞄准、非悬停阶段才检查接触。"
     },
     {
+      "id": "candidate-flight-resolve-call-3d448c5e",
+      "filePath": "Server/sect_projectiles.py",
+      "startLine": 591,
+      "endLine": 595,
+      "expectedFileHash": "14ae34ee1acd24451fd19e276de9122fdac92e3c1cf087834ba8256f731fc2c9",
+      "quote": "        for p in active:\n            if p['id'] in predictions:_commit(p,predictions[p['id']],used)\n        at=used\n        if selected:\n            _resolve(battle,selected,actors,on_hit,at)",
+      "description": "技术候选源码事实：游戏3d448c5e同tree的advance在选出接触事件后同步调用_resolve；仅证明此静态调用，不确认原phase条件、动态on_hit目标、运行事件或业务意图。旧contact_step锚点、人工说明及声明哈希保留待复核。"
+    },
+    {
       "id": "review-contact-gate",
       "filePath": "Server/sect_projectiles.py",
       "startLine": 134,
@@ -6548,7 +6557,8 @@
           "target": "sword-contact-gate",
           "basis": "static-call",
           "anchorIds": [
-            "review-flight-contact-call"
+            "review-flight-contact-call",
+            "candidate-flight-resolve-call-3d448c5e"
           ],
           "limitations": [],
           "condition": "phase not in ('aiming','hovering')"

@@ -28,7 +28,7 @@ test('review adds five maintainable source-backed projections without rewriting 
     for (const node of explanation.steps) {
       assert.equal(node.origin, 'curated');
       assert.ok(node.title && node.purpose && node.inputs.length && node.outputs.length && node.processing.length, node.id);
-      assert.equal(node.bindings.length, 1);
+      assert.equal(node.bindings.length, id === 'sword-hit-resolution' && node.id === 'sword-contact-gate' ? 3 : 1, node.id);
       const binding = node.bindings[0], source = original.steps.find(s => node.sourceStepIds.includes(s.id));
       assert.ok(source);
       assert.deepEqual(binding.selector, source.selector, node.id);
@@ -53,6 +53,26 @@ test('static-call claims have a concrete invocation spelling and never turn phas
       assert.ok(e.anchorIds.some(a => new RegExp(`\\b${name}\\s*\\(`).test(proof(a))), e.id);
     }
   }
+});
+
+test('the current resolve call adds a technical source anchor without replacing stale review evidence', () => {
+  const call = edge('sword-hit-resolution', 'sword-flight-contact', 'sword-contact-gate');
+  assert.equal(call.basis, 'static-call');
+  assert.equal(call.condition, "phase not in ('aiming','hovering')", 'Keep the historical condition pending review');
+  assert.deepEqual(call.anchorIds, ['review-flight-contact-call', 'candidate-flight-resolve-call-3d448c5e']);
+  const current = model.anchors.find(a => a.id === 'candidate-flight-resolve-call-3d448c5e')!;
+  assert.equal(current.filePath, 'Server/sect_projectiles.py');
+  assert.deepEqual([current.startLine, current.endLine], [591, 595]);
+  assert.equal(current.expectedFileHash, '14ae34ee1acd24451fd19e276de9122fdac92e3c1cf087834ba8256f731fc2c9');
+  assert.equal(current.quote, "        for p in active:\n            if p['id'] in predictions:_commit(p,predictions[p['id']],used)\n        at=used\n        if selected:\n            _resolve(battle,selected,actors,on_hit,at)");
+  assert.match(current.description, /技术候选/);
+  assert.match(current.description, /待复核/);
+  const old = model.anchors.find(a => a.id === 'review-flight-contact-call')!;
+  assert.equal(old.expectedFileHash, 'f682ea89dd94ec21f67e33e41e14d8453d3a839aa5b345bf7e6dc74cfcecac49');
+  assert.deepEqual([old.startLine, old.endLine], [245, 247]);
+  assert.match(old.quote, /contact_step\(battle,p,actors,all_proxies,old,rotation,at,end,on_hit\)/);
+  assert.deepEqual(model.reviews, []);
+  assert.ok(!step('sword-hit-resolution', 'sword-flight-contact').controls.some(c => c.anchorIds.includes(current.id)), 'The selected-event call does not prove the old phase condition');
 });
 
 test('flying sword keeps the unbound callback as a boundary while the local hit and damage calls remain explicit', () => {
