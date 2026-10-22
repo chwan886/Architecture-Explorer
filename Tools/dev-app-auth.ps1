@@ -7,6 +7,7 @@ param(
   [switch]$Push,
   [switch]$PullRequest,
   [switch]$Status,
+  [switch]$InspectMain,
   [ValidateSet('chwan886/Architecture-Explorer','chwan886/GameDemo02')][string]$Repository='chwan886/Architecture-Explorer',
   [string]$WorkingDirectory='',
   [string]$Branch='',
@@ -107,15 +108,22 @@ try {
   if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Stop-Preflight 'WINDOWS_REQUIRED' }
   $toolRoot=[IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\','/')
   $operationCount=0
-  foreach ($selected in @($Verify,$Push,$PullRequest,$Status)) { if ($selected) { $operationCount++ } }
+  foreach ($selected in @($Verify,$Push,$PullRequest,$Status,$InspectMain)) { if ($selected) { $operationCount++ } }
   if ($operationCount -ne 1) { Stop-Preflight 'EXACTLY_ONE_OPERATION_REQUIRED' }
-  $operation=if ($Verify) { 'verify' } elseif ($Push) { 'push' } elseif ($PullRequest) { 'pr' } else { 'status' }
+  $operation=if ($Verify) { 'verify' } elseif ($Push) { 'push' } elseif ($PullRequest) { 'pr' } elseif ($InspectMain) { 'inspect-main' } else { 'status' }
   $repositoryName=if ($Repository -ieq 'chwan886/GameDemo02') { 'chwan886/GameDemo02' } else { 'chwan886/Architecture-Explorer' }
   $operationArguments=@('--operation',$operation,'--repository',$repositoryName)
   if ($Verify) {
     foreach ($unused in @('WorkingDirectory','Branch','ExpectedHead','Title','BodyFile','PrNumber')) {
       if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
     }
+  } elseif ($InspectMain) {
+    foreach ($unused in @('WorkingDirectory','Branch','Title','BodyFile')) {
+      if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }
+    }
+    if (-not $PSBoundParameters.ContainsKey('PrNumber') -or $PrNumber -lt 1) { Stop-Preflight 'PR_NUMBER_INVALID' }
+    if ($ExpectedHead -notmatch '\A[0-9a-fA-F]{40}\z') { Stop-Preflight 'EXACT_HEAD_REQUIRED' }
+    $operationArguments+=@('--expected-head',$ExpectedHead.ToLowerInvariant(),'--pr-number',$PrNumber.ToString([Globalization.CultureInfo]::InvariantCulture))
   } elseif ($Status) {
     foreach ($unused in @('WorkingDirectory','Branch','Title','BodyFile')) {
       if ($PSBoundParameters.ContainsKey($unused)) { Stop-Preflight 'OPERATION_PARAMETER_INVALID' }

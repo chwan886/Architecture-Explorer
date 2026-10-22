@@ -7,6 +7,8 @@ import { TOOL_ROOT } from '../packages/indexer/src/config.ts';
 import { canonical, ensureCacheDirectory, isWithin, readAuthorized } from '../packages/indexer/src/security.ts';
 import { prepareTaskPush, runTaskPush, type TaskPushPlan } from './dev-app-git.ts';
 import { readCiJobLog } from './dev-app-ci-logs.ts';
+import { inspectRepositoryMain } from './dev-app-main.ts';
+import { githubApiVersion } from './github-api-version.ts';
 
 export const DEV_APP = Object.freeze({ id: 5417611, clientId: 'Iv23lil3cvGyWUbx4yfS', slug: 'chwan-dev-agent', owner: 'chwan886',
   repository: 'chwan886/Architecture-Explorer', installedRepositories: ['chwan886/Architecture-Explorer', 'chwan886/GameDemo02'] });
@@ -15,7 +17,7 @@ type Json = Record<string, any>;
 export type AuthRequest = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', endpoint: string, credential: string, body?: Json) => Promise<{ status: number; data?: any; requestId?: string }>;
 export type Repository = 'chwan886/Architecture-Explorer' | 'chwan886/GameDemo02';
 export type AppOperation = { repository: Repository } & (
-  { operation: 'verify' } | { operation: 'push'; workingDirectory: string; branch: string; expectedHead: string } |
+  { operation: 'verify' } | { operation: 'inspect-main'; expectedHead: string; prNumber: number } | { operation: 'push'; workingDirectory: string; branch: string; expectedHead: string } |
   { operation: 'pr'; branch: string; expectedHead: string; title: string; body: string; prNumber?: number } |
   { operation: 'status'; expectedHead: string; prNumber: number });
 export function validateTaskBranch(branch: string) {
@@ -24,12 +26,12 @@ export function validateTaskBranch(branch: string) {
 }
 function validateOperation(options: AppOperation) {
   requireValue(DEV_APP.installedRepositories.includes(options.repository), 'UNAPPROVED_REPOSITORY');
-  requireValue(['verify', 'push', 'pr', 'status'].includes(options.operation), 'UNAPPROVED_OPERATION');
+  requireValue(['verify', 'push', 'pr', 'status', 'inspect-main'].includes(options.operation), 'UNAPPROVED_OPERATION');
   if (options.operation !== 'verify') requireValue(options.expectedHead.length === 40 && /^[a-f0-9]{40}$/.test(options.expectedHead), 'EXACT_TASK_HEAD_REQUIRED');
   if (options.operation === 'push' || options.operation === 'pr') validateTaskBranch(options.branch);
   if (options.operation === 'pr') requireValue(options.title.trim().length > 0 && options.title.length <= 256 && !/[\r\n\0]/.test(options.title) &&
     Buffer.byteLength(options.body) <= 65536 && !options.body.includes('\0') && !/-----BEGIN\b/i.test(options.body), 'PR_TEXT_INVALID');
-  if (options.operation === 'status' || (options.operation === 'pr' && options.prNumber !== undefined)) {
+  if (options.operation === 'status' || options.operation === 'inspect-main' || (options.operation === 'pr' && options.prNumber !== undefined)) {
     requireValue(Number.isSafeInteger(options.prNumber) && options.prNumber! > 0, 'PR_NUMBER_INVALID');
   }
 }
@@ -120,7 +122,7 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
     const requestedPermissions: Record<string, string> = options.operation === 'push'
       ? { contents: 'write', ...(pushPlan!.requiresWorkflows ? { workflows: 'write' } : {}) }
       : options.operation === 'pr' ? { contents: 'read', pull_requests: 'write' }
-      : options.operation === 'status' ? { contents: 'read', pull_requests: 'read', ...(app.permissions.actions === 'read' ? { actions: 'read' } : {}) }
+      : options.operation === 'status' || options.operation === 'inspect-main' ? { contents: 'read', pull_requests: 'read', ...(app.permissions.actions === 'read' ? { actions: 'read' } : {}) }
       : { contents: 'read' };
     receipt.token.requestedPermissions = requestedPermissions;
     receipt.token.issued = 'unconfirmed';
@@ -164,6 +166,9 @@ export async function runDevelopmentApp(options: AppOperation, signJwt: () => st
       receipt.performedOperations.updatePr = receipt.pullRequest.operation === 'updated';
     } else if (options.operation === 'status') {
       receipt.ci = await readTaskCi(options, token, request, requestedPermissions.actions === 'read');
+    } else if (options.operation === 'inspect-main') {
+      requireValue(main.object.sha === options.expectedHead, 'MAIN_HEAD_CHANGED_OR_MISMATCHED');
+      receipt.mainInspection = await inspectRepositoryMain(options, main.object.sha, token, request);
     }
     verified = true;
   } catch (error) {
@@ -312,13 +317,13 @@ const githubRequest: AuthRequest = async (method, endpoint, credential, body) =>
   const log = /^\/repos\/(chwan886\/(?:Architecture-Explorer|GameDemo02))\/actions\/jobs\/([1-9][0-9]*)\/logs$/.exec(endpoint);
   if (method === 'GET' && log) return { status: 200, data: await readCiJobLog(log[1], Number(log[2]), credential) };
   const target = new URL(`https://api.github.com${endpoint}`);
-  // Permission changes must be re-observed, not inferred from the settings UI or a stale metadata response.
-  // A non-secret nonce complements cache headers; every identity/permission check below is unchanged.
-  if (method === 'GET' && (/^\/app\/installations(?:\/\d+)?$/.test(target.pathname) || /^\/repos\/chwan886\/(?:Architecture-Explorer|GameDemo02)\/installation$/.test(target.pathname))) {
+  // Re-observe mutable permissions/PRs/rules/runs rather than trusting an earlier metadata response.
+  // A non-secret nonce complements cache headers; every identity/permission check is unchanged.
+  if (method === 'GET') {
     target.searchParams.set('_verification_nonce', randomUUID());
   }
   const response = await fetch(target, { method, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(15000),
-    headers: { authorization: `Bearer ${credential}`, accept: 'application/vnd.github+json', 'cache-control': 'no-cache, no-store, max-age=0', 'X-GitHub-Api-Version': '2026-03-10', 'user-agent': 'chwan-dev-agent-local-verification',
+    headers: { authorization: `Bearer ${credential}`, accept: 'application/vnd.github+json', 'cache-control': 'no-cache, no-store, max-age=0', 'X-GitHub-Api-Version': githubApiVersion(method, endpoint), 'user-agent': 'chwan-dev-agent-local-verification',
       ...(body ? { 'content-type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const requestId = response.headers.get('x-github-request-id') ?? undefined;
   if (response.status === 204 || response.status === 401) { await response.body?.cancel().catch(() => {}); return { status: response.status, requestId }; }
@@ -350,6 +355,7 @@ async function main() {
     options = { operation, repository, branch: flags.get('--branch') ?? '', expectedHead: flags.get('--expected-head') ?? '', title: flags.get('--title') ?? '', body,
       ...(flags.has('--pr-number') ? { prNumber: Number(flags.get('--pr-number')) } : {}) };
   } else if (operation === 'status') options = { operation, repository, expectedHead: flags.get('--expected-head') ?? '', prNumber: Number(flags.get('--pr-number')) };
+  else if (operation === 'inspect-main') options = { operation, repository, expectedHead: flags.get('--expected-head') ?? '', prNumber: Number(flags.get('--pr-number')) };
   else throw new AuthFailure('UNAPPROVED_OPERATION');
   const operationFlags = operation === 'verify' ? [] : operation === 'push' ? ['--working-directory', '--branch', '--expected-head']
     : operation === 'pr' ? ['--branch', '--expected-head', '--title', '--body-file', '--pr-number'] : ['--expected-head', '--pr-number'];

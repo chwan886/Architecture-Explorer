@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 2,
+  "mode": "inspect-main",
+  "repository": "chwan886/Architecture-Explorer",
+  "checkedAt": "2026-10-21T23:53:13.292Z",
+  "outcome": "passed",
+  "app": {
+    "id": 5417611,
+    "clientId": "Iv23lil3cvGyWUbx4yfS",
+    "slug": "chwan-dev-agent",
+    "owner": "chwan886",
+    "verified": true,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "installation": {
+    "verifiedTargetMembership": [
+      "chwan886/Architecture-Explorer"
+    ],
+    "exactRepositorySetVerified": false,
+    "exactRepositorySet": "not-proven: App JWT does not enumerate installation repositories; manually confirm only the two approved repositories",
+    "id": 173913073,
+    "repositorySelection": "selected",
+    "observedPermissions": {
+      "shape": "object",
+      "known": {
+        "contents": "write",
+        "metadata": "read",
+        "pull_requests": "write",
+        "workflows": "write",
+        "actions": "read"
+      },
+      "unexpectedPermissionCount": 0
+    },
+    "permissions": {
+      "contents": "write",
+      "metadata": "read",
+      "pull_requests": "write",
+      "workflows": "write",
+      "actions": "read"
+    }
+  },
+  "token": {
+    "requestedRepositories": [
+      "chwan886/Architecture-Explorer"
+    ],
+    "requestedPermissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read"
+    },
+    "issued": true,
+    "secretRecorded": false,
+    "revocation": "confirmed-204",
+    "revokedTokenProbe": "rejected-401",
+    "revokedTokenProbeStatuses": [
+      401
+    ],
+    "revokedTokenProbes": [
+      {
+        "status": 401,
+        "elapsedMs": 101,
+        "requestId": "CDA0:331337:47EF1C:E5DB14:6AD9506C"
+      }
+    ],
+    "permissions": {
+      "contents": "read",
+      "pull_requests": "read",
+      "actions": "read",
+      "metadata": "read"
+    },
+    "expiresAt": "2026-10-22T00:53:13.000Z",
+    "visibleRepositories": [
+      "chwan886/Architecture-Explorer"
+    ]
+  },
+  "ownerAuthenticationUsed": false,
+  "performedOperations": {
+    "push": false,
+    "createPr": false,
+    "updatePr": false
+  },
+  "forbiddenOperations": {
+    "pushMain": false,
+    "forcePush": false,
+    "approve": false,
+    "merge": false,
+    "dispatch": false,
+    "modifyGitConfiguration": false
+  },
+  "readProbe": {
+    "repository": "chwan886/Architecture-Explorer",
+    "ref": "refs/heads/main",
+    "sha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+    "contentsReadVerified": true
+  },
+  "mainInspection": {
+    "repository": "chwan886/Architecture-Explorer",
+    "mainSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+    "inspectedRef": "refs/heads/main",
+    "inspectionOnly": true,
+    "sourceTupleControllerConfirmed": false,
+    "blockers": [
+      "TOOL_REQUIRED_CHECK_NOT_OBSERVED",
+      "FROZEN_MAIN_CI_NOT_SUCCESSFUL"
+    ],
+    "productionReady": false,
+    "repositoryMetadata": {
+      "id": 1427246844,
+      "defaultBranch": "main",
+      "private": true,
+      "archived": false
+    },
+    "branch": {
+      "protected": true,
+      "frozenShaMatches": true
+    },
+    "prObservation": {
+      "state": "closed",
+      "numberMatches": true,
+      "merged": true,
+      "validMergeTimestamp": true,
+      "urlMatches": true,
+      "mergeShaValid": true,
+      "headShaValid": true,
+      "authorIdValid": true,
+      "mergeShaShape": "string",
+      "mergeShaLength": 40,
+      "baseMatches": true,
+      "headRepositoryMatches": true,
+      "appBotMatches": true
+    },
+    "mergedPr": {
+      "number": 1,
+      "url": "https://github.com/chwan886/Architecture-Explorer/pull/1",
+      "mergedAt": "2026-10-21T23:33:16.000Z",
+      "mergeSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+      "headSha": "72fa752fc499fc2a047daa79f6bc943e0695d6ed",
+      "author": {
+        "login": "chwan-dev-agent[bot]",
+        "id": 346053751,
+        "type": "Bot"
+      },
+      "appAuthorVerified": true,
+      "mergeInMainHistory": true
+    },
+    "effectiveRules": {
+      "readable": true,
+      "ruleCount": 4,
+      "approvingReviewCount": 1,
+      "codeOwner": true,
+      "dismissStale": true,
+      "lastPushApproval": true,
+      "conversationResolution": true,
+      "strictChecks": true,
+      "requiredCheckContexts": [],
+      "bypassReview": "not-proven-by-effective-rule-response"
+    },
+    "files": [
+      {
+        "path": ".github/workflows/tool-ci.yml",
+        "gitBlobSha": "9484a2ca95edbdb4233633346e69bcba7cbb563b",
+        "sha256": "cd0a4dc56be7bce09d0740d24462a1150a44d3c4a7cad183a42aec33527e37f5",
+        "bytes": 4182,
+        "sourceSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368"
+      },
+      {
+        "path": ".github/workflows/game-index.yml",
+        "gitBlobSha": "b9cddf79fa4f6a495f20ef8f4e2569c5ad3ccec6",
+        "sha256": "8a55d600495738d52c8ffc74b02fe0d6820d13851159b3ace8671b6d799a5e3c",
+        "bytes": 10890,
+        "sourceSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368"
+      },
+      {
+        "path": ".github/CODEOWNERS",
+        "gitBlobSha": "db9fb7ef662cd6f98d0c62b299cf04ecd47f8b66",
+        "sha256": "279d0a7e661937e0bfa412a5c893ce86cb02bb79683127868c0a7761ea189b12",
+        "bytes": 2145,
+        "sourceSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368"
+      }
+    ],
+    "workflows": [
+      {
+        "id": 392254111,
+        "path": ".github/workflows/tool-ci.yml",
+        "state": "active"
+      },
+      {
+        "id": 392284024,
+        "path": ".github/workflows/game-index.yml",
+        "state": "active"
+      }
+    ],
+    "mainPushRuns": [
+      {
+        "id": 39694158754,
+        "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39694158754",
+        "path": ".github/workflows/tool-ci.yml",
+        "attempt": 1,
+        "headSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+        "status": "completed",
+        "conclusion": "failure",
+        "jobsReadable": true,
+        "jobs": [
+          {
+            "id": 119547351306,
+            "runId": 39694158754,
+            "headSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+            "attempt": 1,
+            "name": "Tool / typecheck, tests and builds",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "number": 1,
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 2,
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 3,
+                "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 4,
+                "name": "Locked setup, typecheck, tests, frontend and C# worker",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 5,
+                "name": "Assert sources and locks were not changed",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 6,
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 11,
+                "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 12,
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 13,
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ],
+            "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39694158754/job/119547351306"
+          },
+          {
+            "id": 119549619055,
+            "runId": 39694158754,
+            "headSha": "72a4493e3cc33e8299e2c9bf0ba7e42a2c929368",
+            "attempt": 1,
+            "name": "Tool / protected package delivery",
+            "status": "completed",
+            "conclusion": "failure",
+            "steps": [
+              {
+                "number": 1,
+                "name": "Set up job",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 2,
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 3,
+                "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 4,
+                "name": "Prepare locked package toolchain and C# worker",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 5,
+                "name": "Verify private repository and approved game reader boundary",
+                "status": "completed",
+                "conclusion": "failure"
+              },
+              {
+                "number": 6,
+                "name": "Build frontend for the exact checked tool commit",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 7,
+                "name": "Package complete tool runtime including curated game excerpts",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 8,
+                "name": "Verify packaged runtime and retained source excerpt disclosure",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 9,
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 17,
+                "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                "status": "completed",
+                "conclusion": "skipped"
+              },
+              {
+                "number": 18,
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "status": "completed",
+                "conclusion": "success"
+              },
+              {
+                "number": 19,
+                "name": "Complete job",
+                "status": "completed",
+                "conclusion": "success"
+              }
+            ],
+            "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39694158754/job/119549619055"
+          }
+        ],
+        "artifactsReadable": true,
+        "artifacts": [
+          {
+            "id": 12389719517,
+            "name": "tool-checks-72a4493e3cc33e8299e2c9bf0ba7e42a2c929368-39694158754-1",
+            "sizeBytes": 33880,
+            "expired": false,
+            "url": "https://github.com/chwan886/Architecture-Explorer/actions/runs/39694158754/artifacts/12389719517"
+          }
+        ]
+      }
+    ],
+    "mainCi": "failure",
+    "manualPrerequisites": [
+      "Environment/main-only rules",
+      "Production read App and secret names",
+      "Artifact audience and bypass review",
+      "Unity reference supply",
+      "Controller-confirmed exact source tuple"
+    ]
+  },
+  "privateKeyAcl": {
+    "checked": true,
+    "owner": "Administrators",
+    "allowPrincipals": [
+      "current-user",
+      "SYSTEM",
+      "Administrators"
+    ],
+    "inherited": true,
+    "scope": "directory-and-file",
+    "linksRejected": true
+  }
+}

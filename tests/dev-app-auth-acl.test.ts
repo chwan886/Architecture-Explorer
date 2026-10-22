@@ -106,7 +106,7 @@ console.log('Fixture Node started without reading any PEM or making a network re
     };
 
     await t.test('requires exactly one explicit operation before touching even the default key directory', async () => {
-      for (const args of [[], ['-Verify', '-Push'], ['-Verify', '-PullRequest'], ['-Push', '-PullRequest'], ['-Status', '-Verify'], ['-Status', '-Push'], ['-Status', '-PullRequest'], ['-Verify', '-Push', '-PullRequest', '-Status']]) {
+      for (const args of [[], ['-Verify', '-Push'], ['-Verify', '-PullRequest'], ['-Push', '-PullRequest'], ['-Status', '-Verify'], ['-Status', '-Push'], ['-Status', '-PullRequest'], ['-Verify', '-InspectMain'], ['-Status', '-InspectMain'], ['-Verify', '-Push', '-PullRequest', '-Status']]) {
         await rejectBeforeNode(args, /EXACTLY_ONE_OPERATION_REQUIRED/);
       }
     });
@@ -139,17 +139,19 @@ console.log('Fixture Node started without reading any PEM or making a network re
       await rejectBeforeNode(['-Push', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, '-Title', 'fixture'], /OPERATION_PARAMETER_INVALID/);
       await rejectBeforeNode(['-PullRequest', '-Branch', 'codex/app-auth-fixture', '-ExpectedHead', exactHead, '-WorkingDirectory', fakeTool], /OPERATION_PARAMETER_INVALID/);
     });
-    await t.test('requires an exact SHA and PR for status and refuses write-specific arguments', async () => {
-      await rejectBeforeNode(['-Status', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
-      await rejectBeforeNode(['-Status', '-ExpectedHead', 'abcdef1', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
-      await rejectBeforeNode(['-Status', '-ExpectedHead', exactHead + '\n', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+    await t.test('requires an exact SHA and PR for status/main inspection and refuses write-specific arguments', async () => {
+      for (const operation of ['-Status', '-InspectMain']) {
+      await rejectBeforeNode([operation, '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+      await rejectBeforeNode([operation, '-ExpectedHead', 'abcdef1', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
+      await rejectBeforeNode([operation, '-ExpectedHead', exactHead + '\n', '-PrNumber', '12'], /EXACT_HEAD_REQUIRED/);
       for (const number of ['', '0', '-1']) {
-        const args = ['-Status', '-ExpectedHead', exactHead];
+        const args = [operation, '-ExpectedHead', exactHead];
         if (number) args.push('-PrNumber', number);
         await rejectBeforeNode(args, /PR_NUMBER_INVALID/);
       }
       for (const [parameter, value] of [['-Branch', 'codex/app-auth-fixture'], ['-WorkingDirectory', fakeTool], ['-Title', 'fixture'], ['-BodyFile', path.join(owned.directory, 'unused.md')]]) {
-        await rejectBeforeNode(['-Status', '-ExpectedHead', exactHead, '-PrNumber', '12', parameter!, value!], /OPERATION_PARAMETER_INVALID/);
+        await rejectBeforeNode([operation, '-ExpectedHead', exactHead, '-PrNumber', '12', parameter!, value!], /OPERATION_PARAMETER_INVALID/);
+      }
       }
     });
     await t.test('requires an absolute existing push working directory', async () => {
@@ -287,6 +289,13 @@ console.log('Fixture Node started without reading any PEM or making a network re
         '--expected-head', exactHead, '--pr-number', '42', '--key-file', path.join(directory, 'fixture.pem'),
       ]);
       assert.equal(await readFile(path.join(directory, 'fixture.pem'), 'utf8'), invalidPem);
+      await unlink(sentinel);
+      const inspection = await run(['-InspectMain', '-Repository', 'chwan886/GameDemo02', '-ExpectedHead', exactHead.toUpperCase(), '-PrNumber', '1', '-PrivateKeyDirectory', directory]);
+      assert.equal(inspection.code, 0, inspection.output);
+      assert.deepEqual((JSON.parse(await readFile(sentinel, 'utf8')) as { args: string[] }).args, [
+        path.join(fakeTool, 'Tools', 'dev-app-auth.ts'), '--operation', 'inspect-main', '--repository', 'chwan886/GameDemo02',
+        '--expected-head', exactHead, '--pr-number', '1', '--key-file', path.join(directory, 'fixture.pem'),
+      ]);
     });
   } finally {
     for (const link of links.reverse()) await unlink(link);
