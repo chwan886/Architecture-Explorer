@@ -4464,6 +4464,15 @@
       "description": "非瞄准、非悬停阶段才检查接触。"
     },
     {
+      "id": "candidate-flight-resolve-call-3d448c5e",
+      "filePath": "Server/sect_projectiles.py",
+      "startLine": 591,
+      "endLine": 595,
+      "expectedFileHash": "14ae34ee1acd24451fd19e276de9122fdac92e3c1cf087834ba8256f731fc2c9",
+      "quote": "        for p in active:\n            if p['id'] in predictions:_commit(p,predictions[p['id']],used)\n        at=used\n        if selected:\n            _resolve(battle,selected,actors,on_hit,at)",
+      "description": "技术候选源码事实：游戏3d448c5e同tree的advance在选出接触事件后同步调用_resolve；仅证明此静态调用，不确认原phase条件、动态on_hit目标、运行事件或业务意图。旧contact_step锚点、人工说明及声明哈希保留待复核。"
+    },
+    {
       "id": "review-contact-gate",
       "filePath": "Server/sect_projectiles.py",
       "startLine": 134,
@@ -6338,7 +6347,7 @@
             "kinds": [
               "function"
             ],
-            "qualifiedName": "Server.sect_projectiles.contact_step",
+            "qualifiedName": "Server.sect_projectiles._resolve",
             "filePath": "Server/sect_projectiles.py"
           },
           "anchorIds": [
@@ -6548,7 +6557,8 @@
           "target": "sword-contact-gate",
           "basis": "static-call",
           "anchorIds": [
-            "review-flight-contact-call"
+            "review-flight-contact-call",
+            "candidate-flight-resolve-call-3d448c5e"
           ],
           "limitations": [],
           "condition": "phase not in ('aiming','hovering')"
@@ -6642,7 +6652,8 @@
         "本流程经过Agent源码复核，业务文字和归属仍是解释候选，不代替人工审查或运行时轨迹。",
         "on_hit为形参：传入projectile_hit有源码依据，动态目标与某次实际命中未运行验证。",
         "反射、阻挡、过期或伤害禁用可能使接触不扣血。",
-        "服务端feedback不等于客户端已收到或播放。"
+        "服务端feedback不等于客户端已收到或播放。",
+        "历史待复核：原有“最多8轮接触重查”“damageEnabled为false直接返回”等文字、控制边界、关系类型、旧声明哈希与旧锚点原样保留，属于旧contact_step实现记录，不能直接作为当前规则。当前advance负责全部飞剑共同时间调度；decision负责阵营、存活、guard交互窗口及body伤害去重分类；_resolve消费接触结果并在damage分支写hitTargets/contactAt、调用动态on_hit及合并criticalFollowup。sect_combat.step把局部projectile_hit作为实参传入，后者静态调用apply_hit，最终HP写入仍由combat.damage承担；形参调用与实参传递不证明固定动态目标或运行事件。本次仅建立技术候选定位；Owner尚未正式确认合并后的业务意图、人工说明或模型范围，全部待复核，不刷新旧hash/anchor/reviews。"
       ]
     },
     {
@@ -6686,7 +6697,7 @@
               "method"
             ],
             "qualifiedName": "Game.Presentation.SectGameHost.ForgePage(UnityEngine.UIElements.VisualElement)",
-            "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+            "filePath": "Assets/Game/Presentation/SectGameHost.Workshop.cs"
           },
           "anchorIds": [
             "review-forge-ui",
@@ -7045,7 +7056,7 @@
               "method"
             ],
             "qualifiedName": "Game.Presentation.SectGameHost.CultivationPage(UnityEngine.UIElements.VisualElement)",
-            "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+            "filePath": "Assets/Game/Presentation/SectGameHost.Members.cs"
           },
           "anchorIds": [
             "review-growth-ui"

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { appendFile, lstat, mkdir, open, readFile, readdir, realpath, rm, symlink, unlink } from 'node:fs/promises';
 import { readReleaseArchive, type ReleaseArchiveIdentity } from '../Tools/ci-release-archive.ts';
 import { validateReleaseEvidence } from '../Tools/ci-release-evidence.ts';
-import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
+import { fixtureFullIndexBytes, fixtureFullIndexPin, releaseEvidenceFixture } from './release-evidence-fixture.ts';
 import { createNativeFixtureZip as createZip, createNativeFixtureDirectory, closeNativeFixtureZipFactory, nativeFixtureFactoryStatus, type Item } from './release-native-zip-fixture.ts';
 
 const identity: ReleaseArchiveIdentity = { toolSha: 'a'.repeat(40), gameSha: 'b'.repeat(40), runId: '731', producerAttempt: '2' };
@@ -25,10 +25,11 @@ async function withFixture(action: (directory: string, zip: string) => Promise<v
 const manifest = { name: 'build-manifest.json', json: { toolSha: identity.toolSha, marker: 'native ZIP fixture' } };
 const smoke = `package-smoke-tool-${identity.toolSha}-${identity.runId}-${identity.producerAttempt}.json`;
 const indexPrefix = `${identity.gameSha}/${identity.runId}-${identity.producerAttempt}/index-evidence/`;
-const indexNames = ['manifest', 'index', 'audit', 'read-only-before', 'read-only-after', 'references'].map(name => `${indexPrefix}${name}.json`).concat('authorization/authorization.json');
+const indexNames = ['manifest', 'audit', 'read-only-before', 'read-only-after', 'references'].map(name => `${indexPrefix}${name}.json`).concat('authorization/authorization.json');
+const fullIndexItem = { name: indexPrefix + 'index.json', raw: fixtureFullIndexBytes.toString('base64') };
 after(async () => {
   await closeNativeFixtureZipFactory();
-  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 32, closed: true, childExited: true, spoolRemoved: true });
+  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 34, closed: true, childExited: true, spoolRemoved: true });
   await closeNativeFixtureZipFactory(); // Closing is idempotent; no second process is started.
   await assert.rejects(createZip(path.join(fixtureRoot, 'closed.zip'), [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
 });
@@ -41,6 +42,10 @@ test('real native tool ZIP returns exact raw pins, safe complete metadata and on
   await assert.rejects(createZip(zip, [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/, 'Factory must never overwrite an existing ZIP');
   await assert.rejects(createZip(path.join(fixtureRoot, 'unowned.zip'), [manifest]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
   await assert.rejects(createZip(path.join(directory, 'bad.zip'), [manifest], 200001), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+  for (const invalid of [{ ...manifest, padToBytes: 40 * 1024 * 1024 + 1 }, { ...manifest, padToBytes: 1 },
+    { ...manifest, padToBytes: 1000, declaredBytes: 1000 }]) {
+    await assert.rejects(createZip(path.join(directory, 'bad-pad.zip'), [invalid]), /^Error: NATIVE_ZIP_FIXTURE_REJECTED$/);
+  }
   const before = await readdir(directory), bytes = await readFile(zip), result = await readReleaseArchive(zip, 'tool', identity);
   assert.equal(result.actualZipSha256, createHash('sha256').update(bytes).digest('hex')); assert.equal(result.actualZipBytes, bytes.length);
   assert.deepEqual(Object.keys(result.documents), ['build-manifest.json']); assert.deepEqual(result.documents['build-manifest.json'], manifest.json);
@@ -58,12 +63,29 @@ test('checks and index ZIPs select only identity-bound exact producer JSON names
     await assert.rejects(readReleaseArchive(zip, 'checks', { ...identity, producerAttempt: '3' }), /^Error: RELEASE_ARCHIVE_NATIVE_REJECTED$/);
   });
   await withFixture(async (_directory, zip) => {
-    await createZip(zip, indexNames.map((name, ordinal) => ({ name, json: { ordinal } })));
+    await createZip(zip, [...indexNames.map((name, ordinal) => ({ name, json: { ordinal } })), fullIndexItem]);
     const result = await readReleaseArchive(zip, 'index', identity);
     assert.deepEqual(Object.keys(result.documents).sort(), [...indexNames].sort());
     assert.deepEqual(result.documents[indexNames[0]], { ordinal: 0 });
+    assert.deepEqual(result.indexFile, { ...fixtureFullIndexPin(), path: fullIndexItem.name });
+    assert.equal(Object.hasOwn(result.documents, fullIndexItem.name), false);
   });
 });
+
+test('a full source index larger than the selected JSON limit is streamed and pinned without being parsed or extracted', async () => withFixture(async (directory, zip) => {
+  const size = 32 * 1024 * 1024 + 1;
+  await createZip(zip, [...indexNames.map(name => ({ name, json: {} })), { ...fullIndexItem, padToBytes: size }]);
+  const before = await readFile(zip), result = await readReleaseArchive(zip, 'index', identity);
+  assert.deepEqual(result.indexFile, { ...fixtureFullIndexPin(size), path: fullIndexItem.name });
+  assert.deepEqual(Object.keys(result.documents).sort(), [...indexNames].sort());
+  assert.equal(Object.hasOwn(result.documents, fullIndexItem.name), false);
+  assert.deepEqual(await readdir(directory), ['artifact.zip']); assert.deepEqual(await readFile(zip), before);
+}));
+
+test('index archive without the identity-bound full index cannot yield an observation', async () => withFixture(async (_directory, zip) => {
+  await createZip(zip, indexNames.map(name => ({ name, json: {} })));
+  await assert.rejects(readReleaseArchive(zip, 'index', identity), /^Error: RELEASE_ARCHIVE_NATIVE_REJECTED$/);
+}));
 
 test('all three real native archive observations satisfy the independent semantic evidence contract', async () => {
   const input = releaseEvidenceFixture(), selectedIdentity = { toolSha: input.context.toolSha, gameSha: input.dispatch.source_sha,
@@ -71,7 +93,8 @@ test('all three real native archive observations satisfy the independent semanti
   for (const kind of ['tool', 'index', 'checks'] as const) await withFixture(async (_directory, zip) => {
     const evidence = input.artifacts[kind];
     await createZip(zip, evidence.entries.map(entry => ({ name: entry.path, attributes: entry.externalAttributes,
-      ...(Object.hasOwn(evidence.documents, entry.path) ? { json: evidence.documents[entry.path] } : { raw: Buffer.alloc(entry.size, 32).toString('base64') }) })));
+      ...(Object.hasOwn(evidence.documents, entry.path) ? { json: evidence.documents[entry.path] }
+        : { raw: entry.path === evidence.indexFile?.path ? fixtureFullIndexBytes.toString('base64') : Buffer.alloc(entry.size, 32).toString('base64') }) })));
     const observation = await readReleaseArchive(zip, kind, selectedIdentity);
     input.artifacts[kind] = { ...evidence, ...observation, output: { ...evidence.output, digest: observation.actualZipSha256 },
       metadata: { ...(evidence.metadata as any), digest: `sha256:${observation.actualZipSha256}`, size_in_bytes: observation.actualZipBytes } };
@@ -116,7 +139,7 @@ test('compressed, expanded and per-document/total selected budgets reject malici
     });
   }
   await withFixture(async (_directory, zip) => {
-    await createZip(zip, indexNames.map(name => ({ name, json: {}, declaredBytes: 10 * 1024 * 1024 })));
+    await createZip(zip, [...indexNames.map(name => ({ name, json: {}, declaredBytes: 12 * 1024 * 1024 })), fullIndexItem]);
     await assert.rejects(readReleaseArchive(zip, 'index', identity), /^Error: RELEASE_ARCHIVE_NATIVE_REJECTED$/);
   });
   await withFixture(async (_directory, zip) => {

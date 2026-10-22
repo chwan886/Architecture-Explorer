@@ -1078,7 +1078,7 @@
                   "method"
                 ],
                 "qualifiedName": "Game.Presentation.SectGameHost.BuildShell()",
-                "filePath": "Assets/Game/Presentation/SectGameHost.cs"
+                "filePath": "Assets/Game/Presentation/SectGameHost.Shell.cs"
               },
               "role": "implementation",
               "anchorIds": [
@@ -2488,7 +2488,7 @@
           "title": "检查运动接触",
           "summary": "区分可伤害接触、阻挡与动态回调边界。",
           "purpose": "区分可伤害接触、阻挡与动态回调边界。",
-          "detail": "区分可伤害接触、阻挡与动态回调边界。\n\n固定步把本场局部命中函数作为实参交给飞剑推进。；非瞄准、非悬停的运动阶段才检查轨迹接触。；只有damage决策才调用on_hit；没有伤害权限直接返回。\n\n摘要折叠不提升可信度；分支、循环、早退和请求边界保留在详细解释及证据中。",
+          "detail": "区分可伤害接触、阻挡与动态回调边界。\n\n固定步把本场局部命中函数作为实参交给飞剑推进。；非瞄准、非悬停的运动阶段才检查轨迹接触。；只有damage决策才调用on_hit；没有伤害权限直接返回。\n\n摘要折叠不提升可信度；分支、循环、早退和请求边界保留在详细解释及证据中。\n\n历史待复核：原有“最多8轮接触重查”“damageEnabled为false直接返回”等文字、控制边界、关系类型、旧声明哈希与旧锚点原样保留，属于旧contact_step实现记录，不能直接作为当前规则。当前advance负责全部飞剑共同时间调度；decision负责阵营、存活、guard交互窗口及body伤害去重分类；_resolve消费接触结果并在damage分支写hitTargets/contactAt、调用动态on_hit及合并criticalFollowup。sect_combat.step把局部projectile_hit作为实参传入，后者静态调用apply_hit，最终HP写入仍由combat.damage承担；形参调用与实参传递不证明固定动态目标或运行事件。本次仅建立技术候选定位；Owner尚未正式确认合并后的业务意图、人工说明或模型范围，全部待复核，不刷新旧hash/anchor/reviews。",
           "inputs": [
             "battle.projectiles、dt、elapsed",
             "projectile.phase、轨迹段、on_hit参数",
@@ -2660,7 +2660,7 @@
           "title": "在可接触阶段检查碰撞",
           "summary": "非瞄准、非悬停的运动阶段才检查轨迹接触。",
           "purpose": "非瞄准、非悬停的运动阶段才检查轨迹接触。",
-          "detail": "非瞄准、非悬停的运动阶段才检查轨迹接触。\n\n检查阶段；调用contact_step并继续传递回调。\n\n连线分别保留调用、源码位置与请求边界可信状态；未采集运行轨迹。",
+          "detail": "非瞄准、非悬停的运动阶段才检查轨迹接触。\n\n检查阶段；调用contact_step并继续传递回调。\n\n连线分别保留调用、源码位置与请求边界可信状态；未采集运行轨迹。\n\n历史待复核：原有“最多8轮接触重查”“damageEnabled为false直接返回”等文字、控制边界、关系类型、旧声明哈希与旧锚点原样保留，属于旧contact_step实现记录，不能直接作为当前规则。当前advance负责全部飞剑共同时间调度；decision负责阵营、存活、guard交互窗口及body伤害去重分类；_resolve消费接触结果并在damage分支写hitTargets/contactAt、调用动态on_hit及合并criticalFollowup。sect_combat.step把局部projectile_hit作为实参传入，后者静态调用apply_hit，最终HP写入仍由combat.damage承担；形参调用与实参传递不证明固定动态目标或运行事件。本次仅建立技术候选定位；Owner尚未正式确认合并后的业务意图、人工说明或模型范围，全部待复核，不刷新旧hash/anchor/reviews。",
           "inputs": [
             "projectile.phase、轨迹段、on_hit参数"
           ],
@@ -2710,7 +2710,7 @@
           "title": "区分命中、阻挡与忽略",
           "summary": "只有damage决策才调用on_hit；没有伤害权限直接返回。",
           "purpose": "只有damage决策才调用on_hit；没有伤害权限直接返回。",
-          "detail": "只有damage决策才调用on_hit；没有伤害权限直接返回。\n\n最多8轮接触重查；忽略ignore接触；damage记录contactAt和hitTargets并调用形参。\n\n连线分别保留调用、源码位置与请求边界可信状态；未采集运行轨迹。",
+          "detail": "只有damage决策才调用on_hit；没有伤害权限直接返回。\n\n最多8轮接触重查；忽略ignore接触；damage记录contactAt和hitTargets并调用形参。\n\n连线分别保留调用、源码位置与请求边界可信状态；未采集运行轨迹。\n\n历史待复核：原有“最多8轮接触重查”“damageEnabled为false直接返回”等文字、控制边界、关系类型、旧声明哈希与旧锚点原样保留，属于旧contact_step实现记录，不能直接作为当前规则。当前advance负责全部飞剑共同时间调度；decision负责阵营、存活、guard交互窗口及body伤害去重分类；_resolve消费接触结果并在damage分支写hitTargets/contactAt、调用动态on_hit及合并criticalFollowup。sect_combat.step把局部projectile_hit作为实参传入，后者静态调用apply_hit，最终HP写入仍由combat.damage承担；形参调用与实参传递不证明固定动态目标或运行事件。本次仅建立技术候选定位；Owner尚未正式确认合并后的业务意图、人工说明或模型范围，全部待复核，不刷新旧hash/anchor/reviews。",
           "inputs": [
             "有序接触、damageEnabled、on_hit"
           ],
@@ -2737,7 +2737,7 @@
                 "kinds": [
                   "function"
                 ],
-                "qualifiedName": "Server.sect_projectiles.contact_step",
+                "qualifiedName": "Server.sect_projectiles._resolve",
                 "filePath": "Server/sect_projectiles.py"
               },
               "role": "implementation",
@@ -2745,6 +2745,32 @@
                 "review-contact-gate"
               ],
               "expectedDeclarationHash": "dcfebbc8a8ac0748d54f5ab304f0754c1348a44e32db31c536ef53e37c7a2307"
+            },
+            {
+              "id": "sword-contact-gate-decision-implementation",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_flight_interactions.decision",
+                "filePath": "Server/sect_flight_interactions.py"
+              },
+              "role": "implementation",
+              "anchorIds": []
+            },
+            {
+              "id": "sword-contact-gate-projectile-hit-context",
+              "selector": {
+                "language": "python",
+                "kinds": [
+                  "function"
+                ],
+                "qualifiedName": "Server.sect_combat.step.projectile_hit",
+                "filePath": "Server/sect_combat.py"
+              },
+              "role": "context",
+              "anchorIds": []
             }
           ],
           "controls": [
@@ -3305,7 +3331,7 @@
                   "method"
                 ],
                 "qualifiedName": "Game.Presentation.SectGameHost.ForgePage(UnityEngine.UIElements.VisualElement)",
-                "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+                "filePath": "Assets/Game/Presentation/SectGameHost.Workshop.cs"
               },
               "role": "implementation",
               "anchorIds": [
@@ -3867,7 +3893,7 @@
                   "method"
                 ],
                 "qualifiedName": "Game.Presentation.SectGameHost.CultivationPage(UnityEngine.UIElements.VisualElement)",
-                "filePath": "Assets/Game/Presentation/SectGameHost.Pages.cs"
+                "filePath": "Assets/Game/Presentation/SectGameHost.Members.cs"
               },
               "role": "implementation",
               "anchorIds": [

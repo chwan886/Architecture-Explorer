@@ -6,7 +6,7 @@ import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:f
 import { releaseHttp, runReleaseDraft } from '../Tools/ci-release-draft.ts';
 import type { ReleaseEvidenceInput } from '../Tools/ci-release-evidence.ts';
 import type { ReleasePublishHttpRequest, ReleasePublishRequest } from '../Tools/ci-release-publish.ts';
-import { releaseEvidenceFixture } from './release-evidence-fixture.ts';
+import { fixtureFullIndexBytes, fixtureFullIndexPin, releaseEvidenceFixture } from './release-evidence-fixture.ts';
 import { releasePublisherFixture } from './release-publisher-fixture.ts';
 import { createNativeFixtureZip, createNativeFixtureDirectory, closeNativeFixtureZipFactory, nativeFixtureFactoryStatus, type Item } from './release-native-zip-fixture.ts';
 
@@ -17,10 +17,10 @@ const hash = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).
 type Prepared = { root: string; input: ReleaseEvidenceInput; zipPaths: Record<'tool' | 'index' | 'checks', string>; zipPins: Record<string, string> };
 after(async () => {
   await closeNativeFixtureZipFactory();
-  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 12, closed: true, childExited: true, spoolRemoved: true });
+  assert.deepEqual(nativeFixtureFactoryStatus(), { starts: 1, requests: 18, closed: true, childExited: true, spoolRemoved: true });
 });
 
-async function withPrepared(mode: 'valid' | 'missing-readme', run: (prepared: Prepared) => Promise<void>) {
+async function withPrepared(mode: 'valid' | 'missing-readme' | 'large-index' | 'index-pin-mismatch', run: (prepared: Prepared) => Promise<void>) {
   assert.equal(process.platform, 'win32', 'Native ZIP integration exercises the production Windows metadata adapter');
   const workspace = await realpath(process.cwd()), base = path.join(workspace, '.tmp');
   await mkdir(base, { recursive: true });
@@ -32,6 +32,14 @@ async function withPrepared(mode: 'valid' | 'missing-readme', run: (prepared: Pr
     const input = releaseEvidenceFixture();
     // The sender's workflow can still run while its successful Fast job has already authorized the receiver.
     (input.artifacts.index.documents['authorization/authorization.json'] as Json).sourceRun.statusAtAuthorization = 'in_progress';
+    const fullIndexSize = mode === 'large-index' ? 32 * 1024 * 1024 + 1 : fixtureFullIndexBytes.length;
+    if (mode === 'large-index') {
+      const evidence = input.artifacts.index, pin = fixtureFullIndexPin(fullIndexSize);
+      const snapshot = Object.entries(evidence.documents).find(([name]) => name.endsWith('/manifest.json'))![1] as Json;
+      snapshot.index.fullIndex = pin;
+      evidence.indexFile = { ...pin, path: evidence.indexFile!.path };
+      evidence.entries.find(entry => entry.path === evidence.indexFile!.path)!.size = pin.size;
+    }
     const zipPaths = {} as Prepared['zipPaths'], zipPins: Record<string, string> = {};
     for (const kind of ['tool', 'index', 'checks'] as const) {
       const evidence = input.artifacts[kind], directory = path.join(root, '.ci-release/raw', kind);
@@ -40,6 +48,8 @@ async function withPrepared(mode: 'valid' | 'missing-readme', run: (prepared: Pr
       const items: Item[] = evidence.entries.filter(entry => mode !== 'missing-readme' ||
         !entry.path.endsWith('/human-models/architecture/models/game-demo-02/README.md')).map(entry => {
         if (Object.hasOwn(evidence.documents, entry.path)) return { name: entry.path, json: evidence.documents[entry.path], attributes: entry.externalAttributes };
+        if (entry.path === evidence.indexFile?.path) return { name: entry.path, raw: fixtureFullIndexBytes.toString('base64'),
+          attributes: entry.externalAttributes, padToBytes: mode === 'index-pin-mismatch' ? fullIndexSize + 1 : fullIndexSize };
         const syntheticHumanText = entry.path.endsWith('/architecture/models/game-demo-02/model.json') ? 'unchanged synthetic human text and pending anchors'
           : entry.path.endsWith('/architecture/models/game-demo-02/README.md') ? 'unchanged synthetic maintained README'
           : entry.path.endsWith('/architecture/semantics/game-demo-02/README.md') ? 'unchanged synthetic semantic README' : undefined;
@@ -143,9 +153,21 @@ test('full CLI uses three real native ZIPs through the branded validator and fix
   assert.ok((await readFile(env2.GITHUB_STEP_SUMMARY!, 'utf8')).includes(receipt.release.htmlUrl));
 }));
 
-for (const mode of ['wrong-digest', 'missing-readme', 'producer-failure'] as const) test(`full CLI rejects ${mode} before creating any draft`, async () =>
-  withPrepared(mode === 'missing-readme' ? 'missing-readme' : 'valid', async prepared => {
-    const fixture = httpFixture(prepared, mode === 'missing-readme' ? 'valid' : mode);
+test('full CLI accepts a stream-pinned source index above 32 MiB without parsing it as selected JSON', async () => withPrepared('large-index', async prepared => {
+  const fixture = httpFixture(prepared), receipt = await runReleaseDraft(environment(prepared), fixture.request, prepared.root);
+  assert.equal(receipt.outcome, 'passed', JSON.stringify(receipt)); assert.equal(receipt.complete, true);
+  assert.equal(fixture.publishing.writes().length, 4);
+  const request = fixture.publishing.writes().find(call => call.url.endsWith('name=release-manifest.json'))!;
+  const manifest = JSON.parse(Buffer.from(request.bytes!).toString('utf8'));
+  assert.deepEqual(manifest.evidence.fullIndex, { ...fixtureFullIndexPin(32 * 1024 * 1024 + 1), path: prepared.input.artifacts.index.indexFile!.path });
+  assert.equal(Object.hasOwn(prepared.input.artifacts.index.documents, prepared.input.artifacts.index.indexFile!.path), false);
+  assert.equal(hash(await readFile(prepared.zipPaths.index)), prepared.zipPins.index);
+  assert.equal((await readdir(prepared.root)).includes('index-evidence'), false);
+}));
+
+for (const mode of ['wrong-digest', 'missing-readme', 'producer-failure', 'index-pin-mismatch'] as const) test(`full CLI rejects ${mode} before creating any draft`, async () =>
+  withPrepared(mode === 'missing-readme' || mode === 'index-pin-mismatch' ? mode : 'valid', async prepared => {
+    const fixture = httpFixture(prepared, mode === 'wrong-digest' || mode === 'producer-failure' ? mode : 'valid');
     const receipt = await runReleaseDraft(environment(prepared), fixture.request, prepared.root);
     assert.equal(receipt.outcome, 'failed'); assert.equal(receipt.complete, false); assert.equal(receipt.failureStage, 'frozen-evidence');
     assert.equal(fixture.publishing.writes().length, 0); assert.ok(fixture.calls.every(call => call.method === 'GET'));

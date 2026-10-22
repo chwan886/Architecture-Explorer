@@ -20,6 +20,10 @@ producer 成功后输出自己的 run ID、attempt、工具 SHA，以及 tool/in
 
 原生 ZIP 适配器不提取文件，只读取全部条目元数据和限定 JSON。压缩包限 512 MiB、条目 200000、声明展开量 2 GiB；单份 JSON 实际解码限 32 MiB、合计 64 MiB。路径穿越、重复/冲突、链接、非法 UTF-8、预算超限及读取期间 ZIP 改变均失败。非选定二进制不进行执行或完整解压/CRC验收；其完整性依赖冻结 ZIP 摘要和可信 producer 的真实构建、包启动及源码只读证明。
 
+完整 `index.json` 继续保存在原索引 ZIP 中。producer 从同一个已通过 schema、准确 Git SHA 和只读校验的索引对象，给现有 `manifest.index` 增加 Git 边界、文件数量、必要诊断投影及 `fullIndex: { path: 'index.json', size, sha256 }`；摘要和长度针对实际序列化的 UTF-8 原字节。失败运行不能制造成功证明或补写缺失元数据。
+
+publisher 仅把 manifest、Audit、引用与只读证明等小文件作为限定 JSON 解析，不把完整索引加入该集合。原生适配器对 ZIP 内准确前缀下的完整 `index.json` 有界流式读取并计算 SHA256，核对实际流长度、条目长度和 manifest pin；原 32 MiB 单 JSON、64 MiB 选定 JSON 总量及 2 GiB ZIP 展开预算保持不变。固定 Windows PowerShell/.NET Framework 适配器不把 CRC 当作独立验收，完整索引以实际展开字节的 SHA256 和长度核验。Git HEAD 非空且等于输入、干净状态摘要、scope、revision、版本/指纹、非空文件集及 Git 不可用拒绝等原验证迁移到同一 producer 的投影，不省略检查；文件数仍为 1..50,000，原诊断总数仍为 0..50,000，诊断投影不得超过原总数。CS/Git 诊断投影与既有语义诊断交叉核对，缺失或矛盾即失败。信任来源仍是受保护 main 的准确工具代码、真实成功 producer 和固定 artifact ID/ZIP 摘要，小型 manifest 不能独立自证；旧成功包缺少新 pin 时停止，不推测或回退读取巨型 JSON。
+
 必须一致的证据包括：
 
 - `delivery-result.json` 的各阶段成功及两个完成布尔值。

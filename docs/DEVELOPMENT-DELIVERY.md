@@ -75,7 +75,7 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 
 - 游戏发送回执：参考脚本写 `artifacts/ci/explorer-dispatch.json`，记录合同版本、双方仓库、来源 ref/SHA/run/attempt、基础与 attempt URL、真实目标 run、请求接受状态。游戏主控可按其已实施的回执位置交付，工具侧不覆盖该实现；不写令牌。
 - 工具构建包：前端 `dist`、TypeScript/tsx 后端与 MCP 启动所需源码和运行依赖、C# worker 及依赖、Python 分析器、锁文件和启动说明。**dist 单独不是完整工具包**；使用方仍需按说明配置本机授权目录和可用 Python/.NET 环境。
-- 索引证据包：工具侧 `.ci-output/<game-sha>/<run-id>-<attempt>/index-evidence/` 中的 `index.json`、`architecture.json`、`semantics.json`、`audit.json`、`references.json`、`manifest.json`、只读前后摘要与必要阶段日志。记录实际工具 SHA、游戏 SHA、配置/引用指纹、分析器版本、限制、来源/目标 run 链接；人工模型副本保留原文字和复核记录。它是 CI 快照证据，不承诺复制到本地 `.cache` 即可使用。本轮没有自动安装或缓存导入功能。
+- 索引证据包：工具侧 `.ci-output/<game-sha>/<run-id>-<attempt>/index-evidence/` 中的 `index.json`、`architecture.json`、`semantics.json`、`audit.json`、`references.json`、`manifest.json`、只读前后摘要与必要阶段日志。记录实际工具 SHA、游戏 SHA、配置/引用指纹、分析器版本、限制、来源/目标 run 链接；人工模型副本保留原文字和复核记录。成功 manifest 的 `index` 还记录同一已验证索引的 Git/诊断投影，以及完整 `index.json` 原始字节的长度和 SHA256；草稿端在原预算内只解析小证明，并流式核对完整索引，详见 [草稿证据合同](RELEASE-DRAFT.md)。它是 CI 快照证据，不承诺复制到本地 `.cache` 即可使用。本轮没有自动安装或缓存导入功能。
 
 工具构建包也含游戏源码摘录：它保留 `architecture/models/game-demo-02/model.json` 的 `anchors[].quote`、人工语义解释和文档，不含完整游戏 checkout。包的 `RUNNING.md` 和 `build-manifest.json` 明示 `containsGameSourceExcerpts=true`；不能再声称“不含游戏源码”。索引也可能含摘录。工具 Git 仓库本身、Actions 日志、测试报告、工具包、索引和失败诊断的读者均不得超出游戏允许范围；两仓 private 不足以证明读者相同。不得公开 Pages、Release 或下载链接。
 
