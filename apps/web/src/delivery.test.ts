@@ -99,6 +99,7 @@ test('delivery workspace switches overview/details, expands a phase and preserve
     assert.equal(app.container.querySelector('.delivery-workspace')?.getAttribute('data-delivery-mode'), 'overview');
     await app.click('.react-flow__node[data-id="release-draft"] .delivery-node button');
     assert.equal(app.container.querySelector('.delivery-inspector h2')?.textContent, '私有工具 Release 草稿');
+    assert.match(app.container.querySelector('.delivery-inspector > header')?.textContent || '', /11 \/ 11/);
     assert.match(app.container.querySelector('.delivery-inspector')?.textContent || '', /draft=true 且未发布/);
     assert.equal(app.requestCount(), 0);
     for (const value of app.container.querySelectorAll('a')) { assert.equal(safeGitHubUrl(value.href), value.href); assert.equal(value.rel, 'noopener noreferrer'); }
