@@ -9,6 +9,7 @@ config/local.json
 test-results/
 .ci-output/
 .ci-references/
+.ci-release/
 *.log
 
 # Keep locally extracted analysis artifacts out of source control.

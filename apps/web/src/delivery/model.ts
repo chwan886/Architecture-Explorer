@@ -42,7 +42,7 @@ export const deliveryStages: DeliveryStage[] = [
     trigger: 'PR 打开或候选提交更新。', pass: '所需检查成功且独立 Review 满足规则；候选更新后重新核对。',
     blocked: 'CI 失败、取消或缺失；Review 未完成、需修改或已过期。', failure: '修复 feature，重新检查并请求独立 Review；不得删除测试或弱化门禁。',
     steps: ['CI：Fast 与工具 / 文档合同检查。', '独立 Review：审查最终差异、风险和证据，不由实现者自批。', 'AND 门：检查通过且 Review 满足，不能互相替代；PR 检查不取得跨仓生产凭据。'],
-    links: [gameWorkflow, link('游戏 PR / Review', `${game}/pulls`), rules], configuration: 'CODEOWNERS、必需检查和独立 Review 规则待游戏主控交接并由用户核实。',
+    links: [gameWorkflow, link('游戏 PR / Review', `${game}/pulls`), rules], configuration: 'CODEOWNERS、必需检查和独立 Review 由 GitHub 规则执行；本页不实时核验平台配置。',
   },
   {
     id: 'approval', title: '高风险 / 门禁变更本人批准', lane: 'human', actor: '用户通过独立入口批准；主控提供具体变更说明',
@@ -96,7 +96,7 @@ export const deliveryStages: DeliveryStage[] = [
     trigger: '工具检查 / 构建成功，目标代码和引用已准备。', pass: '游戏 SHA 属于允许的 main 历史；metadata.gitHead 精确相等且非空；扫描前后源码与工作区未变。',
     blocked: 'Git 读取失败、SHA 不匹配、源码变动、Unity 引用缺失或指纹 / 校验不一致。', failure: '阻塞或明确记录降级范围；不能伪造 Unity 类型或宣称完整语义成功。',
     steps: ['准确 SHA checkout，不替换为“最新 main”；CI 缓存和输出只写工具侧。', '只解析代码与显式程序集元数据，不运行目标 Python、游戏构建或目标程序集。', '过期职责模型、解释和锚点保留“待复核”，不自动确认或改写人工文字。'],
-    links: [indexWorkflow, link('索引边界与契约', `${tool}/blob/main/docs/CONTRACT.md`), link('证据审计说明', `${tool}/blob/main/docs/EVIDENCE-AUDIT.md`), guide], configuration: 'Unity 引用供应、引用摘要与游戏只读 App 权限待用户配置并核实。',
+    links: [indexWorkflow, link('索引边界与契约', `${tool}/blob/main/docs/CONTRACT.md`), link('证据审计说明', `${tool}/blob/main/docs/EVIDENCE-AUDIT.md`), guide], configuration: 'Unity 引用供应及游戏只读访问须经真实接收运行核验；本页不报告实时结果。',
   },
   {
     id: 'artifacts', title: '产物及失败处理', lane: 'tool', actor: '工具 GitHub Actions 产出；主控 / 用户核对',
@@ -104,13 +104,29 @@ export const deliveryStages: DeliveryStage[] = [
     input: '通过核验的构建、索引、审计与追溯信息。', output: '工具构建包；游戏 SHA 索引 / 审计包；真实 run 与产物入口。',
     trigger: '必要检查通过后产出；失败时上传必要诊断并保持失败。', pass: '清单可追溯工具 / 游戏 SHA、配置 / 引用指纹、分析器版本、限制和运行链接，访问范围符合游戏权限。',
     blocked: '清单缺失、来源不一致，或索引访问范围比游戏仓库更广。', failure: '在 GitHub 查看失败和重跑；不撤销已合并游戏，不改写历史。',
-    steps: ['不同提交产物互不覆盖；工具包与索引包分别下载。', '云索引首版是 CI 快照证据包；没有自动本地安装或缓存导入，不能覆盖 .cache 宣称可用。', '索引可能含源码摘录，必须放在权限合适的私有位置；不自动发布 Pages 或 Release。'],
+    steps: ['不同提交产物互不覆盖；工具包与索引包分别下载。', '云索引首版是 CI 快照证据包；没有自动本地安装或缓存导入，不能覆盖 .cache 宣称可用。', '工具包及索引含源码摘录，必须保留在批准的私有读者范围；不自动公开发布。'],
     links: [link('工具运行 / 产物列表', `${tool}/actions`), link('游戏来源运行列表', `${game}/actions`), guide], configuration: '产物私密性、保留期与首次端到端验证待用户核实；当前页面不表示任何运行成功。',
+  },
+  {
+    id: 'release-draft', title: '私有工具 Release 草稿', lane: 'tool', actor: '独立 GitHub Actions job 创建草稿；用户最终发布',
+    summary: '全部构建与索引核验成功后，用冻结产物生成工具草稿。',
+    input: '成功 producer 的工具 / 游戏 SHA、run / attempt、准确 artifact ID、ZIP 摘要和核验清单。',
+    output: '真实私有草稿 URL / tag、工具 ZIP、独立游戏证据 ZIP 和 Release 追溯清单。',
+    trigger: '工具构建、运行烟测、来源授权、Scan / Verify / Audit 和源码只读核验全部成功。',
+    pass: '私有仓库、准确工具 main SHA 与同批成功证据一致；草稿及资产摘要复核通过，draft=true 且未发布。',
+    blocked: '任何前置失败、SHA / 摘要不符、工具 main 已前进、同名 tag / 资产冲突或草稿已发布。',
+    failure: '保持红色并记录真实不完整草稿；不覆盖资产或自动发布。重跑发布 job 沿用 producer 证据，main 前进时重新运行准确 main。',
+    steps: ['仅草稿 job 持有本仓最小写权限；测试、扫描与游戏发送端保持各自只读 / Actions 权限。',
+      '读取冻结 ZIP 元数据与清单，不运行产物代码；不同游戏 / 工具提交及 producer attempt 使用独立 tag。',
+      '重复执行只复用摘要完全一致的资产；等待 publisher job 成功后，由用户最后发布。',
+      '这是 Architecture-Explorer 产品草稿；Unity 引用是独立私有依赖，游戏 Windows Release 另行处理。'],
+    links: [link('工具 Release 列表', `${tool}/releases`), indexWorkflow, link('私有草稿交付合同', `${tool}/blob/main/docs/RELEASE-DRAFT.md`)],
+    configuration: '以实际 main 部署、真实运行与草稿回执验收；本页不提供发布或实时状态操作。',
   },
 ];
 
 export const laneLabels: Record<DeliveryLane, string> = { human: '人工操作', game: '游戏仓库 · GitHub 自动任务', tool: '工具仓库 · GitHub 自动任务' };
-export const activationOrder = ['游戏主控完成 Fast 报告、CODEOWNERS 与交接', '工具接收游戏侧接口与证据', '工具 main 合入并手动验收就绪', '游戏集成发送步骤，初始保持关闭', '用户审核受限身份、Environment 后启用', '真实 feature 经联合验证后核对两仓 run 与产物'];
+export const activationOrder = ['游戏主控完成 Fast 报告、CODEOWNERS 与交接', '工具接收游戏侧接口与证据', '工具 main 合入并手动验收就绪', '游戏集成发送步骤，初始保持关闭', '用户审核受限身份、Environment 后启用', '真实 feature 联调核对两仓 run、产物与私有工具草稿；用户最终发布'];
 
 /** Render only HTTPS links within these two repositories and supported entry points. */
 export function safeGitHubUrl(value: string): string | undefined {
@@ -121,7 +137,7 @@ export function safeGitHubUrl(value: string): string | undefined {
     if (decoded.split(/[/?#]/).some(part => part === '.' || part === '..')) return;
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.port || url.username || url.password || url.search || url.hash) return;
-    if (!/^\/chwan886\/(?:Architecture-Explorer|GameDemo02)\/(?:pulls|rules|actions(?:\/workflows\/[\w.-]+\.ya?ml|\/runs\/\d+(?:\/artifacts\/\d+)?)?|blob\/main\/[A-Za-z0-9_./-]+)$/.test(url.pathname)) return;
+    if (!/^\/chwan886\/(?:Architecture-Explorer|GameDemo02)\/(?:pulls|rules|releases|actions(?:\/workflows\/[\w.-]+\.ya?ml|\/runs\/\d+(?:\/artifacts\/\d+)?)?|blob\/main\/[A-Za-z0-9_./-]+)$/.test(url.pathname)) return;
     return url.href;
   } catch { return; }
 }

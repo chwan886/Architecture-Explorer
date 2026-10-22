@@ -43,6 +43,16 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 60
     environment: architecture-delivery
+    outputs:
+      producer_run_id: ${{ steps.release-inputs.outputs.producer_run_id }}
+      producer_attempt: ${{ steps.release-inputs.outputs.producer_attempt }}
+      producer_tool_sha: ${{ steps.release-inputs.outputs.producer_tool_sha }}
+      tool_artifact_id: ${{ steps.tool-artifact.outputs.artifact-id }}
+      tool_artifact_digest: ${{ steps.tool-artifact.outputs.artifact-digest }}
+      index_artifact_id: ${{ steps.index-artifact.outputs.artifact-id }}
+      index_artifact_digest: ${{ steps.index-artifact.outputs.artifact-digest }}
+      checks_artifact_id: ${{ steps.checks-artifact.outputs.artifact-id }}
+      checks_artifact_digest: ${{ steps.checks-artifact.outputs.artifact-digest }}
     defaults:
       run:
         shell: pwsh
@@ -162,6 +172,7 @@ jobs:
           @{schemaVersion=1;contractVersion='1';toolSha=$env:GITHUB_SHA;source=$source;targetRunUrl=('https://github.com/chwan886/Architecture-Explorer/actions/runs/'+$env:GITHUB_RUN_ID+'/attempts/'+$env:GITHUB_RUN_ATTEMPT);checksOutcome=$env:CHECK_OUTCOME;toolBuildCompleted=($env:CHECK_OUTCOME -eq 'success' -and $env:PACKAGE_OUTCOME -eq 'success' -and $env:PACKAGE_RUNTIME_OUTCOME -eq 'success');packageOutcome=$env:PACKAGE_OUTCOME;packageRuntimeOutcome=$env:PACKAGE_RUNTIME_OUTCOME;authorizationOutcome=$env:AUTHORIZE_OUTCOME;indexOutcome=$env:INDEX_OUTCOME;indexVerified=($env:INDEX_OUTCOME -eq 'success')} | ConvertTo-Json -Depth 5 | Set-Content test-results/delivery-result.json -Encoding utf8
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always() && github.event.repository.private
+        id: checks-artifact
         with:
           name: tool-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: tool/test-results/
@@ -203,3 +214,113 @@ jobs:
           Index evidence artifact (may contain failed-attempt diagnostics): $env:INDEX_ARTIFACT_URL
           Request receipt and target build outcome are separate. Failed jobs stay red; rerun preserves a new attempt. No game history rollback or public publication occurs.
           "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+      - name: Freeze successful producer identity for private draft delivery
+        id: release-inputs
+        if: success() && steps.package-runtime.outcome == 'success' && steps.snapshot.outcome == 'success'
+        env:
+          TOOL_ID: ${{ steps.tool-artifact.outputs.artifact-id }}
+          TOOL_DIGEST: ${{ steps.tool-artifact.outputs.artifact-digest }}
+          INDEX_ID: ${{ steps.index-artifact.outputs.artifact-id }}
+          INDEX_DIGEST: ${{ steps.index-artifact.outputs.artifact-digest }}
+          CHECKS_ID: ${{ steps.checks-artifact.outputs.artifact-id }}
+          CHECKS_DIGEST: ${{ steps.checks-artifact.outputs.artifact-digest }}
+        run: |
+          foreach ($kind in @('TOOL','INDEX','CHECKS')) {
+            if ([Environment]::GetEnvironmentVariable($kind+'_ID') -cnotmatch '^[1-9][0-9]*$') { throw 'Missing successful producer artifact ID' }
+            if ([Environment]::GetEnvironmentVariable($kind+'_DIGEST') -cnotmatch '^[a-f0-9]{64}$') { throw 'Missing frozen producer artifact digest' }
+          }
+          'producer_run_id='+$env:GITHUB_RUN_ID | Add-Content $env:GITHUB_OUTPUT
+          'producer_attempt='+$env:GITHUB_RUN_ATTEMPT | Add-Content $env:GITHUB_OUTPUT
+          'producer_tool_sha='+$env:GITHUB_SHA | Add-Content $env:GITHUB_OUTPUT
+  draft-release:
+    name: Verify frozen evidence and create private tool Release draft
+    needs: build-index
+    if: needs.build-index.result == 'success' && github.event_name == 'workflow_dispatch' && github.repository == 'chwan886/Architecture-Explorer' && github.ref == 'refs/heads/main' && github.event.repository.private
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: architecture-delivery
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: private-tool-draft-${{ github.run_id }}-${{ needs.build-index.outputs.producer_attempt }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: tool
+    steps:
+      - name: Checkout trusted receiving tool code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          path: tool
+          persist-credentials: false
+      - name: Prepare only the locked official publisher Node runtime
+        id: runtime
+        run: ./Tools/ci-release-runtime.ps1
+      - name: Download the exact tool artifact as immutable ZIP bytes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          artifact-ids: ${{ needs.build-index.outputs.tool_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: chwan886/Architecture-Explorer
+          run-id: ${{ needs.build-index.outputs.producer_run_id }}
+          path: tool/.ci-release/raw/tool
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download the exact game evidence artifact as immutable ZIP bytes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          artifact-ids: ${{ needs.build-index.outputs.index_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: chwan886/Architecture-Explorer
+          run-id: ${{ needs.build-index.outputs.producer_run_id }}
+          path: tool/.ci-release/raw/index
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Download exact check receipts without executing or extracting them
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          artifact-ids: ${{ needs.build-index.outputs.checks_artifact_id }}
+          github-token: ${{ github.token }}
+          repository: chwan886/Architecture-Explorer
+          run-id: ${{ needs.build-index.outputs.producer_run_id }}
+          path: tool/.ci-release/raw/checks
+          skip-decompress: true
+          digest-mismatch: error
+      - name: Validate frozen success and create only a private Release draft
+        id: draft
+        env:
+          RELEASE_PUBLISH_TOKEN: ${{ github.token }}
+          BUILD_RESULT: ${{ needs.build-index.result }}
+          PRODUCER_RUN_ID: ${{ needs.build-index.outputs.producer_run_id }}
+          PRODUCER_ATTEMPT: ${{ needs.build-index.outputs.producer_attempt }}
+          PRODUCER_TOOL_SHA: ${{ needs.build-index.outputs.producer_tool_sha }}
+          TOOL_ARTIFACT_ID: ${{ needs.build-index.outputs.tool_artifact_id }}
+          TOOL_ARTIFACT_DIGEST: ${{ needs.build-index.outputs.tool_artifact_digest }}
+          INDEX_ARTIFACT_ID: ${{ needs.build-index.outputs.index_artifact_id }}
+          INDEX_ARTIFACT_DIGEST: ${{ needs.build-index.outputs.index_artifact_digest }}
+          CHECKS_ARTIFACT_ID: ${{ needs.build-index.outputs.checks_artifact_id }}
+          CHECKS_ARTIFACT_DIGEST: ${{ needs.build-index.outputs.checks_artifact_digest }}
+          CI_CONTRACT_VERSION: ${{ inputs.contract_version }}
+          CI_SOURCE_REPO: ${{ inputs.source_repo }}
+          CI_SOURCE_REF: ${{ inputs.source_ref }}
+          CI_SOURCE_SHA: ${{ inputs.source_sha }}
+          CI_SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          CI_SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          CI_SOURCE_RUN_URL: ${{ inputs.source_run_url }}
+          INDEX_ACCESS_APPROVED: ${{ vars.INDEX_ACCESS_APPROVED }}
+          RULE_BYPASS_REVIEWED: ${{ vars.RULE_BYPASS_REVIEWED }}
+        run: |
+          & '${{ steps.runtime.outputs.node }}' Tools/ci-release-draft.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Private tool Release draft validation or upload failed' }
+      - name: Retain only sanitized draft receipts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always() && github.event.repository.private
+        with:
+          name: release-draft-receipt-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tool/.ci-release/receipts/*.json
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: warn
