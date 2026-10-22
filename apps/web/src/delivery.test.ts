@@ -7,7 +7,7 @@ import DeliveryWorkspace, { GitHubLink } from './delivery/DeliveryWorkspace';
 import { activationOrder, deliveryStages, safeGitHubUrl } from './delivery/model';
 
 test('delivery description includes every gate, accountable inputs/outputs and the conditional approval branch', () => {
-  assert.deepEqual(deliveryStages.map(stage => stage.id), ['scope', 'feature', 'checks-review', 'approval', 'merge', 'main-checks', 'dispatch', 'tool-build', 'scan', 'artifacts']);
+  assert.deepEqual(deliveryStages.map(stage => stage.id), ['scope', 'feature', 'checks-review', 'approval', 'merge', 'main-checks', 'dispatch', 'tool-build', 'scan', 'artifacts', 'release-draft']);
   for (const stage of deliveryStages) {
     for (const field of ['actor', 'input', 'output', 'trigger', 'pass', 'blocked', 'failure'] as const) assert.ok(stage[field].trim(), `${stage.id}.${field} must be described`);
     assert.ok(stage.steps.length >= 3);
@@ -23,6 +23,9 @@ test('delivery description includes every gate, accountable inputs/outputs and t
   assert.match(byId.scan.steps.join(' '), /待复核/);
   assert.match(byId.scope.steps.join(' '), /日常游戏 Full 仅横屏/);
   assert.match(byId.artifacts.steps.join(' '), /不能覆盖 .cache/);
+  assert.match(byId['release-draft'].trigger, /全部成功/);
+  assert.match(byId['release-draft'].pass, /draft=true 且未发布/);
+  assert.match(byId['release-draft'].steps.join(' '), /不运行产物代码/);
   assert.match(activationOrder[0], /Fast 报告、CODEOWNERS/);
   assert.match(activationOrder[2], /main 合入并手动验收/);
   assert.match(activationOrder[3], /初始保持关闭/);
@@ -43,6 +46,7 @@ test('GitHub links reject dangerous schemes, hosts, credentials, repository esca
     'https://github.com/chwan886/GameDemo02/actions\n',
     'https://github.com/chwan886/GameDemo02/actions\\evil',
     'https://github.com/chwan886/GameDemo02/issues/new',
+    'https://github.com/chwan886/Architecture-Explorer/releases/new',
   ]) assert.equal(safeGitHubUrl(value), undefined, value);
   assert.equal(safeGitHubUrl('https://github.com/chwan886/Architecture-Explorer/actions/runs/123/artifacts/456'), 'https://github.com/chwan886/Architecture-Explorer/actions/runs/123/artifacts/456');
 });
@@ -82,17 +86,21 @@ test('delivery workspace switches overview/details, expands a phase and preserve
     assert.equal(app.container.querySelector('.delivery-workspace')?.getAttribute('data-delivery-mode'), 'overview');
     assert.match(app.container.textContent || '', /人工维护的交付流程说明/);
     assert.match(app.container.textContent || '', /不读取 GitHub 实时状态/);
-    assert.equal(app.container.querySelectorAll('.delivery-node').length, 10);
+    assert.equal(app.container.querySelectorAll('.delivery-node').length, 11);
     await app.click('.react-flow__node[data-id="dispatch"] .delivery-node button');
     assert.equal(app.container.querySelector('.delivery-workspace')?.getAttribute('data-delivery-mode'), 'details');
     assert.equal(app.container.querySelector('.delivery-inspector h2')?.textContent, '跨仓库触发');
     assert.ok(app.container.querySelector('.delivery-detail-stage.selected[open]'));
-    assert.equal(app.container.querySelectorAll('.delivery-detail-stage').length, 10);
+    assert.equal(app.container.querySelectorAll('.delivery-detail-stage').length, 11);
     assert.match(app.container.querySelector('.delivery-inspector')?.textContent || '', /待配置 \/ 待核实/);
     await app.click('[aria-label="返回上一交付阶段"]');
     assert.equal(app.container.querySelector('.delivery-inspector h2')?.textContent, '任务范围 / 变更分级');
     await app.click('.delivery-mode-switch button:first-child');
     assert.equal(app.container.querySelector('.delivery-workspace')?.getAttribute('data-delivery-mode'), 'overview');
+    await app.click('.react-flow__node[data-id="release-draft"] .delivery-node button');
+    assert.equal(app.container.querySelector('.delivery-inspector h2')?.textContent, '私有工具 Release 草稿');
+    assert.match(app.container.querySelector('.delivery-inspector > header')?.textContent || '', /11 \/ 11/);
+    assert.match(app.container.querySelector('.delivery-inspector')?.textContent || '', /draft=true 且未发布/);
     assert.equal(app.requestCount(), 0);
     for (const value of app.container.querySelectorAll('a')) { assert.equal(safeGitHubUrl(value.href), value.href); assert.equal(value.rel, 'noopener noreferrer'); }
   } finally { await app.dispose(); }

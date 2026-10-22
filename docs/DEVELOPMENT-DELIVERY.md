@@ -110,7 +110,7 @@ Ruleset 的管理员/机器人绕过名单仍须由维护者人工审核，设�
 | 工具 Unity 引用 | 变量 `UNITY_REFERENCES_ASSET_ID` 指定本私有工具仓库已发布依赖 Release 的准确资产；变量 `UNITY_REFERENCES_SHA256` 保存不可变 ZIP 摘要。仅空资产 ID 时沿用 Secret `UNITY_REFERENCES_URL` 的直接 HTTPS 接口 | [供应方案](UNITY-REFERENCE-SUPPLY.md)中的版本/许可、DLL/ZIP 指纹和读者范围；资产失败不回退 URL，签名 URL 不进入日志或普通变量 |
 | 工具产物权限 | 工具读者不超游戏读者；检查 Actions artifact retention 与下载权限 | 权限集合审阅和一次非授权访问被拒绝的证据 |
 
-工具 `GITHUB_TOKEN` 只授予自身所需 `contents: read`，不用于跨仓库。App 私钥只在受保护 Environment 中；令牌按需生成、限制单仓/显式权限、job 结束自动吊销，不使用管理员 PAT。官方 [create-github-app-token](https://github.com/actions/create-github-app-token) 提供短期令牌；[Environment 文档](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)说明秘密只在保护规则满足后可用，私有仓库功能受账户方案约束。
+构建和索引 job 的工具 `GITHUB_TOKEN` 只授予自身所需 `contents: read`，不用于跨仓库。独立的私有工具草稿 job 仅在成功 producer 之后使用本仓 `contents: write` 与 `actions: read`，核验冻结产物后创建未发布 Release 草稿；不批准、合并或自动发布。其重跑、人工发布边界及所需真实验收见 [私有工具 Release 草稿](RELEASE-DRAFT.md)。App 私钥只在受保护 Environment 中；令牌按需生成、限制单仓/显式权限、job 结束自动吊销，不使用管理员 PAT。官方 [create-github-app-token](https://github.com/actions/create-github-app-token) 提供短期令牌；[Environment 文档](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)说明秘密只在保护规则满足后可用，私有仓库功能受账户方案约束。
 
 C# worker 只读取显式程序集元数据，不执行目标程序集。Unity 引用不能使用本机绝对路径、假造类型或目标构建脚本。引用缺失时阻塞正式快照，报告缺少项。`Tools/ci-snapshot.ts` 要求清单里的准确 `unityVersion` 与游戏 `ProjectSettings/ProjectVersion.txt` 一致，每个 `references` 项有相对 DLL 路径 `path` 和实际文件 `sha256`，可显式给出合法预处理 `defines`；至少含 `UnityEngine.CoreModule.dll`，不得混入根聚合 `UnityEngine.dll`，同名 DLL 不重复。所有引用位于工具侧并逐个核对摘要。不要填假摘要或把一个 CoreModule 清单当成该游戏全部引用已经齐备。
 
