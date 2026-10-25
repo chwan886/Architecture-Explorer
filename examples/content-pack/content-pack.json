@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "flows": [
+    {
+      "sourceFlowId": "request-flow",
+      "title": "Synthetic request explanation",
+      "description": "Presentation annotations for an independently authored two-step request model.",
+      "steps": [
+        { "sourceStepId": "receive", "text": { "purpose": "Describe the existing request input step." } },
+        { "sourceStepId": "reply", "text": { "purpose": "Describe the existing response step." },
+          "controls": [{ "kind": "request-boundary", "description": "Candidate boundary annotation; this does not establish runtime execution." }] }
+      ],
+      "groups": [
+        { "id": "request-summary", "stepIds": ["receive", "reply"],
+          "text": { "title": "Request overview", "summary": "Fold the existing steps into one summary without adding source relationships." } }
+      ]
+    }
+  ]
+}

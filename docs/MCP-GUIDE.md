@@ -1,6 +1,8 @@
 # Codex 本机 MCP 联动
 
-本阶段提供只读架构查询和网页展示控制，无网页聊天、模型 API、Shell 工具或游戏写入。MCP 复用现有索引、系统模型和语义投影。GameDemo02 仍是只读目标。
+中文 | [English](en/MCP-GUIDE.md)
+
+本阶段提供只读架构查询和网页展示控制，无网页聊天、模型 API、Shell 工具或目标写入。MCP 复用现有索引、系统模型和语义投影，目标仅来自明确授权的项目配置。
 
 ## 启动与连接
 
@@ -20,7 +22,7 @@ stdio 服务启动命令（正常会等待输入，stdout 仅用于 MCP JSON-RPC
 .\Tools\explorer.ps1 -Task Mcp -Config .\config\local.json
 ```
 
-Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；也可审查后向用户级 `~/.codex/config.toml` **新增** `config/codex-mcp.example.toml` 的块。App 与 CLI 使用官方 MCP 配置机制。已存在同名块时先合并审查，不重复追加。实现不会修改用户配置。示例路径指向安装目录 `E:\Projects\Architecture-Explorer`；如从开发工作树测试，使用该工作树的绝对路径及对应配置，端口和缓存必须一致。
+Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；也可审查后向用户级 `~/.codex/config.toml` **新增** `config/codex-mcp.example.toml` 的块。App 与 CLI 使用官方 MCP 配置机制。已存在同名块时先合并审查，不重复追加。实现不会修改用户配置。将示例中的 `<repo>` 替换为实际工具安装目录；如从开发工作树测试，使用该工作树的绝对路径及对应配置，端口和缓存必须一致。
 
 完整字段与官方连接说明：[Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)。保存配置后在 App 的 MCP servers 设置按提示选择 Restart，再在对话输入 `/mcp` 检查连接；本轮未刷新工具列表时可在重载后继续下一轮。`codex mcp list` 只证明已配置，不能证明工具调用成功。连接后实际调用 `get_capabilities` 与 `list_projects`，再完成下方流程，才算验证工具可用。
 
@@ -55,15 +57,15 @@ Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；�
 - 建议等索引“已同步”后开始分析；后台重新发布索引对象也会使已有句柄失效，即使文件内容revision不变。服务返回过期时页面清除旧高亮，重新开始分析，不静默替换旧结果。
 - 数据邻域为静态读写引用；动态分发/回调与跨 HTTP 关系未自动确认。不会为了连贯而补边。
 
-现有首批业务语义流程是领地领取/库存交互与宗门战斗启动/轮询/结果读取。飞剑命中局部调用可以查询代码图；尚无完整的飞剑专属语义流程。若搜索显示 `projectile_hit → apply_hit → damage` 与投射物推进片段，必须保留动态 `on_hit` 和跨层连接的缺口，不声称完整攻击链已证实。
+业务语义流程来自当前项目的模型与可选内容包，不预设流程 ID 或领域。请通过 `get_flow` 核对当前快照实际包含的流程。仓库演示提供一个计算与状态应用流程；动态回调、跨请求与跨语言片段仍须保留证据缺口，不声称完整执行链已证实。
 
 ## 直接可用的提示词
 
-> 使用 Architecture Explorer MCP 查询 GameDemo02 的宗门战斗流程。先列出项目和 Worktree，固定快照，搜索并检查源码证据。区分已确认调用、候选业务解释和未验证顺序。选择我已允许联动的页面，展示现有战斗流程的简洁业务解释。等待 presented 回执后用中文解释，列出缺口。
+> 使用 Architecture Explorer MCP 查询仓库演示项目的业务流程。先列出项目和 Worktree，固定快照，搜索并检查源码证据。区分已确认调用、候选业务解释和未验证顺序。选择我已允许联动的页面，展示当前快照中已有流程的简洁业务解释。等待 presented 回执后用中文解释，列出缺口。
 
 > 在刚才同一快照和流程中展开详细解释，再切到双层对照。保留当前焦点，高亮该步骤对应的全部方法。若用户操作或索引变化造成冲突，停止旧展示并说明原因。
 
-> 查询飞剑命中到伤害计算的真实调用路径，读取证据并在代码图展示。动态回调、缺失边和普通依赖请单独说明；不要把不相连片段拼成已验证执行链。
+> 查询当前流程入口到计算方法的真实调用路径，读取证据并在代码图展示。动态回调、缺失边和普通依赖请单独说明；不要把不相连片段拼成已验证执行链。
 
 > 从这个生命值字段查询静态读写引用，并展示相关方法及源码。明确这只是当前解析器可验证的读写范围，不代表完整运行时数据流。
 
@@ -73,7 +75,7 @@ Codex App 的 Settings → MCP servers → Add server 可配置本地 STDIO；�
 |---|---|
 | SERVICE_NOT_RUNNING / SERVICE_UNREACHABLE | 先启动网站，确认 MCP 与网站使用同一 config、端口和缓存。 |
 | SERVICE_IDENTITY / UNSAFE_RUNTIME | 不发送令牌。检查本工具缓存权限、链接路径或冲突端口；不要从网页手工复制令牌。 |
-| RUNTIME_IN_USE / RUNTIME_LOCKED | 同一缓存已有活实例或发布锁，服务拒绝覆盖凭据。先检查本工具进程与日志；崩溃遗留锁采取拒绝策略，确认所有相关实例已停止后才能清理工具缓存中的该锁。 |
+| RUNTIME_IN_USE / RUNTIME_LOCKED | 同一缓存已有活实例或发布锁，服务拒绝覆盖凭据。同主机且 PID 明确已退出的锁可自动恢复；活进程、未知或损坏记录保守拒绝。先检查进程与日志，仅在确认所有相关实例已停止后手工处理无法识别的旧锁。 |
 | STALE_SNAPSHOT / SOURCE_CHANGED | 重做 begin_analysis，重新搜索/检查证据；不要换 ID 强行提交旧分析。 |
 | AMBIGUOUS_SESSION / SESSION_NOT_ALLOWED | 在明确目标页面允许联动，列出并绑定该文档会话。 |
 | 版本冲突 / 用户手动浏览 | 停止旧控制请求。保留用户操作；确认新意图后才重新绑定/提交。 |

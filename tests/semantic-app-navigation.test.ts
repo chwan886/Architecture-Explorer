@@ -123,6 +123,9 @@ test('real App enters related semantic flow and returns with matching scope, cod
     assert.equal((container.querySelector('select[aria-label="选择语义流程"]') as unknown as HTMLSelectElement)?.value, flow.id);
     assert.ok(container.querySelector('.semantic-inspector')?.textContent?.includes(method.qualifiedName));
     assert.ok(container.querySelector('.semantic-related')?.textContent?.includes(detail.title));
+    assert.equal(workspace?.getAttribute('data-level'), 'detailed');
+    assert.equal(workspace?.getAttribute('data-expanded'), summary.id, 'reverse detail navigation must expand its matching parent');
+    assert.ok(container.querySelector(`.semantic-explanation-pane .react-flow__node[data-id="${detail.id}"]`), 'target detail is present on the actual explanation canvas');
     if (withSource) {
       assert.equal(container.querySelector('.semantic-source .source-location')?.getAttribute('data-evidence-id'), branch.id);
       assert.equal(container.querySelector('.semantic-source .source-location')?.getAttribute('data-node-id'), method.id);

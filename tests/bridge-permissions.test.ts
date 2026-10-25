@@ -3,7 +3,10 @@ import test from 'node:test';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { windowsRuntimeDaclIsPrivate } from '../apps/server/src/bridge-auth.ts';
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { BridgeFiles, BridgeIdentity, windowsRuntimeDaclIsPrivate } from '../apps/server/src/bridge-auth.ts';
+import { TOOL_ROOT, type LoadedConfig } from '../packages/indexer/src/config.ts';
+import { createPrivateBridgeFixture } from './fixtures/private-bridge.ts';
 
 test('native SDDL aliases permit only the same current SID; other users and administrator groups remain rejected', async () => {
   assert.equal(process.platform, 'win32', 'Runtime permission checks require the actual Windows SID parser');
@@ -33,4 +36,24 @@ test('native SDDL aliases permit only the same current SID; other users and admi
   assert.equal(await windowsRuntimeDaclIsPrivate(`D:(D;;FR;;;BU)(A;;FA;;;SY)(A;;FA;;;${current})`, current), true,
     'a known deny entry never adds another allowed principal');
   for (const sddl of ['invalid', 'D:', 'D:(A;;FA;;;not-a-SID)']) assert.equal(await windowsRuntimeDaclIsPrivate(sddl, current), false);
+});
+
+test('an actual explicit Administrators grant prevents publishing runtime credentials', async t => {
+  assert.equal(process.platform, 'win32', 'Runtime permission checks require actual Windows ACLs');
+  const execute = promisify(execFile), system = path.join(process.env.SystemRoot ?? 'C:/Windows', 'System32');
+  const base = path.join(TOOL_ROOT, '.tmp'); await mkdir(base, { recursive: true });
+  const ownedRoot = await mkdtemp(path.join(base, 'bridge-control-'));
+  t.after(() => rm(ownedRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 30 }));
+  const toolRoot = path.join(ownedRoot, 'tool'); await mkdir(toolRoot);
+  const config: LoadedConfig = { toolRoot, cacheDir: path.join(toolRoot, '.cache'), configPath: path.join(toolRoot, 'config.json'),
+    fingerprint: 'bridge-acl-fixture', port: 4310, projects: [] };
+  const files = new BridgeFiles(config);
+  const directory = await createPrivateBridgeFixture(ownedRoot, config);
+  await assert.rejects(createPrivateBridgeFixture(ownedRoot, config), { code: 'EEXIST' }, 'Fixture setup cannot reset an existing directory');
+  await execute(path.join(system, 'icacls.exe'), [directory, '/grant', '*S-1-5-32-544:(OI)(CI)R'], { windowsHide: true, timeout: 10000 });
+  const identity = new BridgeIdentity(files);
+  await assert.rejects(identity.publish(4310), { code: 'RUNTIME_PERMISSIONS' });
+  assert.equal(identity.published, false);
+  assert.equal(await files.read('runtime.json'), undefined);
+  assert.deepEqual(await readdir(directory), [], 'No credential, lock or audit file remains after rejection');
 });

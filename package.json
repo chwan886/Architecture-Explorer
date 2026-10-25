@@ -2,6 +2,7 @@
   "name": "architecture-explorer",
   "version": "0.1.0",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "engines": {
     "node": ">=22.12"
@@ -14,6 +15,8 @@
     "watch": "tsx apps/server/src/cli.ts watch",
     "verify-index": "tsx apps/server/src/cli.ts verify",
     "verify-semantics": "tsx Tools/verify-semantics.ts",
+    "seed-semantics": "tsx packages/semantic-content/seed.ts",
+    "validate-story": "tsx Tools/validate-story.ts",
     "audit-evidence": "tsx Tools/audit-evidence.ts",
     "test": "tsx --test tests/*.test.ts apps/web/src/*.test.ts apps/web/src/architecture/*.test.ts apps/web/src/semantics/*.test.ts apps/web/src/control/*.test.ts",
     "typecheck": "tsc --noEmit",

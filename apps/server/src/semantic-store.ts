@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { rename, unlink, writeFile } from 'node:fs/promises';
+import { withFileLock } from '../../../packages/indexer/src/file-lock.ts';
 import type { LoadedConfig } from '../../../packages/indexer/src/config.ts';
 import { authorizedFile, canonical, ensureCacheDirectory, isWithin, readAuthorized } from '../../../packages/indexer/src/security.ts';
 import { contentHash } from '../../../packages/schema/src/index.ts';
@@ -57,49 +58,45 @@ export class SemanticStore {
     const paths = this.paths(projectId, scopeId);
     const directory = await ensureCacheDirectory(path.dirname(paths.absolute), this.config.toolRoot);
     const lockPath = path.join(directory, `${path.basename(paths.absolute)}.lock`);
-    const token = `${process.pid}:${randomUUID()}`;
-    let lock;
-    try { lock = await open(lockPath, 'wx'); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw failure('另一个窗口或进程正在保存语义覆盖，请稍后重试', 409); throw error; }
-    const temporary = path.join(directory, `${path.basename(paths.absolute)}.${randomUUID()}.tmp`);
-    try {
-      await lock.writeFile(token); await lock.close();
-      const current = await this.read(projectId, scopeId);
-      if (expectedOverlayRevision !== current.overlayRevision) throw failure('语义覆盖已变化；保留草稿并重新读取后合并', 409);
-      const next = transform(structuredClone(current.overlay));
-      if (next.scopeId !== scopeId) throw failure('不能更换语义覆盖的授权 Scope', 403);
-      const changed = next.flowOverrides.filter(flow => {
-        const previous = current.overlay.flowOverrides.find(item => item.id === flow.id);
-        return !previous || semanticRevision(flow) !== semanticRevision(previous);
-      });
-      const removed = current.overlay.flowOverrides.filter(flow => !next.flowOverrides.some(item => item.id === flow.id));
-      const affected = [...new Set([...changed.map(flow => flow.id), ...removed.map(flow => flow.id),
-        ...next.reviews.filter(review => !current.overlay.reviews.some(previous => JSON.stringify(previous) === JSON.stringify(review))).map(review => review.flowId),
-        ...current.overlay.reviews.filter(review => !next.reviews.some(item => JSON.stringify(item) === JSON.stringify(review))).map(review => review.flowId)])];
-      const supersededIds = removed.flatMap(flow => [flow.id, ...flow.groups.map(group => group.id), ...flow.steps.map(step => step.id)]);
-      for (const flow of changed) {
-        const previous = current.effectiveFlows.find(item => item.id === flow.id);
-        if (previous) supersededIds.push(...previous.groups.filter(group => !flow.groups.some(item => item.id === group.id)).map(group => group.id));
+    return withFileLock({ toolRoot: this.config.toolRoot, lockPath, locked: () => failure('另一个窗口或进程正在保存语义覆盖，或锁的持有者无法验证，请稍后重试', 409) }, async () => {
+      const temporary = path.join(directory, `${path.basename(paths.absolute)}.${randomUUID()}.tmp`);
+      try {
+        const current = await this.read(projectId, scopeId);
+        if (expectedOverlayRevision !== current.overlayRevision) throw failure('语义覆盖已变化；保留草稿并重新读取后合并', 409);
+        const next = transform(structuredClone(current.overlay));
+        if (next.scopeId !== scopeId) throw failure('不能更换语义覆盖的授权 Scope', 403);
+        const changed = next.flowOverrides.filter(flow => {
+          const previous = current.overlay.flowOverrides.find(item => item.id === flow.id);
+          return !previous || semanticRevision(flow) !== semanticRevision(previous);
+        });
+        const removed = current.overlay.flowOverrides.filter(flow => !next.flowOverrides.some(item => item.id === flow.id));
+        const affected = [...new Set([...changed.map(flow => flow.id), ...removed.map(flow => flow.id),
+          ...next.reviews.filter(review => !current.overlay.reviews.some(previous => JSON.stringify(previous) === JSON.stringify(review))).map(review => review.flowId),
+          ...current.overlay.reviews.filter(review => !next.reviews.some(item => JSON.stringify(item) === JSON.stringify(review))).map(review => review.flowId)])];
+        const supersededIds = removed.flatMap(flow => [flow.id, ...flow.groups.map(group => group.id), ...flow.steps.map(step => step.id)]);
+        for (const flow of changed) {
+          const previous = current.effectiveFlows.find(item => item.id === flow.id);
+          if (previous) supersededIds.push(...previous.groups.filter(group => !flow.groups.some(item => item.id === group.id)).map(group => group.id));
+        }
+        // Audit history is store-owned. A client transform cannot erase or forge it.
+        next.history = [...current.overlay.history, { id: randomUUID(), at: new Date().toISOString(), operation: changed.length || removed.length ? 'edit-flow' : 'review',
+          flowId: affected[0] ?? current.effectiveFlows[0]?.id ?? 'document', previousRevision: current.overlayRevision, supersededIds: [...new Set(supersededIds)] }].slice(-100);
+        next.baseDefinitionRevision = current.definitionRevision;
+        validateDefinitions(current.definitions); validateOverlay(next);
+        try { await authorizedFile(this.config.toolRoot, paths.relative); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        // Revalidate ancestors before replacement; never traverse a junction for writes.
+        await ensureCacheDirectory(directory, this.config.toolRoot);
+        await writeFile(temporary, JSON.stringify(next, null, 2) + '\n', { flag: 'wx' });
+        if (beforeCommit) await beforeCommit();
+        const latest = await this.read(projectId, scopeId);
+        if (latest.definitionRevision !== current.definitionRevision) throw failure('基础解释在保存期间变化，请保留草稿并重新读取', 409);
+        if (latest.overlayRevision !== current.overlayRevision) throw failure('语义覆盖在保存期间变化，未替换现有文件', 409);
+        await rename(temporary, paths.absolute);
+        return await this.read(projectId, scopeId);
+      } finally {
+        await unlink(temporary).catch(() => {});
       }
-      // Audit history is store-owned. A client transform cannot erase or forge it.
-      next.history = [...current.overlay.history, { id: randomUUID(), at: new Date().toISOString(), operation: changed.length || removed.length ? 'edit-flow' : 'review',
-        flowId: affected[0] ?? current.effectiveFlows[0]?.id ?? 'document', previousRevision: current.overlayRevision, supersededIds: [...new Set(supersededIds)] }].slice(-100);
-      next.baseDefinitionRevision = current.definitionRevision;
-      validateDefinitions(current.definitions); validateOverlay(next);
-      try { await authorizedFile(this.config.toolRoot, paths.relative); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-      // Revalidate ancestors before replacement; never traverse a junction for writes.
-      await ensureCacheDirectory(directory, this.config.toolRoot);
-      await writeFile(temporary, JSON.stringify(next, null, 2) + '\n', { flag: 'wx' });
-      if (beforeCommit) await beforeCommit();
-      const latest = await this.read(projectId, scopeId);
-      if (latest.definitionRevision !== current.definitionRevision) throw failure('基础解释在保存期间变化，请保留草稿并重新读取', 409);
-      if (latest.overlayRevision !== current.overlayRevision) throw failure('语义覆盖在保存期间变化，未替换现有文件', 409);
-      await rename(temporary, paths.absolute);
-      return await this.read(projectId, scopeId);
-    } finally {
-      await lock.close().catch(() => {}); await unlink(temporary).catch(() => {});
-      if (await readFile(lockPath, 'utf8').catch(() => '') === token) await unlink(lockPath);
-    }
+    });
   }
 }

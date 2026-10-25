@@ -1,11 +1,13 @@
 # 证据审计与复核
 
-`Tools/audit-evidence.ts` 将已有索引、系统归属和语义解释放在同一源码快照中检查，生成可重复执行的只读审计报告。它不启动 GameDemo02、不调用扫描器、不修改游戏文件，也不会代替用户勾选“人工确认”。
+中文 | [English](en/EVIDENCE-AUDIT.md)
+
+`Tools/audit-evidence.ts` 将已有索引、系统归属和语义解释放在同一源码快照中检查，生成可重复执行的只读审计报告。它不执行分析目标、不调用扫描器、不修改目标文件，也不会代替用户勾选“人工确认”。
 
 在工具目录运行：
 
 ```powershell
-.\.tools\node-v24.22.0-win-x64\node.exe node_modules/tsx/dist/cli.mjs Tools/audit-evidence.ts --project game-demo-02 --worktree primary
+node node_modules/tsx/dist/cli.mjs Tools/audit-evidence.ts --config config/demo.json --project combat-demo --worktree primary
 ```
 
 可选参数：`--config` 选择工具配置，`--max-findings` 控制报告详情条数（默认 500，最多 10,000），`--max-items` 控制检查项预算（默认 1,000,000，最多 5,000,000）。Worktree 必须已被配置授权；格式仅允许 `primary` 或真实 `wt-<12 位哈希>`。
@@ -24,7 +26,7 @@
 | `csharp.delegate-invocation` / `unknown-runtime-target` | 委托调用槽或传递点已知，实际运行处理器集合未知 | 保留 references/passes；需要运行时证据才能确认处理器 |
 | `candidate-ownership` | 业务归属/系统职责尚未人工复核 | 与底层调用准确性分开，只有业务歧义需要用户裁定 |
 | `candidate-explanation` | 中文解释文字、步骤分组待复核 | 结合实现映射审查，不自动勾选确认 |
-| `source-supported-order` | 同一真实过程内前后源码锚点支持局部顺序 | 继续保留条件、循环、提前返回及异步限制 |
+| `source-supported-order` | 同一文件的有效完整行锚点支持叙述位置顺序 | 不证明执行顺序；继续保留条件、循环、提前返回及异步限制 |
 | `unverified-order` | 请求、协议、叙述或其他关系不能证明运行顺序 | 允许部分流程，不为图形连贯补线 |
 | `source-stale` / `anchor-stale` | 当前文件或锚点与保存快照不一致 | 先正常同步索引，再复核受影响解释 |
 | `missing-*` / `invalid-proof` / `invalid-path` | 存在缺失引用、悬空边或证据与确认状态冲突 | 修正索引/模型，不得沿用确认标记 |
@@ -40,7 +42,7 @@
 - 模型锚点的当前文件哈希、完整行 quote 和行范围；不能只更新哈希掩盖语义变化。
 - 系统/模块聚合的底层关系引用、业务流程步骤与关系映射。
 - 简洁/详细解释的实现节点、子步骤、证据及路径；调用路径必须由同方向连续真实 calls 组成，可信状态不能高于底层事实。
-- `static-confirmed` 流程转换必须由两端步骤对应的真实静态 calls 支撑。`source-supported` 顺序必须在同一真实方法/函数声明范围内拥有先后完整锚点。
+- `static-confirmed` 流程转换必须由两端步骤对应的真实静态 calls 支撑。`source-supported` 仅核验同一文件内哈希有效、范围合法且不重叠的先后完整行锚点，不要求同一过程，也不证明执行顺序。
 - 项目、Worktree、源码、模型及解释投影必须一致；报告记录解析器/Schema、Git HEAD、源码、模型、解释定义及人工覆盖版本。
 - 通过原有 `IndexManager`、`ArchitectureService` 和 `SemanticService` 读取已有授权快照并建立派生投影。扫描 worker 被禁用；不调用 `requestScan`、`watch`、`verify` 或目标程序。
 

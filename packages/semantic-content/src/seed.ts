@@ -1,74 +1,112 @@
-import type { ArchitectureIndex, ArchitectureNode } from '../../schema/src/index.ts';
-import type { ArchitectureModel, BusinessFlow } from '../../architecture-model/src/types.ts';
-import type { SemanticControl, SemanticDefinitions, SemanticFlowDefinition, SemanticText } from '../../semantic-model/src/types.ts';
-import { declarationHash } from '../../semantic-model/src/source.ts';
-import { candidateExplanations, candidateSummaryGroups } from './seed-explanations.ts';
+import { contentHash, type ArchitectureIndex, type ArchitectureNode } from '../../schema/src/index.ts';
+import { validateIndex } from '../../schema/src/validate.ts';
+import { validateModel } from '../../architecture-model/src/validation.ts';
+import type { ArchitectureModel, FlowStep, SourceAnchor, SymbolSelector } from '../../architecture-model/src/types.ts';
+import type { SemanticControl, SemanticDefinitions, SemanticText } from '../../semantic-model/src/types.ts';
+import { SEMANTIC_SCHEMA_VERSION } from '../../semantic-model/src/types.ts';
+import { validateDefinitions } from '../../semantic-model/src/validation.ts';
+import { declarationCandidates, normalize, type Declaration } from '../../semantic-model/src/source.ts';
+import { validateContentPack, type SemanticContentPack } from './seed-explanations.ts';
 
-const declarationRules = new Set(['csharp.declaration', 'csharp.lambda-declaration', 'python.declaration']);
 const unique = (values: string[]) => [...new Set(values)];
-const asyncKinds: Record<string, SemanticControl['kind']> = {
-  'claim-dispatch': 'async', 'claim-request': 'async', 'claim-http': 'request-boundary', 'claim-handler': 'request-boundary',
-  'claim-return': 'request-boundary', 'claim-display': 'async', 'battle-request': 'async', 'battle-http': 'request-boundary',
-  'battle-route': 'request-boundary', 'battle-next-poll': 'request-boundary', 'battle-poll-execute': 'request-boundary',
-  'battle-response': 'request-boundary', 'battle-decode': 'async', 'battle-full-state': 'request-boundary', 'battle-view': 'async', 'battle-hud': 'async',
-};
-const earlyReturnSteps = new Set(['claim-execute', 'claim-return', 'claim-prepare-call', 'claim-check', 'battle-route', 'battle-decode', 'battle-prepare']);
-function resolve(index: ArchitectureIndex, flow: BusinessFlow, stepId: string): ArchitectureNode {
-  const step = flow.steps.find(item => item.id === stepId)!;
-  const selector = step.selector;
-  if (!selector?.qualifiedName) throw new Error(`种子步骤需要精确符号选择器：${stepId}`);
-  const matches = index.nodes.filter(node => node.qualifiedName === selector.qualifiedName && !!node.filePath
-    && (!selector.filePath || selector.filePath === node.filePath) && (!selector.language || selector.language === node.language)
-    && (!selector.kinds || selector.kinds.includes(node.kind)));
-  if (matches.length !== 1 || !['method', 'function'].includes(matches[0].kind)) throw new Error(`实现符号不唯一或不是过程：${stepId}`);
-  return matches[0];
+const note = 'Rule seed: existing model and explicit declaration bindings only. Descriptions and control annotations remain pending review; no new code relationships or runtime order are established.';
+
+function matches(node: ArchitectureNode, selector: SymbolSelector): boolean {
+  const prefix = selector.filePathPrefix?.replace(/\/$/, '');
+  return node.qualifiedName === selector.qualifiedName && !!node.filePath
+    && (!selector.filePath || selector.filePath === node.filePath)
+    && (!selector.language || selector.language === node.language)
+    && (!selector.kinds || selector.kinds.includes(node.kind))
+    && (!selector.qualifiedNamePrefix || node.qualifiedName.startsWith(selector.qualifiedNamePrefix))
+    && (!prefix || node.filePath === prefix || node.filePath.startsWith(prefix + '/'));
+}
+function resolve(index: ArchitectureIndex, step: FlowStep): ArchitectureNode | undefined {
+  if (!step.selector) return undefined;
+  if (!step.selector.qualifiedName) throw new Error(`Seed requires an exact qualifiedName selector: ${step.id}`);
+  const nodes = index.nodes.filter(node => matches(node, step.selector!));
+  if (nodes.length !== 1 || !['method', 'function'].includes(nodes[0].kind)) throw new Error(`Implementation must resolve to one procedure: ${step.id}`);
+  return nodes[0];
+}
+function local(anchor: SourceAnchor, declaration: Declaration, source: string): boolean {
+  const range = declaration.evidence;
+  if (anchor.filePath !== range.filePath || anchor.startLine < range.startLine || anchor.endLine > range.endLine) return false;
+  const lines = normalize(source).split('\n');
+  // Anchors quote complete lines; a neighboring declaration on the same line
+  // cannot become local proof merely because its line numbers overlap.
+  return (anchor.startLine !== range.startLine || !lines[range.startLine - 1].slice(0, range.startColumn - 1).trim())
+    && (anchor.endLine !== range.endLine || !lines[range.endLine - 1].slice(range.endColumn - 1).trim());
+}
+function text(step: FlowStep): SemanticText {
+  const description = step.description || step.name;
+  return { title: step.name, summary: description, purpose: description, detail: `${description}\n\n${note}`,
+    inputs: [...step.reads], processing: [description], outputs: [...step.writes], changes: [...step.writes] };
 }
 
-/** Initial curated artifact builder. It consumes current index/source, never scans or executes target code. */
-export function buildCandidateDefinitions(index: ArchitectureIndex, architecture: ArchitectureModel, sourceTexts: Record<string, string>): SemanticDefinitions {
-  if (index.metadata.projectId !== architecture.projectId) throw new Error('种子索引与业务模型项目不一致');
-  const evidence = new Map(index.evidence.map(item => [item.id, item]));
-  const anchors = new Map(architecture.anchors.map(anchor => [anchor.id, anchor]));
-  const flows: SemanticFlowDefinition[] = [];
-  for (const sourceFlowId of ['claim-reserve', 'battle-start-poll-result']) {
-    const flow = architecture.flows.find(item => item.id === sourceFlowId);
-    if (!flow) throw new Error(`缺少已授权的原始流程：${sourceFlowId}`);
-    const steps = flow.steps.map(step => {
-      const text = candidateExplanations[step.id];
-      if (!text) throw new Error(`步骤没有离线候选说明：${step.id}`);
-      const node = resolve(index, flow, step.id);
-      const expectedDeclarationHash = declarationHash(index, node.id, sourceTexts);
-      if (!expectedDeclarationHash) throw new Error(`没有唯一、可验证的过程声明文本：${step.id}`);
-      const declaration = node.evidenceIds.map(id => evidence.get(id)!).filter(item => item && declarationRules.has(item.rule));
-      const localAnchorIds = step.anchorIds.filter(id => {
-        const anchor = anchors.get(id)!;
-        return declaration.some(item => item.filePath === anchor.filePath && item.startLine <= anchor.startLine && item.endLine >= anchor.endLine);
-      });
-      // Some existing flow anchors describe the caller or containing class only.
-      // Do not mislabel them as callee-local proof: precise declaration evidence
-      // and expectedDeclarationHash still bind that implementation directly.
-      const controls: SemanticControl[] = [];
-      if (text.conditions.length) controls.push({ kind: 'condition', description: text.conditions.join('；'), anchorIds: localAnchorIds });
-      if (asyncKinds[step.id]) controls.push({ kind: asyncKinds[step.id], description: text.asyncBoundaries.join('；') || '本阶段存在异步或独立请求边界。', anchorIds: localAnchorIds });
-      if (earlyReturnSteps.has(step.id)) controls.push({ kind: 'early-return', description: '错误、重放、过旧响应或保护条件可能提前返回；详见原始步骤与源码。', anchorIds: localAnchorIds });
-      if (['claim-transfer', 'battle-advance', 'battle-step'].includes(step.id)) controls.push({ kind: 'loop', description: step.id === 'claim-transfer' ? '按资源类型逐项领取整数储量。' : '按固定步预算或本步待处理对象迭代；不代表无限后台循环。', anchorIds: localAnchorIds });
-      const extra = text.asyncBoundaries.length ? `\n\n边界：${text.asyncBoundaries.join('；')}` : '';
-      return { id: step.id, title: step.name, summary: text.purpose, purpose: text.purpose,
-        detail: `${step.description}\n\n${text.processing.join('；')}${extra}`, inputs: [...text.inputs], processing: [...text.processing], outputs: [...text.outputs], changes: [...text.stateChanges],
-        sourceStepIds: [step.id], bindings: [{ id: `${step.id}-implementation`, sourceStepId: step.id,
-          selector: { language: node.language, kinds: [node.kind], qualifiedName: node.qualifiedName, filePath: node.filePath! }, role: 'implementation' as const,
-          anchorIds: localAnchorIds, expectedDeclarationHash }], controls, origin: 'curated' as const };
-    });
-    const groups = candidateSummaryGroups.filter(group => group.flowId === flow.id).map(group => {
-      const children = group.stepIds.map(id => steps.find(step => step.id === id)!);
-      if (children.some(child => !child)) throw new Error(`摘要组引用缺失步骤：${group.id}`);
-      const text: SemanticText = { title: group.title, summary: group.purpose, purpose: group.purpose,
-        detail: `${children.map(child => child.summary).join('；')}\n\n本摘要只折叠已有步骤；组内条件、提前返回及异步边界仍保留在详细层，不新增已验证顺序。`,
-        inputs: unique(children.flatMap(child => child.inputs)), processing: children.map(child => child.summary),
-        outputs: unique(children.flatMap(child => child.outputs)), changes: unique(children.flatMap(child => child.changes)) };
-      return { ...text, id: group.id, childIds: [...group.stepIds], origin: 'curated' as const };
-    });
-    flows.push({ id: flow.id, sourceFlowId: flow.id, title: flow.name, description: flow.description, groups, steps });
+/** Pure builder. A content pack changes presentation only, never source mapping
+ * or confirmation state. Source text is read by the caller and never executed. */
+export function buildCandidateDefinitions(index: ArchitectureIndex, architecture: ArchitectureModel, sourceTexts: Record<string, string>, pack?: SemanticContentPack): SemanticDefinitions {
+  validateIndex(index); validateModel(architecture);
+  if (index.metadata.projectId !== architecture.projectId) throw new Error('Index and architecture project do not match');
+  if (pack) {
+    validateContentPack(pack);
+    if (pack.projectId && pack.projectId !== architecture.projectId) throw new Error('Content pack project does not match');
+    if (pack.flows.some(adapter => !architecture.flows.some(flow => flow.id === adapter.sourceFlowId))) throw new Error('Content pack references an unknown flow');
   }
-  return { schemaVersion: '1.0.0', projectId: architecture.projectId, flows };
+  const files = new Map(index.files.map(file => [file.path, file.hash]));
+  const anchors = new Map(architecture.anchors.map(anchor => [anchor.id, anchor]));
+  const checked = new Set<string>();
+  const checkAnchor = (id: string): SourceAnchor => {
+    const anchor = anchors.get(id)!;
+    if (!checked.has(id)) {
+      const source = sourceTexts[anchor.filePath];
+      if (source === undefined || files.get(anchor.filePath) !== anchor.expectedFileHash || contentHash(source) !== anchor.expectedFileHash)
+        throw new Error(`Anchor source is missing or stale: ${id}`);
+      const lines = normalize(source).split('\n');
+      if (anchor.endLine > lines.length || lines.slice(anchor.startLine - 1, anchor.endLine).join('\n') !== normalize(anchor.quote))
+        throw new Error(`Anchor quote does not match current full lines: ${id}`);
+      checked.add(id);
+    }
+    return anchor;
+  };
+  const definitions: SemanticDefinitions = { schemaVersion: SEMANTIC_SCHEMA_VERSION, projectId: architecture.projectId, flows: architecture.flows.map(flow => {
+    const adapter = pack?.flows.find(item => item.sourceFlowId === flow.id);
+    if (adapter?.steps?.some(item => !flow.steps.some(step => step.id === item.sourceStepId))) throw new Error(`Content pack references an unknown step: ${flow.id}`);
+    const steps = flow.steps.map(step => {
+      const authored = adapter?.steps?.find(item => item.sourceStepId === step.id);
+      const node = resolve(index, step);
+      const declarations = node ? declarationCandidates(index, node.id, sourceTexts) : [];
+      if (node && declarations.length !== 1) throw new Error(`Missing or ambiguous current declaration: ${step.id}`);
+      const declaration = declarations[0];
+      const localAnchorIds = step.anchorIds.filter(id => {
+        const anchor = checkAnchor(id);
+        return !declaration || local(anchor, declaration, sourceTexts[anchor.filePath]);
+      });
+      const controls: SemanticControl[] = step.condition ? [{ kind: 'condition', description: step.condition, anchorIds: [...localAnchorIds] }] : [];
+      for (const control of authored?.controls ?? []) {
+        const anchorIds = control.anchorIds ?? localAnchorIds;
+        if (anchorIds.some(id => !localAnchorIds.includes(id))) throw new Error(`Control anchor is outside the current step declaration: ${step.id}`);
+        controls.push({ kind: control.kind, description: control.description, anchorIds: [...anchorIds] });
+      }
+      return { ...text(step), ...structuredClone(authored?.text ?? {}), id: step.id, sourceStepIds: [step.id],
+        bindings: node ? [{ id: `implementation-${contentHash(step.id).slice(0, 24)}`, sourceStepId: step.id,
+          selector: { language: node.language, kinds: [node.kind], qualifiedName: node.qualifiedName, filePath: node.filePath! }, role: 'implementation' as const,
+          anchorIds: [...localAnchorIds], expectedDeclarationHash: declaration.hash }] : [], controls, origin: 'rule-generated' as const };
+    });
+    let defaultGroup = 'seed-summary', groupOrdinal = 0;
+    while (steps.some(step => step.id === defaultGroup)) defaultGroup = `seed-summary-${++groupOrdinal}`;
+    const groups = adapter?.groups ?? (steps.length ? [{ id: defaultGroup, stepIds: steps.map(step => step.id) }] : []);
+    return { id: flow.id, sourceFlowId: flow.id, title: adapter?.title ?? flow.name, description: adapter?.description ?? flow.description,
+      steps, groups: groups.map(group => {
+        const children = group.stepIds.map(id => steps.find(step => step.id === id));
+        if (children.some(child => !child)) throw new Error(`Summary group references an unknown step: ${group.id}`);
+        const present = children.filter(child => !!child);
+        const summary = flow.description || flow.name;
+        const defaults: SemanticText = { title: flow.name, summary, purpose: summary, detail: `${summary}\n\n${note}`,
+          inputs: unique(present.flatMap(child => child.inputs)), processing: present.map(child => child.summary),
+          outputs: unique(present.flatMap(child => child.outputs)), changes: unique(present.flatMap(child => child.changes)) };
+        return { ...defaults, ...structuredClone(group.text ?? {}), id: group.id, childIds: [...group.stepIds], origin: 'rule-generated' as const };
+      }) };
+  }) };
+  validateDefinitions(definitions);
+  return definitions;
 }

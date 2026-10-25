@@ -4,12 +4,14 @@ dist/
 .tools/
 .tmp/
 config/local.json
+config/*.local.json
+**/.env
+**/.env.*
+!**/.env.example
 **/bin/
 **/obj/
 test-results/
-.ci-output/
-.ci-references/
-.ci-release/
+.release/
 *.log
 
 # Keep locally extracted analysis artifacts out of source control.

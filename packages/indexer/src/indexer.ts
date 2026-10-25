@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { mkdir, open, readFile, readdir, rename, unlink, writeFile, realpath } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, unlink, writeFile, realpath } from 'node:fs/promises';
+import { withFileLock } from './file-lock.ts';
 import chokidar, { type FSWatcher } from 'chokidar';
 import {
   ANALYZER_VERSION, SCHEMA_VERSION, contentHash, fileId, stableId,
@@ -281,21 +282,12 @@ export class IndexManager extends EventEmitter {
   private async perform(scope: ScopeRuntime, full: boolean): Promise<void> {
     const resolved = await ensureCacheDirectory(scope.cachePath, this.config.toolRoot);
     if (!isWithin(this.config.cacheDir, resolved)) throw new AccessError('缓存子目录指向授权缓存外部');
-    const lockPath = path.join(resolved, 'scan.lock'); const token = `${process.pid}:${randomUUID()}`;
-    let lock;
-    try { lock = await open(lockPath, 'wx'); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new Error('此工作目录已有其他扫描进程持有缓存锁；保留上次有效索引。若进程已异常退出，关闭全部工具进程后仅移除此工具缓存中的 scan.lock。');
-      throw error;
-    }
-    try {
-      await lock.writeFile(token); await lock.close();
+    const lockPath = path.join(resolved, 'scan.lock');
+    return withFileLock({ toolRoot: this.config.toolRoot, lockPath,
+      locked: () => new Error('此工作目录已有其他扫描进程持有缓存锁，或锁的持有者无法验证；保留上次有效索引。') }, async () => {
       if (full) this.workerPool?.invalidate(scope.id);
       await this.performLocked(scope, full);
-    } finally {
-      await lock.close().catch(() => {});
-      if (await readFile(lockPath, 'utf8').catch(() => '') === token) await unlink(lockPath);
-    }
+    });
   }
 
   private async performLocked(scope: ScopeRuntime, full: boolean): Promise<void> {

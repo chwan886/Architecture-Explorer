@@ -9,6 +9,40 @@ import { runWorker } from '../packages/indexer/src/workers.ts';
 import { contentHash } from '../packages/schema/src/index.ts';
 import type { ArchitectureModel, ArchitectureView, ModelEnvelope, OwnershipResult } from '../packages/architecture-model/src/types.ts';
 
+test('model writes refuse any overlap with an authorized analysis target', async () => {
+  const f = await fixture();
+  try {
+    const saved = await f.install();
+    const file = path.join(f.tool, 'architecture/models/api-fixture/model.json');
+    const bytes = await readFile(file, 'utf8');
+    f.config.projects[0].worktrees = [...(f.config.projects[0].worktrees ?? []), path.dirname(file)];
+    const response = await f.put({ ...f.model, name: 'must not write into target' }, saved.modelRevision);
+    assert.equal(response.statusCode, 403, response.body);
+    assert.equal(await readFile(file, 'utf8'), bytes);
+  } finally { await f.close(); }
+});
+
+test('model persistence rejects serialized expansion before replacing the last readable model', async () => {
+  const f = await fixture();
+  try {
+    const previous = await f.install();
+    const large: ArchitectureModel = { schemaVersion: '1.0.0', projectId: 'api-fixture', name: 'Size boundary', modules: [], memberships: [], anchors: [], flows: [], reviews: [],
+      systems: Array.from({ length: 80 }, (_, i) => ({ id: `system-${i}`, name: 'a', responsibility: 'a', kind: 'business', anchorIds: [],
+        features: Array(256).fill('a'), inputs: Array(256).fill('a'), outputs: Array(256).fill('a'), keyData: Array(256).fill('a') })) };
+    assert.ok(Buffer.byteLength(JSON.stringify({ model: large, expectedRevision: previous.modelRevision })) < 512 * 1024);
+    assert.ok(Buffer.byteLength(JSON.stringify(large, null, 2) + '\n') > 1024 * 1024);
+    const rejected = await f.put(large, previous.modelRevision);
+    assert.equal(rejected.statusCode, 413, rejected.body.slice(0, 300));
+    assert.deepEqual(await f.envelope(), previous, 'oversized serialization must not destroy the last readable model');
+    large.systems = large.systems.slice(0, 40);
+    large.name = '有效模型🙂';
+    const accepted = await f.put(large, previous.modelRevision);
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    assert.deepEqual((await f.envelope()).model, large, 'accepted UTF-8 models must round-trip through the same read budget');
+    assert.deepEqual(JSON.parse(await readFile(path.join(f.tool, 'architecture/models/api-fixture/model.json'), 'utf8')), large);
+  } finally { await f.close(); }
+});
+
 // Explicit API fixtures are confined to the tool's .tmp directory. These tests
 // exercise real Fastify routes, persistence, IndexManager and the Python parser.
 const source = 'def apply(amount):\n    return reward(amount)\n\ndef reward(value):\n    return value\n';

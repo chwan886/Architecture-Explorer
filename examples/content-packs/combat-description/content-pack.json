@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "combat-demo",
+  "flows": [
+    {
+      "sourceFlowId": "apply-damage",
+      "title": "演示：回合伤害处理",
+      "steps": [
+        {
+          "sourceStepId": "step-1",
+          "text": {
+            "summary": "读取当前生命值并计算本次伤害。",
+            "purpose": "把计算规则与状态应用分别解释。"
+          }
+        },
+        {
+          "sourceStepId": "step-2",
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "伤害值为正时更新生命值；这段候选说明仍需人工复核。",
+              "anchorIds": ["source-2"]
+            }
+          ]
+        }
+      ],
+      "groups": [
+        {
+          "id": "demo-calculation",
+          "stepIds": ["step-0", "step-1", "step-2"],
+          "text": {
+            "title": "伤害计算与状态应用",
+            "summary": "折叠三个已有步骤，保留底层调用关系与条件。"
+          }
+        }
+      ]
+    }
+  ]
+}

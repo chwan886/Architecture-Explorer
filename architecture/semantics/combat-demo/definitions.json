@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "combat-demo",
+  "flows": [
+    {
+      "id": "apply-damage",
+      "sourceFlowId": "apply-damage",
+      "title": "回合伤害处理",
+      "description": "业务解释与真实 C# 调用对照；未运行游戏。",
+      "groups": [
+        {
+          "id": "group-0",
+          "title": "接收回合伤害",
+          "summary": "接收回合输入，调用明确的伤害入口。",
+          "purpose": "接收回合输入，调用明确的伤害入口。",
+          "detail": "接收回合伤害：Demo.BattleService.StartTurn(Demo.Actor, int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "接收回合输入，调用明确的伤害入口。"
+          ],
+          "outputs": [
+            "伤害处理结果"
+          ],
+          "changes": [],
+          "childIds": [
+            "detail-0"
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "group-1",
+          "title": "应用伤害规则",
+          "summary": "计算伤害与生命值下限，保留语言边界。",
+          "purpose": "计算伤害与生命值下限，保留语言边界。",
+          "detail": "应用伤害规则：Demo.DamageCalculator.Apply(Demo.Actor, int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "计算伤害与生命值下限，保留语言边界。"
+          ],
+          "outputs": [
+            "伤害处理结果"
+          ],
+          "changes": [],
+          "childIds": [
+            "detail-1"
+          ],
+          "origin": "curated"
+        },
+        {
+          "id": "group-2",
+          "title": "更新角色生命",
+          "summary": "维护角色生命值，提供受条件保护的变更。",
+          "purpose": "维护角色生命值，提供受条件保护的变更。",
+          "detail": "更新角色生命：Demo.Actor.TakeDamage(int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "维护角色生命值，提供受条件保护的变更。"
+          ],
+          "outputs": [
+            "变更后的 Health"
+          ],
+          "changes": [
+            "Health 在 amount > 0 时减少，下限为 0。"
+          ],
+          "childIds": [
+            "detail-2"
+          ],
+          "origin": "curated"
+        }
+      ],
+      "steps": [
+        {
+          "id": "detail-0",
+          "title": "接收回合伤害",
+          "summary": "接收回合输入，调用明确的伤害入口。",
+          "purpose": "接收回合输入，调用明确的伤害入口。",
+          "detail": "接收回合伤害：Demo.BattleService.StartTurn(Demo.Actor, int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "接收回合输入，调用明确的伤害入口。"
+          ],
+          "outputs": [
+            "伤害处理结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "step-0"
+          ],
+          "bindings": [
+            {
+              "id": "binding-0",
+              "sourceStepId": "step-0",
+              "selector": {
+                "qualifiedName": "Demo.BattleService.StartTurn(Demo.Actor, int)",
+                "filePath": "BattleService.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "source-0"
+              ],
+              "expectedDeclarationHash": "0fa9a650f29116658ec3c3bd877803ddbd17d7a309dd4180ea02261a2ac79af4"
+            }
+          ],
+          "controls": [],
+          "origin": "curated"
+        },
+        {
+          "id": "detail-1",
+          "title": "应用伤害规则",
+          "summary": "计算伤害与生命值下限，保留语言边界。",
+          "purpose": "计算伤害与生命值下限，保留语言边界。",
+          "detail": "应用伤害规则：Demo.DamageCalculator.Apply(Demo.Actor, int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "计算伤害与生命值下限，保留语言边界。"
+          ],
+          "outputs": [
+            "伤害处理结果"
+          ],
+          "changes": [],
+          "sourceStepIds": [
+            "step-1"
+          ],
+          "bindings": [
+            {
+              "id": "binding-1",
+              "sourceStepId": "step-1",
+              "selector": {
+                "qualifiedName": "Demo.DamageCalculator.Apply(Demo.Actor, int)",
+                "filePath": "DamageCalculator.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "source-1"
+              ],
+              "expectedDeclarationHash": "044fc47c10de67ae1d5006bffcdeb4d8a6249d89cb03fa546f9fb1dd25779f21"
+            }
+          ],
+          "controls": [],
+          "origin": "curated"
+        },
+        {
+          "id": "detail-2",
+          "title": "更新角色生命",
+          "summary": "维护角色生命值，提供受条件保护的变更。",
+          "purpose": "维护角色生命值，提供受条件保护的变更。",
+          "detail": "更新角色生命：Demo.Actor.TakeDamage(int)。点击代码或源码证据核对静态实现。",
+          "inputs": [
+            "角色 target",
+            "伤害 amount"
+          ],
+          "processing": [
+            "维护角色生命值，提供受条件保护的变更。"
+          ],
+          "outputs": [
+            "变更后的 Health"
+          ],
+          "changes": [
+            "Health 在 amount > 0 时减少，下限为 0。"
+          ],
+          "sourceStepIds": [
+            "step-2"
+          ],
+          "bindings": [
+            {
+              "id": "binding-2",
+              "sourceStepId": "step-2",
+              "selector": {
+                "qualifiedName": "Demo.Actor.TakeDamage(int)",
+                "filePath": "Actor.cs"
+              },
+              "role": "implementation",
+              "anchorIds": [
+                "source-2"
+              ],
+              "expectedDeclarationHash": "a13753c07290adfcce8dcbe3b53d0d10dc1a4487cd053b5db36704b7f4d08b43"
+            }
+          ],
+          "controls": [
+            {
+              "kind": "condition",
+              "description": "仅在 amount > 0 时写入 Health；方法调用本身不受此条件限制。",
+              "anchorIds": ["source-2"]
+            }
+          ],
+          "origin": "curated"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # 本地查询与展示协议
 
+[简体中文](README.md) | [English](README.en.md)
+
 公共类型由 `src/types.ts` 定义。`presentation.schema.json` 严格限制未知字段、引用格式、文字长度、数组和载荷预算；`src/index.ts` 导出 `presentationSchema`、`entityRefSchema`、`validatePresentation`、`validateEntityRef` 和带 `code/statusCode` 的 `controlError`。
 
 `AnalysisPresentation` 只表达展示意图，不是新的分析事实。`semantic` 引用必须带 `flowId`；引用究竟是节点还是边由字段语境决定，并由服务端查询真实快照验证。业务实体逻辑 ID 保留在原意图内，`ResolvedPresentation.highlights.architecture*` 转为实际画布 ID。

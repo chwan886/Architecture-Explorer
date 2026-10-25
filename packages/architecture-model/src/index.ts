@@ -1,8 +1,10 @@
 import { contentHash, stableId, type ArchitectureIndex, type ArchitectureNode, type ArchitectureEdge, type Evidence, type EdgeKind, type Confidence } from '../../schema/src/index.ts';
 import { graph as sourceGraph } from '../../indexer/src/graph.ts';
 import { canonicalJson, modelRevision, validateModel } from './validation.ts';
+import { hasSourcePositionSupport } from './source-order.ts';
 import { MODEL_SCHEMA_VERSION, PROJECTION_VERSION, type ArchitectureModel, type ArchitectureProjection, type ArchitectureView, type ArchitectureEntityDetail, type RelationMembers, type OwnershipResult, type SymbolSelector, type ReviewState, type ResolvedEntity, type ResolvedMembership, type OwnershipEntry, type ProjectedRelation, type RelationCategory, type ResolvedBusinessFlow, type ReviewDecision, type Perspective, type ArchitectureDiagnostic } from './types.ts';
 export { validateModel, modelRevision, MODEL_SCHEMA_VERSION, PROJECTION_VERSION };
+export { hasSourcePositionSupport };
 export type * from './types.ts';
 
 const categories: RelationCategory[] = ['dependency', 'call', 'interface', 'data-access', 'event', 'resource', 'initialization'];
@@ -217,6 +219,7 @@ export function buildProjection(index: ArchitectureIndex, model: ArchitectureMod
   for (const edge of index.edges) { const entries = ctx.outgoing.get(edge.source) ?? []; entries.push(edge); ctx.outgoing.set(edge.source, entries); }
   const diagnostics: ArchitectureDiagnostic[] = [];
   const diagnostic = (code: string, message: string, targetId?: string) => diagnostics.push({ id: stableId(index.metadata.scopeId, 'architecture-diagnostic', `${code}|${targetId ?? ''}|${message}`), code, message, targetId, severity: 'warning' });
+  const modelAnchors = new Map(model.anchors.map(anchor => [anchor.id, anchor]));
   for (const anchor of model.anchors) {
     const currentHash = ctx.files.get(anchor.filePath);
     const valid = currentHash === anchor.expectedFileHash;
@@ -312,12 +315,9 @@ export function buildProjection(index: ArchitectureIndex, model: ArchitectureMod
       if (transition.basis === 'static-call' && from.resolution !== 'ambiguous' && to.resolution !== 'ambiguous') for (const id of from.nodeIds)
         for (const edge of ctx.outgoing.get(id) ?? []) if (edge.kind === 'calls' && targets.has(edge.target) && edge.confidence === 'static-confirmed') calls.push(edge);
       const transitionAnchors = transition.anchorIds.map(id => ctx.anchors.get(id)!).filter(a => a.valid && a.evidence).map(a => a.evidence!);
-      const sourceAnchors = from.anchorIds.flatMap(id => ctx.anchors.get(id)?.evidence ?? []);
-      const targetAnchors = to.anchorIds.flatMap(id => ctx.anchors.get(id)?.evidence ?? []);
-      const transitionEvidenceIds = new Set(transitionAnchors.map(e => e.id));
-      const ordered = sourceAnchors.some(a => transitionEvidenceIds.has(a.id) && targetAnchors.some(b => transitionEvidenceIds.has(b.id) && a.filePath === b.filePath && a.endLine < b.startLine));
+      const ordered = hasSourcePositionSupport(ctx.files, modelAnchors, transition, from, to);
       const verification = transition.basis === 'static-call' && calls.length ? 'static-confirmed' as const
-        : transition.basis === 'source-order' && transitionAnchors.length > 0 && transitionAnchors.length === transition.anchorIds.length && ordered ? 'source-supported' as const : 'unverified' as const;
+        : ordered ? 'source-supported' as const : 'unverified' as const;
       if (transition.basis === 'static-call' && !calls.length) diagnostic('flow-call-unverified', '流程步骤之间没有当前索引确认的真实 calls 边；顺序未验证。', transition.id);
       if (transition.basis === 'source-order' && verification === 'unverified') diagnostic('flow-order-unverified', '源码顺序缺少当前有效的同文件双端锚点；未按行号猜测执行顺序。', transition.id);
       return { ...transition, memberEdgeIds: sorted(calls.map(e => e.id)), evidenceIds: unique([...transitionAnchors.map(e => e.id), ...calls.flatMap(e => e.evidenceIds)]), verification,

@@ -84,6 +84,8 @@ export interface SemanticDefinitionEnvelope {
   definitions: SemanticDefinitions; overlay: SemanticOverlay; definitionRevision: string; overlayRevision: string;
   effectiveFlows: SemanticFlowDefinition[];
 }
+/** Editor responses pin the source/model/view baseline to the returned definitions and overlay. */
+export interface SemanticEditorEnvelope extends SemanticDefinitionEnvelope { metadata: SemanticMetadata }
 export interface SemanticBuildOptions { sourceTexts?: Record<string, string>; previous?: SemanticProjection }
 export interface SemanticLocation { flowId?: string; mode?: SemanticMode; level?: SemanticLevel; nodeId?: string; codeNodeId?: string; codeEdgeId?: string }
 export interface SemanticReverseMatch { flowId: string; flowTitle: string; nodeIds: string[]; edgeIds: string[] }

@@ -1,6 +1,8 @@
 # 双层语义架构图
 
-在顶部打开「业务流程」。保留「领取驻守储量」和「开战→后续轮询→战斗结果」，并补充飞剑命中、锻造与穿戴、修炼与突破、探矿推进和事务保存五条源码流程，默认从简洁中文解释开始。独立请求和互斥分支不会被当成确定顺序；详见[源码复核记录](GAME-EVIDENCE-REVIEW.md)。「原始流程证据」仍可打开泳道证据板；系统总览、技术分层和原代码地图继续使用原有索引与界面。
+中文 | [English](en/SEMANTIC-GUIDE.md)
+
+在顶部打开「业务流程」，查看当前项目模型定义的流程，默认从简洁中文解释开始。仓库演示自带一个计算与状态应用流程；其他项目无需沿用演示的名称、步骤或数量。独立请求和互斥分支不会被当成确定顺序。「原始流程证据」仍可打开泳道证据板；系统总览、技术分层和代码地图共享同一索引。
 
 ## 看懂流程并追溯代码
 
@@ -42,4 +44,4 @@ pnpm verify-semantics
 powershell -ExecutionPolicy Bypass -File Tools/explorer.ps1 -Task Dev
 ```
 
-使用便携 Node 时，`pnpm verify-semantics` 的等价命令是 `.tools/node-v24.22.0-win-x64/node.exe node_modules/tsx/dist/cli.mjs Tools/verify-semantics.ts`。此命令读取已有授权索引及源码，核对映射和路径，输出步骤/关系/待复核数量；没有缓存时先执行既有 Scan 命令。所有测试变更均发生在工具 `.tmp` 夹具中，不修改 GameDemo02。
+使用便携 Node 时，`pnpm verify-semantics` 的等价命令是 `.tools/node-v24.22.0-win-x64/node.exe node_modules/tsx/dist/cli.mjs Tools/verify-semantics.ts`。此命令读取已有授权索引及源码，核对映射和路径，输出步骤/关系/待复核数量；没有缓存时先执行 Scan 命令。所有测试变更均发生在工具 `.tmp` 合成夹具中，无需任何外部私有项目。

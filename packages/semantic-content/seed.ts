@@ -1,39 +1,34 @@
-import assert from 'node:assert/strict';
 import path from 'node:path';
-import { open } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { loadConfig } from '../indexer/src/config.ts';
-import { canonical, createFilePolicy, ensureCacheDirectory, readAuthorized } from '../indexer/src/security.ts';
-import { contentHash } from '../schema/src/index.ts';
-import { validateIndex } from '../schema/src/validate.ts';
-import { validateModel } from '../architecture-model/src/index.ts';
-import { validateDefinitions } from '../semantic-model/src/validation.ts';
-import { buildCandidateDefinitions } from './src/seed.ts';
+import { seedSemanticDefinitions } from './src/import.ts';
 
-const config = await loadConfig();
-const projectId = process.argv[2] ?? 'game-demo-02';
-const project = config.projects.find(item => item.id === projectId);
-assert.ok(project, '项目没有配置授权');
-const scopeId = `${projectId}:primary`;
-const key = contentHash(scopeId + '|' + canonical(project.root)).slice(0, 24);
-const decoder = new TextDecoder('utf-8', { fatal: true });
-const index: unknown = JSON.parse(decoder.decode(await readAuthorized(config.toolRoot, path.relative(config.toolRoot, path.join(config.cacheDir, key, 'lastgood.json')).replaceAll('\\', '/'), 256 * 1024 * 1024)));
-validateIndex(index);
-assert.equal(index.metadata.scopeId, scopeId);
-assert.equal(canonical(index.metadata.rootPath), canonical(project.root));
-assert.equal(index.metadata.configFingerprint, contentHash(config.fingerprint + '|' + scopeId), '配置已变化，请先同步索引');
-const model: unknown = JSON.parse(decoder.decode(await readAuthorized(config.toolRoot, `architecture/models/${projectId}/model.json`)));
-validateModel(model);
-const paths = new Set(model.flows.flatMap(flow => flow.steps.flatMap(step => index.nodes.filter(node => node.qualifiedName === step.selector?.qualifiedName).flatMap(node => node.filePath ?? []))));
-const sourceTexts: Record<string, string> = {};
-const policy = createFilePolicy(project.include, project.exclude);
-for (const sourcePath of paths) {
-  assert.ok(policy.included(sourcePath) && index.files.some(file => file.path === sourcePath), '源码不在当前索引与配置白名单');
-  sourceTexts[sourcePath] = decoder.decode(await readAuthorized(project.root, sourcePath));
+export const seedUsage = 'Usage: pnpm seed-semantics --project ID [--config FILE] [--worktree ID] [--content-pack DIRECTORY] [--dry-run]';
+export function parseSeedArguments(args: string[]) {
+  const result: { projectId?: string; configFile?: string; worktreeId?: string; contentPackDirectory?: string; dryRun?: boolean; help?: boolean } = {};
+  const names = new Map([['--project', 'projectId'], ['--config', 'configFile'], ['--worktree', 'worktreeId'], ['--content-pack', 'contentPackDirectory']] as const);
+  const seen = new Set<string>();
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (seen.has(arg)) throw new Error(`Duplicate argument: ${arg}`);
+    seen.add(arg);
+    if (arg === '--help') { result.help = true; continue; }
+    if (arg === '--dry-run') { result.dryRun = true; continue; }
+    const key = names.get(arg as '--project');
+    if (!key || !args[i + 1]?.trim() || args[i + 1].startsWith('--')) throw new Error(`Unknown or incomplete argument: ${arg}`);
+    result[key] = args[++i];
+  }
+  if (!result.help && !result.projectId) throw new Error('An explicit --project ID is required');
+  return result;
 }
-const definitions = buildCandidateDefinitions(index, model, sourceTexts);
-validateDefinitions(definitions);
-const directory = await ensureCacheDirectory(path.join(config.toolRoot, 'architecture/semantics', projectId), config.toolRoot);
-// Initial seeds are never silently overwritten after human curation.
-const handle = await open(path.join(directory, 'definitions.json'), 'wx');
-try { await handle.writeFile(JSON.stringify(definitions, null, 2) + '\n'); } finally { await handle.close(); }
-console.log(JSON.stringify({ projectId, flows: definitions.flows.map(flow => ({ id: flow.id, groups: flow.groups.length, steps: flow.steps.length, bindings: flow.steps.flatMap(step => step.bindings).length })) }));
+export async function main(args = process.argv.slice(2)): Promise<void> {
+  const parsed = parseSeedArguments(args);
+  if (parsed.help) { console.log(seedUsage); return; }
+  const config = await loadConfig(parsed.configFile);
+  const result = await seedSemanticDefinitions(config, parsed.projectId!, parsed);
+  console.log(JSON.stringify({ projectId: result.projectId, scopeId: result.scopeId, written: result.written, reason: result.reason,
+    outputPath: result.outputPath, flows: result.definitions.flows.map(flow => ({ id: flow.id, groups: flow.groups.length, steps: flow.steps.length, bindings: flow.steps.flatMap(step => step.bindings).length })) }));
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch(error => { console.error(error instanceof Error ? error.message : String(error)); console.error(seedUsage); process.exitCode = 1; });
+}

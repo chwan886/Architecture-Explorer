@@ -4,7 +4,7 @@ import { rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadConfig } from '../packages/indexer/src/config.ts';
 import { canonical, createFilePolicy, ensureCacheDirectory, readAuthorized } from '../packages/indexer/src/security.ts';
-import { buildProjection, modelRevision, validateModel } from '../packages/architecture-model/src/index.ts';
+import { buildProjection, hasSourcePositionSupport, modelRevision, validateModel } from '../packages/architecture-model/src/index.ts';
 import type { ArchitectureModel, SymbolSelector } from '../packages/architecture-model/src/types.ts';
 import { contentHash, fileId, type ArchitectureIndex, type ArchitectureNode, type Confidence } from '../packages/schema/src/index.ts';
 import { validateIndex } from '../packages/schema/src/validate.ts';
@@ -112,15 +112,8 @@ const flowChecks = projection.flows.map(flow => {
       }), `静态调用必须直接连接两个精确步骤符号：${transition.id}`);
     } else if (transition.basis === 'source-order') {
       assert.equal(transition.verification, 'source-supported', transition.id);
-      assert.deepEqual(from.selector, to.selector, '源码顺序只用于同一被选方法中的局部语句');
-      const roots = select(from.selector!);
-      const before = transition.anchorIds.filter(id => from.anchorIds.includes(id)).map(id => anchors.get(id)!);
-      const after = transition.anchorIds.filter(id => to.anchorIds.includes(id)).map(id => anchors.get(id)!);
-      assert.ok(before.some(a => after.some(b => a.filePath === b.filePath && a.endLine < b.startLine && roots.some(node =>
-        ['method', 'function'].includes(node.kind) && node.filePath === a.filePath && node.evidenceIds.some(id => {
-          const declaration = evidence.get(id);
-          return declaration && declaration.filePath === a.filePath && declaration.startLine <= a.startLine && declaration.endLine >= b.endLine;
-        })))), `源码顺序锚点必须位于同一真实过程声明范围内：${transition.id}`);
+      assert.ok(hasSourcePositionSupport(new Map(index.files.map(file => [file.path, file.hash])), anchors, transition, from, to),
+        `源码位置叙述需要同一当前文件中有序、有效的完整行锚点；不证明执行顺序：${transition.id}`);
     } else assert.equal(transition.verification, 'unverified', transition.id);
     assert.ok(transition.memberEdgeIds.every(id => edges.has(id)), transition.id);
     return { id: transition.id, basis: transition.basis, verification: transition.verification, memberEdgeIds: transition.memberEdgeIds };

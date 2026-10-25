@@ -1,5 +1,7 @@
 # 源码分析 Worker
 
+[简体中文](README.md) | [English](README.en.md)
+
 两个 Worker 只解析请求里的源码字符串，不 import、执行或构建被分析项目。
 C# 仅额外读取明确配置的程序集元数据；不加载程序集执行，不运行 MSBuild 目标。
 

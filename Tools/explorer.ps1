@@ -1,8 +1,7 @@
 ﻿param(
-  [ValidateSet('Setup','Dev','Web','Scan','Watch','Verify','Audit','Test','Build','BuildAnalyzer','Typecheck','Mcp')][string]$Task='Dev',
+  [ValidateSet('Setup','Dev','Web','Scan','Watch','Verify','Audit','Test','Build','Typecheck','Mcp')][string]$Task='Dev',
   [string]$ProjectRoot='', [string]$ProjectName='', [string]$ProjectId='my-project',
-  [string]$UnityEditorPath='', [string]$Config='', [string]$Project='', [string]$Worktree='',
-  [switch]$SkipLocalConfig
+  [string]$UnityEditorPath='', [string]$Config='', [string]$Project='', [string]$Worktree=''
 )
 $ErrorActionPreference='Stop'
 $toolRoot = Split-Path -Parent $PSScriptRoot
@@ -40,7 +39,7 @@ if ($Task -eq 'Setup') {
   $env:DOTNET_GENERATE_ASPNET_CERTIFICATE='false'
   $python='python'
   $configured=Join-Path $toolRoot 'config/local.json'
-  if(!$SkipLocalConfig -and (Test-Path -LiteralPath $configured)){
+  if(Test-Path -LiteralPath $configured){
     $existing=Get-Content -LiteralPath $configured -Raw | ConvertFrom-Json
     if($existing.python){$python=$existing.python;if($python.Contains('/') -or $python.Contains('\')){if(![IO.Path]::IsPathRooted($python)){$python=Join-Path (Split-Path -Parent $configured) $python}}}
   }
@@ -53,7 +52,7 @@ if ($Task -eq 'Setup') {
   Invoke-Checked $node @($pnpm,'install','--frozen-lockfile','--store-dir',(Join-Path $tools 'pnpm-store'))
   Invoke-Checked $dotnet @('build','analyzers/csharp/ArchitectureExplorer.Analyzers.csproj','-c','Release','-p:RestoreLockedMode=true')
   $local=Join-Path $toolRoot 'config/local.json'
-  if (!$SkipLocalConfig -and !(Test-Path -LiteralPath $local)) {
+  if (!(Test-Path -LiteralPath $local)) {
     if ($ProjectRoot) {
       $target=(Resolve-Path -LiteralPath $ProjectRoot).Path
       $settings=Get-Content -LiteralPath 'config/projects.example.json' -Raw | ConvertFrom-Json
@@ -89,10 +88,4 @@ switch($Task) {
   'Test' { Invoke-Checked $node @('node_modules/tsx/dist/cli.mjs','--test','tests/*.test.ts','apps/web/src/*.test.ts','apps/web/src/architecture/*.test.ts','apps/web/src/semantics/*.test.ts','apps/web/src/control/*.test.ts') }
   'Typecheck' { Invoke-Checked $node @('node_modules/typescript/bin/tsc','--noEmit') }
   'Build' { Invoke-Checked $node @('node_modules/vite/bin/vite.js','build','--config','apps/web/vite.config.ts') }
-  'BuildAnalyzer' {
-    if (!(Test-Path -LiteralPath $dotnet)) { throw '请先运行 Setup 准备锁定 .NET SDK' }
-    $env:DOTNET_CLI_HOME = Join-Path $tools 'dotnet-home'
-    $env:NUGET_PACKAGES = Join-Path $tools 'nuget'
-    Invoke-Checked $dotnet @('build','analyzers/csharp/ArchitectureExplorer.Analyzers.csproj','-c','Release','-p:RestoreLockedMode=true')
-  }
 }
