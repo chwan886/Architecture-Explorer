@@ -50,6 +50,7 @@ try {
   $process.StandardInput.Close(); $process.WaitForExit()
   $code=$process.ExitCode; $process.Dispose()
   if ($code -ne 0) {Stop-AppPreflight 'OPERATION_FAILED'}
+  exit 0
 } catch {
   $message=if ($_.Exception.Message -match '^App preflight rejected: [A-Z_]+$') {$_.Exception.Message} else {'App preflight rejected: LOCAL_CHECK_FAILED'}
   [Console]::Error.WriteLine($message)
