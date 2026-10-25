@@ -48,4 +48,6 @@ node .github/scripts/ci-tests.mjs web
 
 Append `--list` to a layer command to inspect its allocation. Each layer writes `test-results/ci-<layer>.tap`. A sandbox that restricts loopback connections, directory junctions, or filesystem permissions will explicitly fail integration; rerun with those capabilities available.
 
+App protocol, identity, and minimum-permission regressions run in fast. Real Git isolation, Windows key ACLs, links, CLI, and no-fallback checks run in integration. CI uses simulated APIs, synthetic tokens, and temporary fixtures; it needs no production App key and never pushes a real repository.
+
 CI does not publish a site/package, modify a real target project, or establish runtime semantics. Remote Actions execution, external vulnerability databases, and a cross-platform installer still require separate validation.

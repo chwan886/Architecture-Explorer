@@ -12,6 +12,7 @@
 | [架构说明](ARCHITECTURE.md) | 数据管线、边界、缓存和限制 | [English](en/ARCHITECTURE.md) |
 | [证据审计](EVIDENCE-AUDIT.md) | 证据核验与诊断处理 | [English](en/EVIDENCE-AUDIT.md) |
 | [分层 CI](CI.md) | 验证层、触发条件与本地运行 | [English](en/CI.md) |
+| [专用 App 推送](DEV-APP-SETUP.md) | 通用本地配置、机器人 PR、人工审核与禁止个人凭据回退 | [English](en/DEV-APP-SETUP.md) |
 | [修复记录](REPAIRS.md) | F01–F11 的实现修改与回归 | [English](en/REPAIRS.md) |
 | [项目内容适配](CONTENT-PACKS.md) | 可选内容包、通用种子与配置驱动验收 | [English](en/CONTENT-PACKS.md) |
 | [发布隐私](PUBLICATION.md) | 作者匿名、私有源码排除与解耦回归 | [English](en/PUBLICATION.md) |

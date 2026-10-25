@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 // These files start a real analyzer, exercise filesystem security, or test the
 // complete HTTP/stdio boundary. New tests default to fast instead of being lost.
 const integrationTests = new Set([
+  'tests/dev-app-cli.test.ts',
+  'tests/dev-app-git.test.ts',
   'tests/persistence-lock.test.ts',
   'tests/public-export.test.ts',
   'tests/analyzers.test.ts',

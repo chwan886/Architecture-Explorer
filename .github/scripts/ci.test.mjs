@@ -27,6 +27,9 @@ test('every discovered test has exactly one group and new tests run by default',
   assert.equal(new Set(files).size, files.length);
   for (const file of files) assert.ok(['fast', 'integration', 'web'].includes(testGroup(file)), file);
   assert.equal(testGroup('tests/future.test.ts'), 'fast');
+  assert.equal(testGroup('tests/dev-app-auth.test.ts'), 'fast');
+  assert.equal(testGroup('tests/dev-app-cli.test.ts'), 'integration');
+  assert.equal(testGroup('tests/dev-app-git.test.ts'), 'integration');
   assert.equal(testGroup('tests/semantic-model.test.ts'), 'integration');
   assert.equal(testGroup('tests/semantic-content.test.ts'), 'integration');
   assert.equal(testGroup('tests/semantic-seed.test.ts'), 'integration');

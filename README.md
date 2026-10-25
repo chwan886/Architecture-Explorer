@@ -100,6 +100,8 @@ The [layered CI](docs/en/CI.md) runs fast static/unit checks on Linux, real anal
 
 ## Trust and current limits
 
+For repository contributions, use the optional [dedicated GitHub App commands](docs/en/DEV-APP-SETUP.md) to push a task branch and open a bot-authored PR. Human maintainers approve the final bot push and merge after CI; authentication failures never fall back to personal credentials.
+
 - Target source stays local. The tool reads explicitly configured roots, writes its own cache/models, and does not execute target Python modules or build the target C# project.
 - Static confirmation means an analyzer resolved a source relationship. It does not establish runtime execution, virtual dispatch targets, or complete data flow.
 - Business ownership and explanations are curated candidates until reviewed. Human confirmation does not upgrade the underlying evidence.
