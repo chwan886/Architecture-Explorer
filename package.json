@@ -8,6 +8,7 @@
     "node": ">=22.12"
   },
   "scripts": {
+    "dev-app": "pwsh -NoProfile -File Tools/dev-app-auth.ps1",
     "dev": "tsx apps/server/src/main.ts",
     "web": "vite --config apps/web/vite.config.ts",
     "mcp": "tsx apps/mcp/src/main.ts",

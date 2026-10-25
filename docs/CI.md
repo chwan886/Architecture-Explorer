@@ -48,4 +48,6 @@ node .github/scripts/ci-tests.mjs web
 
 `--list` 可追加在任一测试层命令后，只查看分配。各层生成 `test-results/ci-<layer>.tap`。在限制 loopback、目录联接或文件权限的沙箱内，integration 会明确失败；需要允许这些测试能力后补验。
 
+专用 App 的协议、身份和最小权限回归属于 fast；真实 Git 隔离、Windows 密钥 ACL、链接与 CLI 拒绝回退回归属于 integration。CI 只使用模拟 API、合成 token 和临时夹具，不需要生产 App 密钥，不推送真实仓库。
+
 CI 不发布网站或包，不修改真实目标项目，也不证明运行时语义。远程 Actions、外部漏洞数据库和跨平台安装程序仍需单独验证。

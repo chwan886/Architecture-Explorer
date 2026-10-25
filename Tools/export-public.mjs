@@ -47,6 +47,10 @@ function actionFor(file) {
   if (normalized.startsWith('config/') && !['config/demo.json', 'config/projects.example.json', 'config/codex-mcp.example.toml'].includes(normalized) && !/^config\/[^/]+\.example\.[^/]+$/.test(normalized)) return 'exclude';
   const model = /^architecture\/(models|semantics)\/([^/]+)\/(.+)$/.exec(normalized);
   if (model && model[2] !== 'combat-demo') return 'exclude';
+  // These conventional credential containers require explicit review, even if
+  // they contain synthetic, encrypted, or non-UTF-8 material. Never open them
+  // to decide whether their content happens to resemble a private key.
+  if (/\.(?:pem|key|p12|pfx)$/.test(normalized)) return 'credential';
   if (/^docs\/(?:en\/)?[^/]+$/.test(normalized) && historicalDocs.has(path.posix.basename(normalized))) return 'stub';
   return 'copy';
 }
@@ -174,6 +178,10 @@ export async function planPublicExport(root = toolRoot) {
     try {
       const stat = await regularFile(root, name);
       if (!stat) continue; // A tracked deletion belongs to the working snapshot.
+      if (action === 'credential') {
+        blockers.push({ code: 'credential-file', file: name, action: 'Remove this credential-container file from the public snapshot and keep credentials outside the repository or in ignored local storage. Its contents were not read.' });
+        continue;
+      }
       files.set(name, { content: action === 'stub' ? privacyStub(name) : await readSnapshotFile(root, name, stat), mode: stat.mode, stub: action === 'stub' });
     } catch (error) { blockers.push({ code: /^(?:unsafe-path|linked-path|invalid-parent|non-regular-file|hardlinked-file|file-too-large|changed-file)$/.test(error.message) ? error.message : 'file-read-failed', file: name, action: 'Replace links/nonregular files with reviewed ordinary files, or retry after edits stop.' }); }
   }

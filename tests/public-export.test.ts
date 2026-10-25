@@ -14,6 +14,7 @@ async function git(directory: string, ...args: string[]) { return (await execute
 
 const privateProject = 'private-sample';
 const privateQuote = 'function confidentialSettlement(account, amount) {\n  const privateLedgerBalance = account.privateLedgerBalance + amount;\n  return commitPrivateLedger(account, privateLedgerBalance);\n}';
+const portableAppFiles = ['Tools/dev-app-auth.ps1', 'Tools/dev-app-key.ps1', 'Tools/dev-app-cli.ts', 'Tools/dev-app-config.ts', 'Tools/dev-app-auth.ts', 'Tools/dev-app-git.ts'];
 async function fixture(t: test.TestContext, includePrivate = true) {
   await mkdir(path.join(root, '.tmp'), { recursive: true });
   const directory = await mkdtemp(path.join(root, '.tmp/public-export-test-'));
@@ -22,7 +23,7 @@ async function fixture(t: test.TestContext, includePrivate = true) {
   await git(source, 'init', '--initial-branch=main', '--template=');
   await git(source, 'config', 'user.name', 'Private fixture author');
   await git(source, 'config', 'user.email', 'private-author@example.invalid');
-  await write('.gitignore', '.release/\n.cache/\nnode_modules/\nconfig/local.json\n');
+  await write('.gitignore', '.release/\n.cache/\nnode_modules/\nconfig/local.json\nconfig/*.local.json\n');
   await write('README.md', '# Public fixture\n\n[record](docs/VALIDATION.md)\n');
   await write('docs/README.md', '# Documentation\n');
   await write('docs/en/README.md', '# Documentation\n');
@@ -35,7 +36,7 @@ async function fixture(t: test.TestContext, includePrivate = true) {
     await write(`architecture/models/${privateProject}/README.md`, 'PRIVATE_SOURCE_MARKER_TARGET_TEXT\n');
     await write(`architecture/models/${privateProject}/README.en.md`, 'PRIVATE_SOURCE_MARKER_TARGET_TEXT\n');
   }
-  for (const file of ['Tools/validate-hp.ts', 'Tools/validate-story.ts', 'packages/semantic-content/seed.ts', 'packages/semantic-content/src/seed.ts', 'packages/semantic-content/src/seed-explanations.ts', 'tests/demo-architecture.test.ts', 'tests/demo-semantic-flows.test.ts']) await write(file, 'export const portablePublicFixture = true;\n');
+  for (const file of [...portableAppFiles, 'Tools/validate-hp.ts', 'Tools/validate-story.ts', 'packages/semantic-content/seed.ts', 'packages/semantic-content/src/seed.ts', 'packages/semantic-content/src/seed-explanations.ts', 'tests/demo-architecture.test.ts', 'tests/demo-semantic-flows.test.ts']) await write(file, 'export const portablePublicFixture = true;\n');
   await write('current.ts', 'export const current = 1;\n');
   await git(source, 'add', '--all');
   await git(source, 'commit', '--quiet', '-m', 'Private historical message');
@@ -56,6 +57,7 @@ test('public export captures uncommitted files, omits private/runtime content, a
   const privateKey = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
   for (const file of ['config/my-project.json', 'config/credentials.toml', '.env', '.env.production', 'nested/.env.local']) await f.write(file, privateKey + '\nPRIVATE_CONFIGURATION_MARKER\n');
   await f.write('config/projects.example.json', '{"projects":[]}\n');
+  await f.write('config/dev-app.example.json', '{"schemaVersion":1,"repositories":["example-owner/example-repository"]}\n');
   await f.write('.env.example', 'PUBLIC_PORT=4310\n');
   const globalIgnore = path.join(f.directory, 'global-ignore'); await writeFile(globalIgnore, 'global-private.txt\n');
   const globalConfig = path.join(f.directory, 'global-config'); await writeFile(globalConfig, `[core]\n\texcludesFile = ${globalIgnore.replaceAll('\\', '/')}\n`);
@@ -75,9 +77,10 @@ test('public export captures uncommitted files, omits private/runtime content, a
   assert.equal(await readFile(path.join(destination, 'current.ts'), 'utf8'), 'export const current = 2;\n');
   assert.equal(await readFile(path.join(destination, 'untracked.ts'), 'utf8'), 'export const added = true;\n');
   for (const file of [`architecture/models/${privateProject}`, `architecture/semantics/${privateProject}`, '.cache', 'node_modules', 'config/local.json', 'config/my-project.json', 'config/credentials.toml', '.env', '.env.production', 'nested/.env.local', 'global-private.txt']) await assert.rejects(readFile(path.join(destination, file)), { code: 'ENOENT' });
-  for (const file of ['Tools/validate-hp.ts', 'Tools/validate-story.ts', 'packages/semantic-content/seed.ts', 'packages/semantic-content/src/seed.ts', 'packages/semantic-content/src/seed-explanations.ts', 'tests/demo-architecture.test.ts', 'tests/demo-semantic-flows.test.ts']) assert.equal(await readFile(path.join(destination, file), 'utf8'), 'export const portablePublicFixture = true;\n');
+  for (const file of [...portableAppFiles, 'Tools/validate-hp.ts', 'Tools/validate-story.ts', 'packages/semantic-content/seed.ts', 'packages/semantic-content/src/seed.ts', 'packages/semantic-content/src/seed-explanations.ts', 'tests/demo-architecture.test.ts', 'tests/demo-semantic-flows.test.ts']) assert.equal(await readFile(path.join(destination, file), 'utf8'), 'export const portablePublicFixture = true;\n');
   assert.equal(await readFile(path.join(destination, '.env.example'), 'utf8'), 'PUBLIC_PORT=4310\n');
   assert.equal(await readFile(path.join(destination, 'config/projects.example.json'), 'utf8'), '{"projects":[]}\n');
+  assert.deepEqual(JSON.parse(await readFile(path.join(destination, 'config/dev-app.example.json'), 'utf8')), { schemaVersion: 1, repositories: ['example-owner/example-repository'] });
   assert.doesNotMatch(await readFile(path.join(destination, 'docs/VALIDATION.md'), 'utf8'), /PRIVATE_SOURCE_MARKER/);
   assert.ok(!(await git(destination, 'ls-files')).includes(privateProject), 'no excluded project identifier survives in a directory name');
   assert.equal(await git(destination, 'rev-list', '--count', 'HEAD'), '1');
@@ -92,6 +95,44 @@ test('public export captures uncommitted files, omits private/runtime content, a
   assert.equal(await readFile(path.join(f.source, '.git/config'), 'utf8'), before.config);
   assert.doesNotMatch(await readFile(path.join(destination, 'PUBLIC-EXPORT.json'), 'utf8'), new RegExp(before.head + '|private-author|Inherited|Private historical'));
   assert.doesNotMatch(await readFile(path.join(destination, 'PUBLIC-EXPORT.json'), 'utf8'), /DO_NOT_COPY_PREVIOUS_MANIFEST/);
+});
+
+test('credential containers are rejected before opening them while local App state is omitted unread', async t => {
+  const f = await fixture(t, false);
+  const credentials = ['accidental.pem', 'nested/client.KEY', 'nested/certificate.p12', 'accidental.pfx'];
+  const omitted = ['config/dev-app.local.json', '.cache/dev-app-receipt.json', '.cache/private-key.pem'];
+  for (const file of [...credentials, ...omitted, 'guarded-public.txt']) await f.write(file, 'SYNTHETIC_MATERIAL_MUST_NOT_BE_READ\n');
+  // Even an accidental force-add cannot turn local configuration or cache into public content.
+  await git(f.source, 'add', '--force', '--', ...credentials, ...omitted);
+  const guard = path.join(f.directory, 'guard-open.mjs');
+  await writeFile(guard, `
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { syncBuiltinESMExports } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const [root, exporter, guardedJson] = process.argv.slice(2);
+const guarded = new Set(JSON.parse(guardedJson).map(file => path.resolve(root, file)));
+const opened = [], original = fs.open;
+fs.open = function(file, ...args) {
+  const absolute = path.resolve(String(file));
+  if (guarded.has(absolute)) { opened.push(path.relative(root, absolute).replaceAll('\\\\', '/')); throw new Error('READ_GUARD'); }
+  return original.call(this, file, ...args);
+};
+syncBuiltinESMExports();
+const { exportPublicSnapshot } = await import(pathToFileURL(exporter).href);
+const result = await exportPublicSnapshot(root);
+console.log(JSON.stringify({ ...result, opened }));
+`);
+  const inspect = async () => JSON.parse((await execute(process.execPath, [guard, f.source, path.join(root, 'Tools/export-public.mjs'), JSON.stringify([...credentials, ...omitted, 'guarded-public.txt'])], { env: environment() })).stdout);
+  const control = await inspect();
+  assert.deepEqual(control.opened, ['guarded-public.txt'], 'the proxy intercepts real exporter opens, but no credential or local state is opened');
+  assert.ok(control.blockers.some((item: { file: string; code: string }) => item.file === 'guarded-public.txt' && item.code === 'file-read-failed'), 'a control file proves the read guard is active');
+  await rm(path.join(f.source, 'guarded-public.txt'));
+  const result = await inspect();
+  assert.equal(result.status, 'blocked'); assert.deepEqual(result.opened, []);
+  assert.deepEqual(result.blockers.map((item: { file: string; code: string }) => [item.file, item.code]).sort(), credentials.map(file => [file, 'credential-file']).sort());
+  assert.doesNotMatch(JSON.stringify(result), /SYNTHETIC_MATERIAL_MUST_NOT_BE_READ/);
+  await assert.rejects(readdir(path.join(f.source, '.release')), { code: 'ENOENT' });
 });
 
 test('private dependencies and missing documentation block export before a candidate is created', async t => {

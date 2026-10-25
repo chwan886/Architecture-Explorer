@@ -12,6 +12,7 @@
 | [Architecture](ARCHITECTURE.md) | Pipeline, boundaries, caching, and limitations | [中文](../ARCHITECTURE.md) |
 | [Evidence audit](EVIDENCE-AUDIT.md) | Evidence validation and diagnostics | [中文](../EVIDENCE-AUDIT.md) |
 | [Layered CI](CI.md) | Layers, triggers, and local checks | [中文](../CI.md) |
+| [Dedicated App commands](DEV-APP-SETUP.md) | Generic local configuration, bot PRs, human review, and no personal fallback | [中文](../DEV-APP-SETUP.md) |
 | [Repairs](REPAIRS.md) | F01–F11 implementation and regressions | [中文](../REPAIRS.md) |
 | [Project content adapters](CONTENT-PACKS.md) | Optional content packages, generic seeding, and configured acceptance | [中文](../CONTENT-PACKS.md) |
 | [Publication privacy](PUBLICATION.md) | Anonymous authorship, private-source exclusions, and independence regressions | [中文](../PUBLICATION.md) |

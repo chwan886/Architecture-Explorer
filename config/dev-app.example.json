@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "appId": 123456,
+  "installationId": 12345678,
+  "appSlug": "your-development-agent",
+  "repository": "your-account/your-repository",
+  "baseBranch": "main",
+  "keyDirectory": "C:/Users/your-user/AppKeys/your-development-agent"
+}
