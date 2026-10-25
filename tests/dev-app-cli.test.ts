@@ -62,6 +62,12 @@ test('Windows key preflight checks both ACLs, uniqueness and linked parents with
     $proof=Get-AppKeyAttestation $keyDirectory ${quote(root)}
     if ($proof.acl.checked -ne $true -or $proof.fileIdentity.size -ne 26) {throw 'Bad preflight proof'}
     $results=@('restricted-pass')
+    $configFile=Join-Path $directory 'app.local.json'
+    @{schemaVersion=1;appId=123;installationId=456;appSlug='fixture-app';repository='fixture-owner/fixture-repo';baseBranch='main';keyDirectory=$keyDirectory} | ConvertTo-Json | Set-Content -LiteralPath $configFile -Encoding utf8
+    $pwsh=(Get-Process -Id $PID).Path
+    $wrapperOutput=& $pwsh -NoProfile -File ${quote(path.join(root,'Tools/dev-app-auth.ps1'))} -ConfigFile $configFile -Push -WorkingDirectory $directory -Branch codex/fixture -ExpectedHead ('a'*40) -NodeExecutable ${quote(process.execPath)} 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 1 -or $wrapperOutput -notmatch 'failed during git-preflight;' -or $wrapperOutput -match 'opaque-test-key-never-read') {throw 'Push argument framing failed'}
+    $results+=@('push-arguments-forwarded')
     [IO.File]::WriteAllText((Join-Path $keyDirectory 'second.pem'),'opaque')
     try {Get-AppKeyAttestation $keyDirectory ${quote(root)} | Out-Null;throw 'accepted extra PEM'} catch {if ($_.Exception.Message -notmatch 'EXACTLY_ONE_PEM_REQUIRED') {throw}}
     Remove-Item -LiteralPath (Join-Path $keyDirectory 'second.pem')
@@ -88,7 +94,7 @@ test('Windows key preflight checks both ACLs, uniqueness and linked parents with
     $results+=@('directory-acl-rejected')
     $results | ConvertTo-Json -Compress
   `;
-  assert.deepEqual(JSON.parse(await powershell(script)),['restricted-pass','multiple-rejected','link-rejected','repository-key-rejected','file-acl-rejected','directory-acl-rejected']);
+  assert.deepEqual(JSON.parse(await powershell(script)),['restricted-pass','push-arguments-forwarded','multiple-rejected','link-rejected','repository-key-rejected','file-acl-rejected','directory-acl-rejected']);
 });
 
 test('App wrapper stops on missing key without invoking personal environment credentials or revealing them',async()=>{

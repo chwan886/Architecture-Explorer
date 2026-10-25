@@ -7,6 +7,7 @@ import { createAppJwt, parseDevelopmentAppConfig, runDevelopmentApp, githubAppRe
 import { prepareTaskPush, runTaskPush } from './dev-app-git.ts';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+let phase='arguments';
 const fail=(code:string):never=>{throw new Error(code);};
 export async function assertUnlinkedPath(candidate:string):Promise<string> {
   if (!path.isAbsolute(candidate)) fail('ABSOLUTE_PATH_REQUIRED');
@@ -57,9 +58,11 @@ export function parseAppArguments(args:string[]):Record<string,string> {
 
 async function main() {
   const args=parseAppArguments(process.argv.slice(2));
+  phase='runtime';
   if (process.platform!=='win32') fail('WINDOWS_PREFLIGHT_REQUIRED');
   const locked=JSON.parse(await readFile(path.join(root,'toolchain.lock.json'),'utf8')).node.version;
   if (process.versions.node!==locked || process.env.EXPLORER_APP_NODE_VERSION!==locked) fail('LOCKED_NODE_REQUIRED');
+  phase='configuration';
   const config=parseDevelopmentAppConfig(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await readBoundedFile(args['config-file'],16384)).replace(/^\uFEFF/,'')));
   const options:any={operation:args.operation};
   if (args.branch) options.branch=args.branch;
@@ -67,13 +70,16 @@ async function main() {
   if (args['working-directory']) options.workingDirectory=args['working-directory'];
   if (args['pr-number']) options.prNumber=Number(args['pr-number']);
   if (args.title) {
+    phase='pull-request-body';
     options.title=args.title;
     options.body=new TextDecoder('utf-8',{fatal:true}).decode(await readBoundedFile(args['body-file'],65536));
     if (/-{5}BEGIN [A-Z0-9 ]+-{5}/.test(options.body)) fail('BODY_REJECTED');
   }
   // Validate all local Git state before reading the private key or issuing a token.
+  phase='git-preflight';
   const plan=options.operation==='push'?await prepareTaskPush({repository:config.repository,baseBranch:config.baseBranch,
     workingDirectory:options.workingDirectory,branch:options.branch,expectedHead:options.expectedHead}):undefined;
+  phase='key-preflight';
   let input='';
   for await (const chunk of process.stdin) {
     input+=chunk.toString();
@@ -92,9 +98,11 @@ async function main() {
   if (key!==path.resolve(attestation.keyFile) || path.dirname(key).toLowerCase()!==keyDirectory.toLowerCase() || !key.toLowerCase().endsWith('.pem')) fail('KEY_REJECTED');
   const metadata=await lstat(key);
   if (metadata.size!==attestation.fileIdentity?.size || Math.trunc(metadata.mtimeMs)!==attestation.fileIdentity?.mtimeMs) fail('KEY_CHANGED');
+  phase='key-read';
   const bytes=await readBoundedFile(key,65536);
   let privateKey;
   try {privateKey=createPrivateKey(bytes);} finally {bytes.fill(0);}
+  phase='app-operation';
   const receipt=await runDevelopmentApp(config,options,{
     signJwt:()=>createAppJwt(privateKey,config.appId),request:githubAppRequest,
     preparePush:async()=>{if (!plan) fail('PUSH_PLAN_REQUIRED');return plan!;},push:runTaskPush,
@@ -104,5 +112,5 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
-  main().catch(()=>{console.error('App operation failed; no personal credential fallback is permitted. Check configuration, key permissions, runtime, and App installation.');process.exitCode=1;});
+  main().catch(()=>{console.error(`App operation failed during ${phase}; no personal credential fallback is permitted. Check configuration, key permissions, runtime, and App installation.`);process.exitCode=1;});
 }

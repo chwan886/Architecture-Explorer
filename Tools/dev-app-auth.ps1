@@ -34,7 +34,7 @@ try {
 
   $arguments=@($tsx,$entry,'--config-file',$configPath,'--operation',$operation,'--key-file',$attestation.keyFile)
   foreach ($mapping in @(@('WorkingDirectory','working-directory'),@('Branch','branch'),@('ExpectedHead','expected-head'),@('Title','title'),@('BodyFile','body-file'),@('PrNumber','pr-number'))) {
-    if ($PSBoundParameters.ContainsKey($mapping[0])) { $arguments+=@('--'+$mapping[1],[string](Get-Variable -Name $mapping[0] -ValueOnly)) }
+    if ($PSBoundParameters.ContainsKey($mapping[0])) { $arguments+=@(('--'+$mapping[1]),[string](Get-Variable -Name $mapping[0] -ValueOnly)) }
   }
   $start=[Diagnostics.ProcessStartInfo]::new()
   $start.FileName=$node; $start.WorkingDirectory=$toolRoot; $start.UseShellExecute=$false
