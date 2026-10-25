@@ -21,26 +21,26 @@ export async function assertUnlinkedPath(candidate:string):Promise<string> {
   };
   const absolute=path.resolve(candidate);
   await noLinks(absolute);
-  const before=await lstat(absolute), canonical=await realpath(absolute);
+  const before=await lstat(absolute,{bigint:true}), canonical=await realpath(absolute);
   // Windows expands legitimate 8.3 names such as RUNNER~1 here. Prove the
   // identity and inspect both spellings instead of treating a spelling as proof.
   await noLinks(canonical);
-  const after=await lstat(canonical), current=await lstat(absolute);
+  const after=await lstat(canonical,{bigint:true}), current=await lstat(absolute,{bigint:true});
   if (before.dev!==after.dev || before.ino!==after.ino || before.dev!==current.dev || before.ino!==current.ino) fail('PATH_CHANGED');
   return canonical;
 }
 
 export async function readBoundedFile(candidate:string,limit:number):Promise<Buffer> {
-  const absolute=await assertUnlinkedPath(candidate), before=await lstat(absolute);
-  if (!before.isFile() || before.nlink!==1 || before.size<1 || before.size>limit) fail('FILE_REJECTED');
+  const absolute=await assertUnlinkedPath(candidate), before=await lstat(absolute,{bigint:true});
+  if (!before.isFile() || before.nlink!==1n || before.size<1n || before.size>BigInt(limit)) fail('FILE_REJECTED');
   const handle=await open(absolute,constants.O_RDONLY|(constants.O_NOFOLLOW??0));
   try {
-    const opened=await handle.stat();
-    if (opened.dev!==before.dev || opened.ino!==before.ino || opened.size!==before.size || opened.mtimeMs!==before.mtimeMs) fail('FILE_CHANGED');
+    const opened=await handle.stat({bigint:true});
+    if (opened.dev!==before.dev || opened.ino!==before.ino || opened.size!==before.size || opened.mtimeNs!==before.mtimeNs) fail('FILE_CHANGED');
     const buffer=Buffer.alloc(limit+1);
     const {bytesRead}=await handle.read(buffer,0,buffer.length,0);
-    const after=await lstat(absolute);
-    if (bytesRead!==before.size || after.dev!==before.dev || after.ino!==before.ino || after.size!==before.size || after.mtimeMs!==before.mtimeMs) fail('FILE_CHANGED');
+    const after=await lstat(absolute,{bigint:true});
+    if (BigInt(bytesRead)!==before.size || after.dev!==before.dev || after.ino!==before.ino || after.size!==before.size || after.mtimeNs!==before.mtimeNs) fail('FILE_CHANGED');
     return buffer.subarray(0,bytesRead);
   } finally {await handle.close();}
 }
@@ -102,8 +102,8 @@ async function main() {
     catch (error) {if ((error as NodeJS.ErrnoException).code!=='ENOENT') throw error;}
     const parent=path.dirname(ancestor);if(parent===ancestor)break;ancestor=parent;
   }
-  const relativeToRoot=path.relative(root,keyDirectory);
-  if (!relativeToRoot || !relativeToRoot.startsWith('..')&&!path.isAbsolute(relativeToRoot)) fail('KEY_MUST_BE_OUTSIDE_REPOSITORY');
+  const relativeToRoot=path.relative(await assertUnlinkedPath(root),keyDirectory);
+  if (relativeToRoot!=='..' && !relativeToRoot.startsWith('..'+path.sep) && !path.isAbsolute(relativeToRoot)) fail('KEY_MUST_BE_OUTSIDE_REPOSITORY');
   if (key!==await assertUnlinkedPath(attestation.keyFile) || path.dirname(key).toLowerCase()!==keyDirectory.toLowerCase() || !key.toLowerCase().endsWith('.pem')) fail('KEY_REJECTED');
   const metadata=await lstat(key);
   if (metadata.size!==attestation.fileIdentity?.size || Math.trunc(metadata.mtimeMs)!==attestation.fileIdentity?.mtimeMs) fail('KEY_CHANGED');
