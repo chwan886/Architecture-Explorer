@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { mkdtemp, writeFile, mkdir, rm, link, symlink } from 'node:fs/promises';
+import { mkdtemp, writeFile, mkdir, rm, link, symlink, realpath } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { parseAppArguments, readBoundedFile } from '../Tools/dev-app-cli.ts';
+import { assertUnlinkedPath, parseAppArguments, readBoundedFile } from '../Tools/dev-app-cli.ts';
 
 const execute=promisify(execFile), root=path.resolve(import.meta.dirname,'..');
 const quote=(value:string)=>"'"+value.replaceAll("'","''")+"'";
@@ -31,7 +31,12 @@ test('bounded App input rejects links, hardlinks, empty or oversized files befor
   const directory=await mkdtemp(path.join(os.tmpdir(),'app-cli-input-'));
   t.after(async()=>{assert.ok(directory.startsWith(path.join(os.tmpdir(),'app-cli-input-')));await rm(directory,{recursive:true,force:true});});
   const file=path.join(directory,'public.json');await writeFile(file,'{}');
+  // Hosted Windows runners expose an 8.3 temp alias. Both spellings must
+  // identify the same ordinary file while linked paths below still fail.
+  const canonical=await realpath(file);
+  assert.equal(await assertUnlinkedPath(file),canonical);
   assert.equal((await readBoundedFile(file,4)).toString(),'{}');
+  assert.equal((await readBoundedFile(canonical,4)).toString(),'{}');
   await assert.rejects(readBoundedFile(file,1));
   const hard=path.join(directory,'hard.json');await link(file,hard);
   await assert.rejects(readBoundedFile(hard,4));

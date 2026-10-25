@@ -11,14 +11,23 @@ let phase='arguments';
 const fail=(code:string):never=>{throw new Error(code);};
 export async function assertUnlinkedPath(candidate:string):Promise<string> {
   if (!path.isAbsolute(candidate)) fail('ABSOLUTE_PATH_REQUIRED');
-  const absolute=path.resolve(candidate), base=path.parse(absolute).root;
-  let cursor=base;
-  for (const component of absolute.slice(base.length).split(path.sep).filter(Boolean)) {
-    cursor=path.join(cursor,component);
-    if ((await lstat(cursor)).isSymbolicLink()) fail('LINK_REJECTED');
-  }
-  if ((await realpath(absolute)).toLowerCase()!==absolute.toLowerCase()) fail('PATH_CHANGED');
-  return absolute;
+  const noLinks=async (absolute:string)=>{
+    const base=path.parse(absolute).root;
+    let cursor=base;
+    for (const component of absolute.slice(base.length).split(path.sep).filter(Boolean)) {
+      cursor=path.join(cursor,component);
+      if ((await lstat(cursor)).isSymbolicLink()) fail('LINK_REJECTED');
+    }
+  };
+  const absolute=path.resolve(candidate);
+  await noLinks(absolute);
+  const before=await lstat(absolute), canonical=await realpath(absolute);
+  // Windows expands legitimate 8.3 names such as RUNNER~1 here. Prove the
+  // identity and inspect both spellings instead of treating a spelling as proof.
+  await noLinks(canonical);
+  const after=await lstat(canonical), current=await lstat(absolute);
+  if (before.dev!==after.dev || before.ino!==after.ino || before.dev!==current.dev || before.ino!==current.ino) fail('PATH_CHANGED');
+  return canonical;
 }
 
 export async function readBoundedFile(candidate:string,limit:number):Promise<Buffer> {
@@ -95,7 +104,7 @@ async function main() {
   }
   const relativeToRoot=path.relative(root,keyDirectory);
   if (!relativeToRoot || !relativeToRoot.startsWith('..')&&!path.isAbsolute(relativeToRoot)) fail('KEY_MUST_BE_OUTSIDE_REPOSITORY');
-  if (key!==path.resolve(attestation.keyFile) || path.dirname(key).toLowerCase()!==keyDirectory.toLowerCase() || !key.toLowerCase().endsWith('.pem')) fail('KEY_REJECTED');
+  if (key!==await assertUnlinkedPath(attestation.keyFile) || path.dirname(key).toLowerCase()!==keyDirectory.toLowerCase() || !key.toLowerCase().endsWith('.pem')) fail('KEY_REJECTED');
   const metadata=await lstat(key);
   if (metadata.size!==attestation.fileIdentity?.size || Math.trunc(metadata.mtimeMs)!==attestation.fileIdentity?.mtimeMs) fail('KEY_CHANGED');
   phase='key-read';
