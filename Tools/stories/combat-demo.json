@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0", "id": "combat-demo", "projectId": "combat-demo",
+  "nodes": [
+    { "id": "turn", "selector": { "qualifiedName": "Demo.BattleService.StartTurn(Demo.Actor, int)", "filePath": "BattleService.cs" } },
+    { "id": "damage", "selector": { "qualifiedName": "Demo.DamageCalculator.Apply(Demo.Actor, int)", "filePath": "DamageCalculator.cs" } },
+    { "id": "actor", "selector": { "qualifiedName": "Demo.Actor.TakeDamage(int)", "filePath": "Actor.cs" } },
+    { "id": "health", "selector": { "qualifiedName": "Demo.Actor.Health", "kinds": ["field"] } },
+    { "id": "hud", "selector": { "qualifiedName": "Demo.BattleHud.Render(Demo.Actor)", "filePath": "BattleHud.cs" } },
+    { "id": "python-turn", "selector": { "qualifiedName": "battle.start_turn", "filePath": "battle.py" } },
+    { "id": "python-damage", "selector": { "qualifiedName": "rules.damage", "filePath": "rules.py" } },
+    { "id": "python-health", "selector": { "qualifiedName": "rules.damage::actor['hp']", "kinds": ["data"] } }
+  ],
+  "edges": [
+    { "id": "dispatch", "from": "turn", "to": "damage", "kind": "calls" },
+    { "id": "apply", "from": "damage", "to": "actor", "kind": "calls" },
+    { "id": "write-health", "from": "actor", "to": "health", "kind": "writes" },
+    { "id": "display-health", "from": "hud", "to": "health", "kind": "reads" },
+    { "id": "python-import-call", "from": "python-turn", "to": "python-damage", "kind": "calls", "confidence": ["inferred"] },
+    { "id": "python-write", "from": "python-damage", "to": "python-health", "kind": "writes" }
+  ],
+  "graphs": [
+    { "id": "health-access", "root": "health", "view": "data", "requiredKinds": ["reads", "writes"] },
+    { "id": "python-access", "root": "python-health", "view": "data", "requiredKinds": ["reads", "writes"] }
+  ]
+}

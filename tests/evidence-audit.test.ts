@@ -3,6 +3,7 @@ import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { contentHash, type ArchitectureIndex, type Evidence } from '../packages/schema/src/index.ts';
 import { auditEvidence, type EvidenceAuditInput } from '../packages/evidence-audit/src/index.ts';
+import { buildProjection } from '../packages/architecture-model/src/index.ts';
 import type { ArchitectureModel, ArchitectureProjection } from '../packages/architecture-model/src/types.ts';
 import type { SemanticNode, SemanticProjection } from '../packages/semantic-model/src/types.ts';
 
@@ -87,6 +88,64 @@ test('request, protocol and source order remain distinct from confirmed executio
   assert.equal(report.totals.byReason['unverified-order'], 2);
   assert.equal(report.totals.byReason['source-supported-order'], 1);
   assert.equal(report.groups.flows.find(flow => flow.id === 'flow')!.reasons['unverified-order'], 2);
+});
+
+function sourcePositionFixture(selectProcedures = false) {
+  const input = fixture();
+  delete input.semantic;
+  const model = input.architecture!.model;
+  model.anchors.push({ ...model.anchors[0], id: 'finish-entry', startLine: 3, endLine: 3, quote: 'def finish(value):' });
+  model.flows.push({ id: 'positions', name: 'Source positions', description: 'File positions do not prove execution order', trigger: 'Inspect source', systemIds: ['combat'],
+    lanes: [{ id: 'source', name: 'Source' }],
+    steps: ['before', 'after'].map((id, phase) => ({ id, phase, laneId: 'source', name: id, description: 'Position in source',
+      anchorIds: [phase === 0 ? 'entry' : 'finish-entry'], reads: [], writes: [],
+      ...(selectProcedures ? { selector: { qualifiedName: `src.flow.${phase === 0 ? 'start' : 'finish'}` } } : {}) })),
+    transitions: [{ id: 'position-order', source: 'before', target: 'after', basis: 'source-order', anchorIds: ['entry', 'finish-entry'], limitations: [] }], limitations: [] });
+  input.architecture!.projection = buildProjection(input.index, model);
+  return input;
+}
+
+test('the real projection and audit agree on source position support without claiming a common procedure', () => {
+  for (const selectProcedures of [false, true]) {
+    const input = sourcePositionFixture(selectProcedures), transition = input.architecture!.projection.flows[0].transitions[0];
+    assert.equal(transition.verification, 'source-supported');
+    assert.deepEqual(transition.memberEdgeIds, [], 'source positions must not invent a call');
+    const before = JSON.stringify(input), report = auditEvidence(input);
+    assert.equal(report.totals.byReason['invalid-proof'], undefined, 'valid file positions must survive the audit');
+    assert.notEqual(report.result, 'invalid');
+    const finding = report.findings.find(item => item.reason === 'source-supported-order')!;
+    assert.ok(finding.message.includes('源码位置'));
+    assert.ok(!finding.message.includes('同一过程'));
+    assert.equal(JSON.stringify(input), before);
+  }
+});
+
+test('forged source support still rejects stale, missing, reversed, cross-file and invalid-range anchors', () => {
+  const edits: Array<(input: EvidenceAuditInput) => void> = [
+    input => { input.architecture!.model.anchors[1].expectedFileHash = contentHash('stale source'); },
+    input => { input.architecture!.projection.flows[0].transitions[0].anchorIds = ['entry']; },
+    input => {
+      const anchors = input.architecture!.model.anchors;
+      [anchors[0].startLine, anchors[1].startLine] = [anchors[1].startLine, anchors[0].startLine];
+      [anchors[0].endLine, anchors[1].endLine] = [anchors[1].endLine, anchors[0].endLine];
+      [anchors[0].quote, anchors[1].quote] = [anchors[1].quote, anchors[0].quote];
+    },
+    input => {
+      const file = { ...input.index.files[0], path: 'src/other.py' };
+      input.index.files.push(file); input.sourceFiles![file.path] = { ...input.sourceFiles!['src/flow.py'] };
+      input.architecture!.model.anchors[1].filePath = file.path;
+    },
+    input => { input.architecture!.model.anchors[1].endLine = 2; },
+    input => { input.architecture!.model.anchors[1].endLine = 4; },
+  ];
+  for (const edit of edits) {
+    const input = sourcePositionFixture(); edit(input);
+    const report = auditEvidence(input);
+    assert.equal(report.result, 'invalid');
+    assert.ok(report.findings.some(item => item.targetId === 'position-order' && item.reason === 'invalid-proof'));
+  }
+  const forgedQuote = sourcePositionFixture(); forgedQuote.architecture!.model.anchors[1].quote = 'invented source';
+  assert.ok(auditEvidence(forgedQuote).totals.byReason['anchor-quote-mismatch'], 'current source text still rejects fabricated quotes');
 });
 
 test('audit catches missing endpoints/references, stale hashes, invalid ranges and complete anchor quotes', () => {

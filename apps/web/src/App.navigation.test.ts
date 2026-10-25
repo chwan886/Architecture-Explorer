@@ -14,21 +14,21 @@ const fixture = {
 const node = (id: string, kind: ArchitectureNode['kind'], label: string, qualifiedName: string, parentId?: string): ArchitectureNode => ({ id, kind, label, qualifiedName, parentId, language: id === fixture.hp || id === fixture.hud ? 'csharp' : 'python', evidenceIds: [] });
 const entities = [
   node(fixture.project, 'project', '测试项目', 'Navigation fixture'),
-  node(fixture.clientFile, 'file', 'SectContracts.cs', 'Assets/SectContracts.cs', fixture.project),
-  node(fixture.serverFile, 'file', 'sect_combat.py', 'Server/sect_combat.py', fixture.project),
-  node(fixture.hp, 'field', 'hp', 'SectBattleActor.hp', fixture.clientFile),
-  node(fixture.damage, 'function', 'damage', 'Server.sect_combat.damage', fixture.serverFile),
-  node(fixture.dictionaryHp, 'data', 'hp', 'Server.sect_combat.damage[hp]', fixture.damage),
-  node(fixture.hud, 'method', 'RenderHp', 'SectBattleView.RenderHp', fixture.clientFile),
+  node(fixture.clientFile, 'file', 'Actor.cs', 'Client/Actor.cs', fixture.project),
+  node(fixture.serverFile, 'file', 'rules.py', 'Server/rules.py', fixture.project),
+  node(fixture.hp, 'field', 'hp', 'NavigationFixture.Actor.hp', fixture.clientFile),
+  node(fixture.damage, 'function', 'damage', 'Server.rules.damage', fixture.serverFile),
+  node(fixture.dictionaryHp, 'data', 'hp', 'Server.rules.damage[hp]', fixture.damage),
+  node(fixture.hud, 'method', 'RenderHp', 'NavigationFixture.View.RenderHp', fixture.clientFile),
 ];
 const byId = new Map(entities.map(entity => [entity.id, entity]));
 const evidence = (id: string, filePath: string, startLine: number, marker: string): Evidence => ({ id, filePath, startLine, startColumn: 1, endLine: startLine, endColumn: marker.length + 1, fileHash: 'fixture-file-hash', rule: `fixture:${marker}`, excerpt: marker });
 const evidenceList = [
-  evidence(fixture.hpEvidence, 'Assets/SectContracts.cs', 10, 'CLIENT_HP_DECLARATION'),
+  evidence(fixture.hpEvidence, 'Client/Actor.cs', 10, 'CLIENT_HP_DECLARATION'),
   evidence(fixture.hudEvidence, 'Assets/HUD.cs', 131, 'HUD_READS_CLIENT_HP'),
   evidence(fixture.hudEvidenceR2, 'Assets/HUD.cs', 146, 'HUD_R2_READS_CLIENT_HP'),
-  evidence(fixture.damageEvidence, 'Server/sect_combat.py', 20, 'PYTHON_DAMAGE_FUNCTION'),
-  evidence(fixture.dictionaryEvidence, 'Server/sect_combat.py', 30, 'DICTIONARY_HP_ACCESS'),
+  evidence(fixture.damageEvidence, 'Server/rules.py', 20, 'PYTHON_DAMAGE_FUNCTION'),
+  evidence(fixture.dictionaryEvidence, 'Server/rules.py', 30, 'DICTIONARY_HP_ACCESS'),
 ];
 const evidenceById = new Map(evidenceList.map(item => [item.id, item]));
 const readEdge: ArchitectureEdge = { id: 'edge:hud-reads-hp', source: fixture.hud, target: fixture.hp, kind: 'reads', confidence: 'static-confirmed', evidenceIds: [fixture.hudEvidence], rule: 'fixture:hud-reads-client-hp' };
@@ -230,7 +230,7 @@ test('real App rejects a late detail response after choosing another node', asyn
     await app.snapshot({ context: fixture.serverFile, view: 'architecture', selected: fixture.damage, evidence: fixture.damageEvidence });
     await act(async () => { lateHp.resolve(response(detailPayload(fixture.hp))); });
     await app.snapshot({ context: fixture.serverFile, view: 'architecture', selected: fixture.damage, evidence: fixture.damageEvidence });
-    assert.ok(!app.container.querySelector('.inspector')?.textContent?.includes('SectBattleActor.hp'));
+    assert.ok(!app.container.querySelector('.inspector')?.textContent?.includes('NavigationFixture.Actor.hp'));
   } finally { await app.dispose(); }
 });
 
@@ -275,7 +275,7 @@ test('real App rejects late HUD evidence after choosing declaration evidence on 
     const lateHud = deferred(); app.heldSources.set(fixture.hudEvidence, lateHud);
     await app.chooseHudEvidence();
     await app.waitFor(() => assert.equal(lateHud.requested, true), 'held HUD evidence request on HP');
-    await app.click(Array.from(app.container.querySelectorAll('button.evidence-item')).find(button => button.textContent?.includes('SectContracts.cs')) as unknown as Element);
+    await app.click(Array.from(app.container.querySelectorAll('button.evidence-item')).find(button => button.textContent?.includes('Actor.cs')) as unknown as Element);
     await app.snapshot({ context: fixture.clientFile, view: 'architecture', selected: fixture.hp, evidence: fixture.hpEvidence });
     await act(async () => { lateHud.resolve(response(sourcePayload(fixture.hudEvidence))); });
     await app.snapshot({ context: fixture.clientFile, view: 'architecture', selected: fixture.hp, evidence: fixture.hpEvidence });

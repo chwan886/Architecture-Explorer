@@ -1,8 +1,0 @@
-{
-  "scriptSha256": "e94995eba2788b78f93f6090aba4433dffe1ec7d29df7f22f91ff524cc05daa8",
-  "sizeAndLinkGuards": "passed",
-  "zipPin": "passed",
-  "transport": "local-copy adapter; no HTTPS request",
-  "validator": "unchanged Tools/ci-references.ps1",
-  "rootEntries": "passed"
-}

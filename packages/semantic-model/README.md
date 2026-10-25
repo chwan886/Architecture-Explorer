@@ -1,5 +1,7 @@
 # 语义解释纯投影
 
+[简体中文](README.md) | [English](README.en.md)
+
 `src/types.ts` 是公共接口。`definitions.schema.json` 与 `overlay.schema.json` 独立严格校验持久定义和工作区覆盖；引擎没有文件、网络、Git 或目标程序执行能力。
 
 - `validateDefinitions` / `validateOverlay`：校验 Schema、唯一身份、摘要分组完整覆盖、绑定来源、相对路径与历史时间。

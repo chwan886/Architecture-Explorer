@@ -170,6 +170,9 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
         return string.IsNullOrWhiteSpace(display) ? "未命名符号" : display;
     }
 
+    static string LocalFunctionSignature(IMethodSymbol symbol) => symbol.Name + "`" + symbol.Arity + "|" +
+        string.Join(",", symbol.Parameters.Select(p => p.RefKind + ":" + p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+
     string SymbolKey(ISymbol original)
     {
         var symbol = Canonical(original);
@@ -182,9 +185,26 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
         var identity = symbol.GetDocumentationCommentId();
         if (identity is null && symbol is IParameterSymbol parameter)
             identity = SymbolKey(parameter.ContainingSymbol) + "|parameter|" + parameter.Ordinal;
-        if (identity is null && symbol is IMethodSymbol { MethodKind: MethodKind.LocalFunction } local)
-            identity = SymbolKey(local.ContainingSymbol) + "|local|" + local.Name + "|" +
-                string.Join(",", local.Parameters.Select(p => p.RefKind + ":" + p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+        if (symbol is IMethodSymbol { MethodKind: MethodKind.LocalFunction } local)
+        {
+            var syntax = local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            var owner = local.ContainingSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            var signature = LocalFunctionSignature(local);
+            // Sibling/nested blocks may legally declare the same local signature.
+            // Disambiguate those declarations within their semantic owner without
+            // using line numbers or counting unrelated statements/functions.
+            var ordinal = 0;
+            if (syntax is not null && owner is not null)
+            {
+                var model = compilation.GetSemanticModel(syntax.SyntaxTree);
+                ordinal = owner.DescendantNodesAndSelf().OfType<LocalFunctionStatementSyntax>()
+                    .Where(item => item.SpanStart < syntax.SpanStart)
+                    .Count(item => model.GetDeclaredSymbol(item) is IMethodSymbol other &&
+                        SymbolEqualityComparer.Default.Equals(other.ContainingSymbol, local.ContainingSymbol) &&
+                        LocalFunctionSignature(other) == signature);
+            }
+            identity = SymbolKey(local.ContainingSymbol) + "|local|" + signature + "|declaration|" + ordinal;
+        }
         if (identity is null && symbol is ILocalSymbol variable)
         {
             var syntax = variable.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
@@ -275,7 +295,10 @@ sealed class Analyzer(AnalyzerRequest request, ParserCache cache)
     {
         var eid = EvidenceFor(syntax, rule);
         var condition = Conditions(syntax);
-        var id = Id("edge", $"{source}|{target}|{kind}|{rule}|{condition}");
+        // Different dispatch/confidence values are distinct facts even when
+        // Roslyn binds them to the same declaration (base.V() versus V(), or
+        // a direct assignment versus a potential ref/out write).
+        var id = Id("edge", $"{source}|{target}|{kind}|{rule}|{condition}|{dispatch}|{confidence}");
         if (!edges.TryGetValue(id, out var edge))
         {
             edge = new ArchitectureEdge { Id = id, Source = source, Target = target, Kind = kind,

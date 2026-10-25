@@ -1,0 +1,344 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "combat-demo",
+  "name": "战斗演示 / Combat Demo",
+  "systems": [
+    {
+      "id": "battle",
+      "name": "战斗调度",
+      "responsibility": "接收回合输入，调用明确的伤害入口。",
+      "features": [
+        "接收回合输入，调用明确的伤害入口。"
+      ],
+      "inputs": [
+        "回合输入与角色状态"
+      ],
+      "outputs": [
+        "伤害结果或生命值"
+      ],
+      "keyData": [
+        "Health / hp"
+      ],
+      "kind": "business",
+      "anchorIds": []
+    },
+    {
+      "id": "rules",
+      "name": "伤害规则",
+      "responsibility": "计算伤害与生命值下限，保留语言边界。",
+      "features": [
+        "计算伤害与生命值下限，保留语言边界。"
+      ],
+      "inputs": [
+        "回合输入与角色状态"
+      ],
+      "outputs": [
+        "伤害结果或生命值"
+      ],
+      "keyData": [
+        "Health / hp"
+      ],
+      "kind": "business",
+      "anchorIds": []
+    },
+    {
+      "id": "actors",
+      "name": "角色状态",
+      "responsibility": "维护角色生命值，提供受条件保护的变更。",
+      "features": [
+        "维护角色生命值，提供受条件保护的变更。"
+      ],
+      "inputs": [
+        "回合输入与角色状态"
+      ],
+      "outputs": [
+        "伤害结果或生命值"
+      ],
+      "keyData": [
+        "Health / hp"
+      ],
+      "kind": "business",
+      "anchorIds": []
+    },
+    {
+      "id": "hud",
+      "name": "界面反馈",
+      "responsibility": "从角色状态读取生命值并格式化显示。",
+      "features": [
+        "从角色状态读取生命值并格式化显示。"
+      ],
+      "inputs": [
+        "角色状态"
+      ],
+      "outputs": [
+        "生命值显示文本"
+      ],
+      "keyData": [
+        "Health / hp"
+      ],
+      "kind": "business",
+      "anchorIds": []
+    }
+  ],
+  "modules": [
+    {
+      "id": "battle-core",
+      "systemId": "battle",
+      "name": "战斗调度组件",
+      "responsibility": "接收回合输入，调用明确的伤害入口。",
+      "inputs": [
+        "方法参数"
+      ],
+      "outputs": [
+        "返回值与显式状态"
+      ],
+      "anchorIds": []
+    },
+    {
+      "id": "rules-core",
+      "systemId": "rules",
+      "name": "伤害规则组件",
+      "responsibility": "计算伤害与生命值下限，保留语言边界。",
+      "inputs": [
+        "方法参数"
+      ],
+      "outputs": [
+        "返回值与显式状态"
+      ],
+      "anchorIds": []
+    },
+    {
+      "id": "actors-core",
+      "systemId": "actors",
+      "name": "角色状态组件",
+      "responsibility": "维护角色生命值，提供受条件保护的变更。",
+      "inputs": [
+        "方法参数"
+      ],
+      "outputs": [
+        "返回值与显式状态"
+      ],
+      "anchorIds": []
+    },
+    {
+      "id": "hud-core",
+      "systemId": "hud",
+      "name": "界面反馈组件",
+      "responsibility": "从角色状态读取生命值并格式化显示。",
+      "inputs": [
+        "方法参数"
+      ],
+      "outputs": [
+        "返回值与显式状态"
+      ],
+      "anchorIds": []
+    }
+  ],
+  "memberships": [
+    {
+      "id": "battle-0",
+      "systemId": "battle",
+      "moduleId": "battle-core",
+      "selector": {
+        "filePath": "BattleService.cs"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    },
+    {
+      "id": "battle-1",
+      "systemId": "battle",
+      "moduleId": "battle-core",
+      "selector": {
+        "filePath": "battle.py"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    },
+    {
+      "id": "rules-0",
+      "systemId": "rules",
+      "moduleId": "rules-core",
+      "selector": {
+        "filePath": "DamageCalculator.cs"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    },
+    {
+      "id": "rules-1",
+      "systemId": "rules",
+      "moduleId": "rules-core",
+      "selector": {
+        "filePath": "rules.py"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    },
+    {
+      "id": "actors-0",
+      "systemId": "actors",
+      "moduleId": "actors-core",
+      "selector": {
+        "filePath": "Actor.cs"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    },
+    {
+      "id": "hud-0",
+      "systemId": "hud",
+      "moduleId": "hud-core",
+      "selector": {
+        "filePath": "BattleHud.cs"
+      },
+      "role": "owner",
+      "origin": "curated",
+      "anchorIds": []
+    }
+  ],
+  "anchors": [
+    {
+      "id": "source-0",
+      "filePath": "BattleService.cs",
+      "startLine": 5,
+      "endLine": 8,
+      "expectedFileHash": "2a7f4a1433138e4cb18f798c8da9977633e97c668badb99d5cbdfd3b23ca0c9f",
+      "quote": "    public int StartTurn(Actor target, int amount)\n    {\n        return DamageCalculator.Apply(target, amount);\n    }",
+      "description": "接收回合伤害"
+    },
+    {
+      "id": "source-1",
+      "filePath": "DamageCalculator.cs",
+      "startLine": 5,
+      "endLine": 9,
+      "expectedFileHash": "f8bc39e5885b875e14452944b3916d7a1ec32d3333e7b84834e19976ea60bb77",
+      "quote": "    public static int Apply(Actor target, int amount)\n    {\n        target.TakeDamage(amount);\n        return target.Health;\n    }",
+      "description": "应用伤害规则"
+    },
+    {
+      "id": "source-2",
+      "filePath": "Actor.cs",
+      "startLine": 7,
+      "endLine": 11,
+      "expectedFileHash": "5f4719cacd17460b288ae3b773c3fa121320cf19011d3e25aaf7d398fd8d23cd",
+      "quote": "    public void TakeDamage(int amount)\n    {\n        if (amount > 0)\n            Health = System.Math.Max(0, Health - amount);\n    }",
+      "description": "更新角色生命"
+    }
+  ],
+  "reviews": [],
+  "flows": [
+    {
+      "id": "apply-damage",
+      "name": "回合伤害处理",
+      "description": "沿真实 C# 静态调用查看伤害入口、规则与状态变更。",
+      "trigger": "调用 BattleService.StartTurn",
+      "systemIds": [
+        "battle",
+        "rules",
+        "actors"
+      ],
+      "lanes": [
+        {
+          "id": "csharp",
+          "name": "C# 静态调用"
+        }
+      ],
+      "steps": [
+        {
+          "id": "step-0",
+          "laneId": "csharp",
+          "phase": 0,
+          "name": "接收回合伤害",
+          "description": "接收回合输入，调用明确的伤害入口。",
+          "moduleId": "battle-core",
+          "selector": {
+            "qualifiedName": "Demo.BattleService.StartTurn(Demo.Actor, int)",
+            "filePath": "BattleService.cs"
+          },
+          "anchorIds": [
+            "source-0"
+          ],
+          "reads": [],
+          "writes": []
+        },
+        {
+          "id": "step-1",
+          "laneId": "csharp",
+          "phase": 1,
+          "name": "应用伤害规则",
+          "description": "计算伤害与生命值下限，保留语言边界。",
+          "moduleId": "rules-core",
+          "selector": {
+            "qualifiedName": "Demo.DamageCalculator.Apply(Demo.Actor, int)",
+            "filePath": "DamageCalculator.cs"
+          },
+          "anchorIds": [
+            "source-1"
+          ],
+          "reads": [
+            "target.Health"
+          ],
+          "writes": []
+        },
+        {
+          "id": "step-2",
+          "laneId": "csharp",
+          "phase": 2,
+          "name": "更新角色生命",
+          "description": "维护角色生命值，提供受条件保护的变更。",
+          "moduleId": "actors-core",
+          "selector": {
+            "qualifiedName": "Demo.Actor.TakeDamage(int)",
+            "filePath": "Actor.cs"
+          },
+          "anchorIds": [
+            "source-2"
+          ],
+          "reads": [
+            "Health"
+          ],
+          "writes": [
+            "Health"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "id": "call-0",
+          "source": "step-0",
+          "target": "step-1",
+          "basis": "static-call",
+          "anchorIds": [
+            "source-0"
+          ],
+          "limitations": [
+            "静态调用关系不证明某次运行已执行。"
+          ]
+        },
+        {
+          "id": "call-1",
+          "source": "step-1",
+          "target": "step-2",
+          "basis": "static-call",
+          "anchorIds": [
+            "source-1"
+          ],
+          "limitations": [
+            "静态调用关系不证明某次运行已执行。"
+          ]
+        }
+      ],
+      "limitations": [
+        "演示模型为人工编写的候选职责，没有人工确认记录。",
+        "Python 与 C# 是独立示例；同名 Health/hp 没有跨语言连线。",
+        "没有运行时轨迹。"
+      ]
+    }
+  ]
+}

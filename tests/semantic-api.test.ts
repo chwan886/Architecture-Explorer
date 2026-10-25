@@ -8,7 +8,7 @@ import { runWorker } from '../packages/indexer/src/workers.ts';
 import { declarationHash } from '../packages/semantic-model/src/index.ts';
 import { ArchitectureService } from '../apps/server/src/architecture.ts';
 import { SemanticService } from '../apps/server/src/semantics.ts';
-import type { SemanticBundle, SemanticDefinitionEnvelope, SemanticFlowDefinition } from '../packages/semantic-model/src/types.ts';
+import type { SemanticBundle, SemanticEditorEnvelope, SemanticFlowDefinition } from '../packages/semantic-model/src/types.ts';
 import type { ArchitectureModel } from '../packages/architecture-model/src/types.ts';
 
 const source = 'def apply(amount):\n    return reward(amount)\n\ndef reward(value):\n    return value\n';
@@ -38,7 +38,7 @@ async function fixture() {
   const url = (route = '', scope = primary, query: Record<string, string> = {}) => '/api/semantics' + route + '?' + new URLSearchParams({ scope, ...query });
   const get = (route = '', scope = primary, query: Record<string, string> = {}) => app.inject({ url: url(route, scope, query), headers });
   const bundle = async (scope = primary) => { const response = await get('', scope); assert.equal(response.statusCode, 200, response.body); return response.json<SemanticBundle>(); };
-  const envelope = async (scope = primary) => { const response = await get('/model', scope); assert.equal(response.statusCode, 200, response.body); return response.json<SemanticDefinitionEnvelope>(); };
+  const envelope = async (scope = primary) => { const response = await get('/model', scope); assert.equal(response.statusCode, 200, response.body); return response.json<SemanticEditorEnvelope>(); };
   const post = (route: string, payload: Record<string, unknown>, scope = primary) => app.inject({ method: 'POST', url: url(route, scope), headers: writeHeaders, payload });
   const close = async () => { await app.close(); assert.ok(directory.startsWith(path.join(TOOL_ROOT, '.tmp', 'semantic-api-'))); await rm(directory, { recursive: true, force: true, maxRetries: 8, retryDelay: 50 }); };
   return { directory, tool, target, app, manager, primary, other, nodes, flow, url, get, bundle, envelope, post, close };
@@ -48,6 +48,7 @@ test('semantic API keeps exact facts, code evidence, optimistic edits and worktr
   const f = await fixture();
   try {
     const initial = await f.bundle(), envelope = await f.envelope(); const node = initial.flow!.detailNodes[0];
+    assert.deepEqual(envelope.metadata, initial.metadata, 'editor GET returns the complete baseline from the same projection');
     assert.equal(node.status, 'current'); assert.equal(initial.flow!.detailEdges[0].verification, 'static-confirmed');
     const reverse = await f.get('/reverse', f.primary, { nodeId: f.nodes[0].id }); assert.equal(reverse.statusCode, 200); assert.deepEqual(reverse.json().matches[0].nodeIds, [node.id]);
     const proof = await f.get('/evidence/' + node.evidenceIds[0], f.primary, { viewRevision: initial.metadata.viewRevision });
@@ -60,7 +61,13 @@ test('semantic API keeps exact facts, code evidence, optimistic edits and worktr
     const put = (payload: Record<string, unknown>) => f.app.inject({ method: 'PUT', url: f.url('/model'), headers: writeHeaders, payload });
     const payload = { expectedOverlayRevision: saved.overlayRevision, viewRevision: current.metadata.viewRevision, flow: changed };
     const edit = await put(payload); assert.equal(edit.statusCode, 200, edit.body); assert.equal((await f.bundle()).flow!.detailNodes[0].title, '人工修订标题');
+    const updated = edit.json<SemanticEditorEnvelope>();
+    assert.equal(updated.metadata.overlayRevision, updated.overlayRevision);
+    assert.deepEqual(updated.metadata, (await f.bundle()).metadata, 'save response pins the new full version tuple');
     assert.equal((await put(payload)).statusCode, 409); assert.equal((await f.bundle()).flow!.detailNodes[0].reviewState, 'needs-review');
+    const next = structuredClone(changed); next.steps[1].detail = '第二次保存无需等待父视图刷新';
+    const repeat = await put({ expectedOverlayRevision: updated.overlayRevision, viewRevision: updated.metadata.viewRevision, flow: next });
+    assert.equal(repeat.statusCode, 200, repeat.body);
     const newer = await f.bundle(); const beforeGeneration = (await f.envelope()).overlayRevision;
     const generated = await f.post('/generate', { flowId: newer.flow!.id, nodeId: node.id, viewRevision: newer.metadata.viewRevision }); assert.equal(generated.statusCode, 200, generated.body); assert.equal(generated.json().origin, 'rule-generated');
     assert.equal((await f.envelope()).overlayRevision, beforeGeneration, 'candidate generation must not overwrite human edits');

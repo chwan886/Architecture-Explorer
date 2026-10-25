@@ -23,14 +23,17 @@ def analyze(request, parse_cache=None):
 class Analyzer:
     def __init__(self, request, parse_cache=None):
         self.scope = request["scopeId"]
-        self.files = request.get("files", [])
+        self.files = sorted(({**f, "path": f["path"].replace("\\", "/")} for f in request.get("files", [])),
+                            key=lambda f: f["path"])
         self.nodes = {}
         self.edges = {}
         self.evidence = {}
         self.diagnostics = []
-        self.module_defs = {}
-        self.module_bind_counts = {}
-        self.module_files = {}
+        self.file_defs = {}
+        self.file_bind_counts = {}
+        self.module_files = defaultdict(list)
+        for f in self.files:
+            self.module_files[self.module_name(f["path"])].append(f)
         self.trees = {}
         self.ast_symbols = {}
         self.symbol_syntax = {}
@@ -152,7 +155,12 @@ class Analyzer:
                 # Python has no overload identity: repeated definitions are one
                 # binding and are intentionally diagnosed below.
                 signature = ast.unparse(n.args) if hasattr(n, "args") else None
-                nid = self.node(kind, f"python|{module}|{q}", n.name, q, n, parent, signature)
+                key = f"python|{module}|{q}"
+                if len(self.module_files[module]) > 1:
+                    # A module and package can share a qualified spelling, but
+                    # their declarations and evidence remain separate facts.
+                    key += "|file|" + self.current["path"]
+                nid = self.node(kind, key, n.name, q, n, parent, signature)
                 self.ast_symbols[id(n)] = nid
                 self.symbol_syntax[nid] = n
                 if n.decorator_list:
@@ -191,6 +199,10 @@ class Analyzer:
                          self.nodes[owner]["qualifiedName"]+"."+arg.arg, arg, owner)
 
     def run(self):
+        for module, files in self.module_files.items():
+            if len(files) > 1:
+                paths = ", ".join(f["path"] for f in files)
+                self.diagnostic("PY_AMBIGUOUS_MODULE", f"模块 {module} 对应多个授权文件（{paths}）；保留各文件事实，不选择导入目标。")
         wanted = {(self.scope, f["path"].replace("\\", "/")) for f in self.files}
         for key in list(self.parse_cache):
             if key[0] == self.scope and key not in wanted:
@@ -199,7 +211,6 @@ class Analyzer:
         for f in self.files:
             self.current = f = {**f, "path": f["path"].replace("\\", "/")}
             module = self.module_name(f["path"])
-            self.module_files[module] = f
             self.node("file", f["path"], f["path"].split("/")[-1], module)
             try:
                 cache_key = (self.scope, f["path"])
@@ -219,12 +230,14 @@ class Analyzer:
             for p in ast.walk(tree):
                 for child in ast.iter_child_nodes(p):
                     child._parent = p
-            self.trees[module] = tree
-            self.module_defs[module] = self.collect(tree.body, module, self.sid("file", f["path"]), module)
-        self.module_bind_counts = {module: Visitor.count_bindings(tree) for module, tree in self.trees.items()}
-        for module, tree in self.trees.items():
-            self.current = self.module_files[module]
-            Visitor(self, module, tree).visit(tree)
+            self.trees[f["path"]] = tree
+            self.file_defs[f["path"]] = self.collect(tree.body, module, self.sid("file", f["path"]), module)
+        self.file_bind_counts = {file: Visitor.count_bindings(tree) for file, tree in self.trees.items()}
+        for f in self.files:
+            tree = self.trees.get(f["path"])
+            if tree is not None:
+                self.current = f
+                Visitor(self, self.module_name(f["path"]), tree).visit(tree)
         for path, calls in self.unknown_calls.items():
             examples = ", ".join(dict.fromkeys(calls))[:350]
             self.diagnostic("PY_DYNAMIC_CALLS", f"{len(calls)} 处调用无法静态确认目标（含外部库、实例方法、回调或重绑定）：{examples}。", path)
@@ -234,7 +247,8 @@ class Analyzer:
                 "evidence": list(self.evidence.values()), "diagnostics": self.diagnostics}
 
     def resolve_module(self, name, current, level=0):
-        path = self.module_files[current]["path"]
+        path = current
+        current = self.module_name(path)
         package = current.split(".") if path.endswith("/__init__.py") else current.split(".")[:-1]
         if level:
             # A relative import never falls back to an unrelated same-suffix
@@ -243,7 +257,7 @@ class Analyzer:
                 return None, None
             base = package[:len(package)-level+1]
             resolved = ".".join(base+([name] if name else []))
-            if resolved not in self.trees:
+            if not self.module_file(resolved):
                 return None, None
             return resolved, "static-confirmed"
         if not name:
@@ -251,21 +265,33 @@ class Analyzer:
         # Even a spelling matching a project-relative path does not establish
         # Python's runtime sys.path. Prefer no candidate over silently choosing
         # one of several possible import roots.
-        matches = [m for m in self.trees if m == name or m.endswith("."+name)]
-        return (matches[0], "inferred") if len(matches) == 1 else (None, None)
+        matches = [m for m in self.module_files if m == name or m.endswith("."+name)]
+        return (matches[0], "inferred") if len(matches) == 1 and self.module_file(matches[0]) else (None, None)
+
+    def module_file(self, module):
+        files = self.module_files.get(module, [])
+        return files[0] if len(files) == 1 and files[0]["path"] in self.trees else None
+
+    def module_counts(self, module):
+        file = self.module_file(module)
+        return self.file_bind_counts[file["path"]] if file else {}
 
     def module_symbol(self, module, name):
-        counts = self.module_bind_counts[module]
+        file = self.module_file(module)
+        if not file:
+            return None
+        counts = self.file_bind_counts[file["path"]]
         if counts.get(name, 0) != 1 or counts.get("*", 0):
             return None
-        return self.module_defs[module].get(name)
+        return self.file_defs[file["path"]].get(name)
 
 
 class Visitor(ast.NodeVisitor):
     def __init__(self, analyzer, module, tree):
         self.a, self.module = analyzer, module
+        self.file_path = analyzer.current["path"]
         self.owner = analyzer.sid("file", analyzer.current["path"])
-        self.bindings = dict(analyzer.module_defs[module])
+        self.bindings = dict(analyzer.file_defs[self.file_path])
         self.imports = {}
         self.module_aliases = {}
         self.locals = {}
@@ -279,6 +305,8 @@ class Visitor(ast.NodeVisitor):
         self.global_bindings = self.bindings
         self.local_imports = set()
         self.enclosing_shadows = set()
+        self.enclosing_imports = set()
+        self.class_environment = None
         for n in tree.body:
             if isinstance(n, (ast.Import, ast.ImportFrom)):
                 self.bind_import(n, emit=False)
@@ -325,7 +353,7 @@ class Visitor(ast.NodeVisitor):
             self.module_aliases.pop(local, None)
         if isinstance(node, ast.Import):
             for alias in node.names:
-                m, confidence = self.a.resolve_module(alias.name, self.module)
+                m, confidence = self.a.resolve_module(alias.name, self.file_path)
                 if m:
                     local = alias.asname or alias.name.split(".")[0]
                     # ``import pkg.mod`` binds pkg, not pkg.mod. Only the
@@ -335,7 +363,7 @@ class Visitor(ast.NodeVisitor):
                     if emit:
                         self.import_edge(m, node, confidence)
         else:
-            m, confidence = self.a.resolve_module(node.module or "", self.module, node.level)
+            m, confidence = self.a.resolve_module(node.module or "", self.file_path, node.level)
             if m:
                 if emit:
                     self.import_edge(m, node, confidence)
@@ -345,9 +373,9 @@ class Visitor(ast.NodeVisitor):
                     if target:
                         # Which module Python imports depends on sys.path.
                         self.imports[local] = (target, m)
-                    elif (alias.name != "*" and not self.a.module_bind_counts[m].get("*", 0)
-                          and alias.name not in self.a.module_bind_counts[m]
-                          and m+"."+alias.name in self.a.trees):
+                    elif (alias.name != "*" and not self.a.module_counts(m).get("*", 0)
+                          and alias.name not in self.a.module_counts(m)
+                          and self.a.module_file(m+"."+alias.name)):
                         child = m+"."+alias.name
                         self.module_aliases[local] = (child, ())
                         if emit:
@@ -357,7 +385,7 @@ class Visitor(ast.NodeVisitor):
         limitations = ["源码导入声明；不证明导入在运行时成功或执行。"]
         if confidence == "inferred":
             limitations.append("唯一索引模块候选；实际 sys.path 和导入根未验证。")
-        self.a.edge(self.owner, self.a.sid("file", self.a.module_files[module]["path"]),
+        self.a.edge(self.owner, self.a.sid("file", self.a.module_file(module)["path"]),
                     "imports", node, "python.import", confidence, limitations)
 
     def visit_Import(self, node):
@@ -366,15 +394,40 @@ class Visitor(ast.NodeVisitor):
     def visit_ImportFrom(self, node):
         self.bind_import(node)
 
+    def inherited_environment(self):
+        if self.a.nodes[self.owner]["kind"] == "class":
+            # Methods, lambdas and nested classes do not close over a class
+            # namespace. Keep the nearest enclosing function/module imports.
+            imports, aliases = self.class_environment
+            return dict(imports), dict(aliases)
+        return ({name: value for name, value in self.imports.items() if self.unshadowed(name)},
+                {name: value for name, value in self.module_aliases.items() if self.unshadowed(name)})
+
     def definition(self, node):
         old = (self.owner, self.bindings, self.imports, self.module_aliases, self.locals,
-               self.aliases, self.function, self.class_owner, self.bind_counts, self.local_imports, self.enclosing_shadows)
-        # Defaults and decorators execute in the containing scope.
+               self.aliases, self.function, self.class_owner, self.bind_counts, self.local_imports,
+               self.enclosing_shadows, self.enclosing_imports, self.class_environment)
+        # Headers execute in the containing scope, before any new class members
+        # can shadow them. A factory call records a call, not its returned type.
         for d in node.decorator_list:
             self.visit(d)
         if hasattr(node, "args"):
             for d in node.args.defaults + [d for d in node.args.kw_defaults if d]:
                 self.visit(d)
+        else:
+            for base in node.bases:
+                target, confidence = self.resolve_call(base)
+                if target:
+                    limitations = None
+                    if target in self.a.decorated_symbols:
+                        confidence = "inferred"
+                        limitations = ["装饰器可能替换基类绑定；未执行目标代码核验。"]
+                    self.a.edge(self.a.ast_symbols[id(node)], target, "inherits", base,
+                                "python.base-reference", confidence, limitations)
+                self.visit(base)
+            for keyword in node.keywords:
+                self.visit(keyword.value)
+        inherited_imports, inherited_aliases = self.inherited_environment()
         enclosing = set(self.enclosing_shadows)
         if self.function:
             # A nested function closes over the outer lexical binding, even
@@ -391,22 +444,20 @@ class Visitor(ast.NodeVisitor):
         self.bindings = dict(self.global_bindings)
         self.bind_counts = self.count_bindings(node)
         self.local_imports = set()
-        self.imports, self.module_aliases = dict(self.imports), dict(self.module_aliases)
+        self.imports, self.module_aliases = inherited_imports, inherited_aliases
+        self.enclosing_imports = set(inherited_imports) | set(inherited_aliases)
+        self.class_environment = (dict(inherited_imports), dict(inherited_aliases)) if not self.function else None
         self.bindings.update(self.a.scope_defs.get(self.owner, {}))
         if self.function:
             for arg in self.a.parameters(node):
                 nid = self.a.parameter(self.owner, arg)
                 self.locals[arg.arg] = nid
                 self.bind_counts[arg.arg] += 1
-        else:
-            for base in node.bases:
-                target, _ = self.resolve_call(base)
-                if target:
-                    self.a.edge(self.owner, target, "inherits", base, "python.base-reference")
         for n in node.body:
             self.visit(n)
         (self.owner, self.bindings, self.imports, self.module_aliases, self.locals,
-         self.aliases, self.function, self.class_owner, self.bind_counts, self.local_imports, self.enclosing_shadows) = old
+         self.aliases, self.function, self.class_owner, self.bind_counts, self.local_imports,
+         self.enclosing_shadows, self.enclosing_imports, self.class_environment) = old
 
     visit_FunctionDef = definition
     visit_AsyncFunctionDef = definition
@@ -448,7 +499,8 @@ class Visitor(ast.NodeVisitor):
         if name in self.locals or self.bind_counts.get(name, 0) > 1 or self.global_counts.get(name, 0) > 1:
             return False
         if (self.global_counts.get("*", 0) or self.bind_counts.get("*", 0)
-                or name in self.enclosing_shadows and name not in self.a.scope_defs.get(self.owner, {}) and name not in self.local_imports):
+                or name in self.enclosing_shadows and name not in self.a.scope_defs.get(self.owner, {})
+                and name not in self.local_imports and name not in self.enclosing_imports):
             return False
         if (self.function and self.bind_counts.get(name, 0) > 0
                 and name not in self.a.scope_defs.get(self.owner, {}) and name not in self.local_imports):
@@ -617,6 +669,10 @@ class Visitor(ast.NodeVisitor):
     def visit_Lambda(self, node):
         # Lambda remains visibly contained but is not attributed to the outer
         # function: its body executes when invoked, not when declared.
+        for default in node.args.defaults + [value for value in node.args.kw_defaults if value]:
+            self.visit(default)
+        inherited_imports, inherited_aliases = self.inherited_environment()
+        class_scope = self.a.nodes[self.owner]["kind"] == "class"
         owner = self.owner
         ordinal = self.lambda_counts[owner]
         self.lambda_counts[owner] += 1
@@ -627,11 +683,20 @@ class Visitor(ast.NodeVisitor):
         old_function = self.function
         old_counts = self.bind_counts
         old_shadows = self.enclosing_shadows
+        old_bindings = self.bindings
+        old_environment = (self.imports, self.module_aliases, self.local_imports,
+                           self.enclosing_imports, self.class_environment)
         if self.function:
             self.enclosing_shadows = self.enclosing_shadows | set(self.bind_counts) | set(self.locals)
         self.function = True
         self.bind_counts = defaultdict(int)
-        self.locals = dict(self.locals)
+        self.locals = {} if class_scope else dict(self.locals)
+        if class_scope:
+            self.bindings = dict(self.global_bindings)
+        self.imports, self.module_aliases = inherited_imports, inherited_aliases
+        self.local_imports = set()
+        self.enclosing_imports = set(inherited_imports) | set(inherited_aliases)
+        self.class_environment = None
         for arg in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
             self.locals[arg.arg] = self.a.node("parameter", f"python|{self.owner}|parameter|{arg.arg}", arg.arg,
                                               self.a.nodes[self.owner]["qualifiedName"]+"."+arg.arg, arg, self.owner)
@@ -640,6 +705,9 @@ class Visitor(ast.NodeVisitor):
         self.function = old_function
         self.bind_counts = old_counts
         self.enclosing_shadows = old_shadows
+        self.bindings = old_bindings
+        (self.imports, self.module_aliases, self.local_imports,
+         self.enclosing_imports, self.class_environment) = old_environment
         self.owner = owner
 
 

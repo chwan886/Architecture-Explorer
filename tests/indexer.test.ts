@@ -33,7 +33,7 @@ const emptyWorker = async (): Promise<AnalyzerResult> => ({ nodes: [], edges: []
 test('目录和 glob include/exclude 只匹配明确扫描范围', () => {
   const policy = createFilePolicy(['Assets/Game', 'Server/**/*.py'], ['**/Tests/**', 'Art']);
   assert.equal(policy.included('Assets/Game/Presentation/Actor.cs'), true);
-  assert.equal(policy.included('Server/sect_combat.py'), true);
+  assert.equal(policy.included('Server/rules.py'), true);
   assert.equal(policy.included('Server/nested/module.py'), true);
   assert.equal(policy.included('Assets/Game/Tests/X.cs'), false);
   assert.equal(policy.included('Art/source.py'), false);

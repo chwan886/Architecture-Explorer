@@ -1,5 +1,6 @@
 import { contentHash, type ArchitectureIndex, type Evidence } from '../../schema/src/index.ts';
 import type { ArchitectureModel, ArchitectureProjection } from '../../architecture-model/src/types.ts';
+import { hasSourcePositionSupport } from '../../architecture-model/src/source-order.ts';
 import type { SemanticProjection } from '../../semantic-model/src/types.ts';
 
 export interface AuditSourceFile { hash?: string; content?: string; error?: string }
@@ -88,7 +89,7 @@ export function auditEvidence(input: EvidenceAuditInput): EvidenceAuditReport {
     truncation: { findings: false, omittedFindings: 0, checks: false, checkedItems: 0, maxItems, groupSamples: false },
     limitations: [
       '静态确认说明源码存在对应关系，不证明某次运行一定执行；人工确认仅适用于归属或解释。',
-      'source-supported 表示源码局部顺序或锚点支持，条件、循环、异常及异步仍影响执行。',
+      'source-supported 表示同文件有效锚点支持源码位置叙述，不证明控制流或运行时顺序。',
       '请求、协议和叙述关系不作为已验证的跨请求执行顺序；不为图形连贯性补线。',
       '当前文件核验仅覆盖已有索引中的文件；不遍历目标目录发现新增文件，也不运行目标程序。',
       '当前文件逐个只读核验，文件系统不提供跨文件原子快照；请在索引同步且源码稳定时运行。系统计数可因多归属重叠。',
@@ -97,6 +98,7 @@ export function auditEvidence(input: EvidenceAuditInput): EvidenceAuditReport {
   const nodeIds = new Set(index.nodes.map(node => node.id));
   const rawEdges = new Map(index.edges.map(edge => [edge.id, edge]));
   const files = new Map(index.files.map(file => [file.path, file]));
+  const fileHashes = new Map(index.files.map(file => [file.path, file.hash]));
   const evidence = new Map(index.evidence.map(item => [item.id, item]));
   const sourceCache = new Map<string, { hash?: string; lines?: string[]; error?: string }>();
   const allEvidence = new Map(evidence);
@@ -240,16 +242,13 @@ export function auditEvidence(input: EvidenceAuditInput): EvidenceAuditReport {
         refs(transition.evidenceIds, 'architecture', transition.id, context);
         for (const id of transition.memberEdgeIds) if (!rawEdges.has(id)) add({ layer: 'architecture', targetId: transition.id, reason: 'missing-edge', severity: 'error', message: `流程引用不存在的关系：${id}`, action: '重新构建该流程的底层映射。', ...context });
         if (transition.verification === 'unverified') add({ layer: 'architecture', targetId: transition.id, reason: 'unverified-order', severity: 'info', message: `${transition.basis} 关系未证明运行顺序。${transition.limitations.join(' ')}`, action: '保留请求/协议/叙述边界；只能用源码路径或运行时证据补强。', ...context });
-        else if (transition.verification === 'source-supported') add({ layer: 'architecture', targetId: transition.id, reason: 'source-supported-order', severity: 'info', message: '同一过程的源码顺序受到支持；条件等执行边界仍然保留。', action: '结合分支、循环及提前返回阅读，不作为无条件运行链。', ...context });
+        else if (transition.verification === 'source-supported') add({ layer: 'architecture', targetId: transition.id, reason: 'source-supported-order', severity: 'info', message: '同一文件的源码位置支持叙述先后，不证明控制流、调用栈或运行时执行顺序。', action: '按文件位置阅读；跨过程关系仍需真实调用等独立证据。', ...context });
         const from = stepById.get(transition.source), to = stepById.get(transition.target);
         const endpointsMatch = transition.memberEdgeIds.some(id => { const edge = rawEdges.get(id); return edge && from?.nodeIds.includes(edge.source) && to?.nodeIds.includes(edge.target); });
         if (transition.verification === 'static-confirmed' && (transition.basis !== 'static-call' || !endpointsMatch || transition.memberEdgeIds.some(id => rawEdges.get(id)?.kind !== 'calls' || rawEdges.get(id)?.confidence !== 'static-confirmed')))
           add({ layer: 'architecture', targetId: transition.id, reason: 'invalid-proof', severity: 'error', message: '静态调用确认缺少对应静态 calls 依据。', action: '修正投影规则，降低状态并补齐真实直接调用证据。', ...context });
         if (transition.verification === 'source-supported') {
-          const before = transition.anchorIds.filter(id => from?.anchorIds.includes(id)).map(id => anchors.get(id)).filter(item => !!item);
-          const after = transition.anchorIds.filter(id => to?.anchorIds.includes(id)).map(id => anchors.get(id)).filter(item => !!item);
-          const localOrder = transition.basis === 'source-order' && from?.nodeIds.some(id => to?.nodeIds.includes(id) && index.nodes.some(node => node.id === id && ['method', 'function'].includes(node.kind) && before.some(a => after.some(b => a.filePath === b.filePath && a.endLine < b.startLine && node.evidenceIds.some(evidenceId => { const proof = evidence.get(evidenceId); return proof && proof.filePath === a.filePath && proof.startLine <= a.startLine && proof.endLine >= b.endLine; })))));
-          if (!localOrder) add({ layer: 'architecture', targetId: transition.id, reason: 'invalid-proof', severity: 'error', message: '源码顺序缺少同一真实过程内前后完整锚点的支持。', action: '核对源码声明范围、锚点先后及分支边界，降低无法证明的顺序。', ...context });
+          if (!hasSourcePositionSupport(fileHashes, anchors, transition, from, to)) add({ layer: 'architecture', targetId: transition.id, reason: 'invalid-proof', severity: 'error', message: '源码位置支持缺少当前有效、有序的同文件双端锚点。', action: '核对授权文件、完整行范围、锚点哈希与先后；不能把位置关系升级为执行顺序。', ...context });
         }
       }
     }

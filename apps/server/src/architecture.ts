@@ -1,16 +1,18 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { rename, unlink, writeFile } from 'node:fs/promises';
+import { withFileLock } from '../../../packages/indexer/src/file-lock.ts';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { contentHash, type ArchitectureIndex } from '../../../packages/schema/src/index.ts';
 import type { IndexManager, ScopeRuntime } from '../../../packages/indexer/src/indexer.ts';
-import { AccessError, authorizedFile, ensureCacheDirectory, readAuthorized } from '../../../packages/indexer/src/security.ts';
+import { AccessError, authorizedFile, ensureCacheDirectory, isWithin, readAuthorized } from '../../../packages/indexer/src/security.ts';
 import { architectureView, buildProjection, entityDetail, modelRevision, ownership, relationMembers, reviewFingerprint, validateModel } from '../../../packages/architecture-model/src/index.ts';
 import type { ArchitectureModel, ArchitectureProjection, ModelEnvelope, RelationCategory, ReviewDecision, SourceAnchor } from '../../../packages/architecture-model/src/types.ts';
 
 const failure = (message: string, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const categories = new Set<RelationCategory>(['dependency', 'call', 'interface', 'data-access', 'event', 'resource', 'initialization']);
 const decoder = new TextDecoder('utf-8', { fatal: true });
+const MODEL_MAX_BYTES = 1024 * 1024;
 interface Context { index: ArchitectureIndex; model: ArchitectureModel; projection: ArchitectureProjection }
 export class ArchitectureService {
   private projections = new Map<string, Promise<Context>>();
@@ -24,7 +26,7 @@ export class ArchitectureService {
     const relative = this.modelPath(projectId);
     let model: ArchitectureModel;
     try {
-      const value = await readAuthorized(this.manager.config.toolRoot, relative, 1024 * 1024);
+      const value = await readAuthorized(this.manager.config.toolRoot, relative, MODEL_MAX_BYTES);
       model = JSON.parse(decoder.decode(value)); validateModel(model);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw failure(`架构模型读取失败：${error instanceof Error ? error.message : String(error)}`);
@@ -97,30 +99,33 @@ export class ArchitectureService {
   }
   async save(scope: ScopeRuntime, expected: string, transform: (model: ArchitectureModel) => ArchitectureModel): Promise<ModelEnvelope> {
     const relative = this.modelPath(scope.project.id);
+    const absolute = path.join(this.manager.config.toolRoot, relative);
+    if (this.manager.config.projects.some(project => [project.root, ...(project.worktrees ?? [])].some(root => isWithin(root, absolute))))
+      throw new AccessError('架构模型不能写入分析目标目录');
     const directory = await ensureCacheDirectory(path.dirname(path.join(this.manager.config.toolRoot, relative)), this.manager.config.toolRoot);
-    const lockPath = path.join(directory, 'model.lock'); const token = `${process.pid}:${randomUUID()}`;
-    let lock;
-    try { lock = await open(lockPath, 'wx'); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw failure('另一个窗口或进程正在保存模型，请稍后重试', 409); throw error; }
-    const temporary = path.join(directory, `model.${randomUUID()}.tmp`);
-    try {
-      await lock.writeFile(token); await lock.close();
-      const previous = await this.model(scope.project.id);
-      if (expected !== previous.modelRevision) throw failure('架构模型已被其他窗口修改；保留当前草稿，请重新读取后合并', 409);
-      const model = transform(structuredClone(previous.model)); validateModel(model);
-      if (model.projectId !== scope.project.id) throw failure('不能更换模型授权项目');
-      await this.validateAnchors(scope, model, previous.model);
-      // Recheck final path to reject a symlink introduced before replacement.
-      try { await authorizedFile(this.manager.config.toolRoot, relative); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-      await writeFile(temporary, JSON.stringify(model, null, 2) + '\n', { flag: 'wx' });
-      await rename(temporary, path.join(directory, 'model.json'));
-      this.projections.clear();
-      const revision = modelRevision(model);
-      this.manager.emit('architecture-model', { projectId: scope.project.id, modelRevision: revision });
-      return { model, modelRevision: revision };
-    } finally {
-      await lock.close().catch(() => {}); await unlink(temporary).catch(() => {});
-      if (await readFile(lockPath, 'utf8').catch(() => '') === token) await unlink(lockPath);
-    }
+    const lockPath = path.join(directory, 'model.lock');
+    return withFileLock({ toolRoot: this.manager.config.toolRoot, lockPath, locked: () => failure('另一个窗口或进程正在保存模型，或锁的持有者无法验证，请稍后重试', 409) }, async () => {
+      const temporary = path.join(directory, `model.${randomUUID()}.tmp`);
+      try {
+        const previous = await this.model(scope.project.id);
+        if (expected !== previous.modelRevision) throw failure('架构模型已被其他窗口修改；保留当前草稿，请重新读取后合并', 409);
+        const model = transform(structuredClone(previous.model)); validateModel(model);
+        if (model.projectId !== scope.project.id) throw failure('不能更换模型授权项目');
+        const serialized = JSON.stringify(model, null, 2) + '\n';
+        if (Buffer.byteLength(serialized, 'utf8') > MODEL_MAX_BYTES) throw failure('序列化后的架构模型超过 1 MiB 限制；未替换现有模型', 413);
+        await this.validateAnchors(scope, model, previous.model);
+        // Recheck final path to reject a symlink introduced before replacement.
+        try { await authorizedFile(this.manager.config.toolRoot, relative); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        await writeFile(temporary, serialized, { flag: 'wx' });
+        await rename(temporary, path.join(directory, 'model.json'));
+        this.projections.clear();
+        const revision = modelRevision(model);
+        this.manager.emit('architecture-model', { projectId: scope.project.id, modelRevision: revision });
+        return { model, modelRevision: revision };
+      } finally {
+        await unlink(temporary).catch(() => {});
+      }
+    });
   }
   async review(scope: ScopeRuntime, input: { expectedModelRevision: string; viewRevision: string; targetType: ReviewDecision['targetType']; targetId: string; decision: 'confirmed' | 'rejected' | 'pending' }) {
     const context = await this.current(scope); this.requireVersion(context, input.viewRevision);

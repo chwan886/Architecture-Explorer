@@ -126,3 +126,77 @@ class Bindings {
   assert.equal(r.edges.filter(e => e.rule === 'csharp.delegate-invocation').length, 2);
   assert.ok(locals.every(n => n.evidenceIds.length === 1));
 });
+
+test('Roslyn isolates same-signature local functions across sibling and nested lexical blocks', () => {
+  const content = `class Bindings {
+  static void First(int value) { }
+  static void Second(int value) { }
+  static void Third(int value) { }
+  void Run(bool first) {
+    if (first) { void Local(int value) { First(value); } Local(1); }
+    else {
+      { void Local(int value) { Second(value); } Local(2); }
+      { { void Local(int value) { Third(value); } Local(3); } }
+    }
+  }
+}`;
+  const identities = (r: AnalyzerResult) => {
+    assert.ok(!r.diagnostics.some(d => /^CS_(?:SYNTAX_)?CS/.test(d.code)), JSON.stringify(r.diagnostics));
+    const locals = r.nodes.filter(n => n.kind === 'function' && n.label === 'Local');
+    assert.equal(locals.length, 3, 'separate lexical declarations must not become one procedure');
+    const result = new Map<string, string>();
+    for (const name of ['First', 'Second', 'Third']) {
+      const calls = r.edges.filter(e => e.kind === 'calls' && e.target === method(r, name).id && locals.some(n => n.id === e.source));
+      assert.equal(calls.length, 1);
+      const local = locals.find(n => n.id === calls[0].source)!;
+      assert.equal(local.evidenceIds.length, 1);
+      assert.equal(r.edges.filter(e => e.kind === 'calls' && e.source === local.id).length, 1, 'local bodies must not share outgoing calls');
+      assert.equal(r.nodes.filter(n => n.kind === 'parameter' && n.parentId === local.id).length, 1);
+      assert.ok(r.edges.some(e => e.kind === 'calls' && e.source === method(r, 'Run').id && e.target === local.id));
+      result.set(name, local.id);
+    }
+    assert.equal(new Set(result.values()).size, 3);
+    return [...result].sort();
+  };
+  const before = identities(analyze(content));
+  const shifted = '\n// A source-only line shift must not change identities.\n' + content.replace('    if (first)', '    int unrelated = 0;\n    void Other() { }\n    if (first)');
+  assert.deepEqual(identities(analyze(shifted)), before);
+});
+
+test('Roslyn preserves direct and virtual dispatch to one declaration regardless of call order', () => {
+  const analyzeCalls = (body: string) => analyze(`class BaseBinding { public virtual void Virtual() { } }
+class Bindings : BaseBinding { void Run() { ${body} } }`);
+  const facts = (r: AnalyzerResult) => {
+    const calls = r.edges.filter(e => e.kind === 'calls' && e.source === method(r, 'Run').id && e.target === method(r, 'Virtual').id);
+    assert.equal(calls.length, 2, 'direct base calls and virtual dispatch carry different facts');
+    assert.deepEqual(new Set(calls.map(e => e.dispatch)), new Set(['direct', 'virtual-declaration']));
+    for (const call of calls) {
+      assert.equal(call.evidenceIds.length, 2, 'equivalent call sites may still share one edge');
+      const excerpts = r.evidence.filter(e => call.evidenceIds.includes(e.id)).map(e => e.excerpt);
+      assert.ok(excerpts.every(text => text === (call.dispatch === 'direct' ? 'base.Virtual()' : 'Virtual()')));
+      if (call.dispatch === 'virtual-declaration') assert.ok(call.limitations?.some(text => text.includes('未确认')));
+    }
+    return calls.map(({ id, dispatch, confidence, limitations }) => ({ id, dispatch, confidence, limitations })).sort((a, b) => a.id.localeCompare(b.id));
+  };
+  assert.deepEqual(facts(analyzeCalls('base.Virtual(); base.Virtual(); Virtual(); Virtual();')),
+    facts(analyzeCalls('Virtual(); Virtual(); base.Virtual(); base.Virtual();')));
+});
+
+test('Roslyn keeps confirmed writes separate from inferred ref writes regardless of statement order', () => {
+  const analyzeWrites = (body: string) => analyze(`class Bindings {
+  int Field;
+  static void Mutate(ref int value) { }
+  void Run() { ${body} }
+}`);
+  const facts = (r: AnalyzerResult) => {
+    const field = r.nodes.find(n => n.kind === 'field' && n.label === 'Field')!;
+    const writes = r.edges.filter(e => e.kind === 'writes' && e.source === method(r, 'Run').id && e.target === field.id);
+    assert.equal(writes.length, 2, 'potential writes cannot borrow the confidence of direct assignments');
+    assert.deepEqual(new Set(writes.map(e => e.confidence)), new Set(['static-confirmed', 'inferred']));
+    assert.ok(writes.every(e => e.evidenceIds.length === 1));
+    assert.ok(writes.find(e => e.confidence === 'inferred')!.limitations?.some(text => text.includes('未证明')));
+    return writes.map(({ id, dispatch, confidence, limitations }) => ({ id, dispatch, confidence, limitations })).sort((a, b) => a.id.localeCompare(b.id));
+  };
+  assert.deepEqual(facts(analyzeWrites('Field = 1; Mutate(ref Field);')),
+    facts(analyzeWrites('Mutate(ref Field); Field = 1;')));
+});

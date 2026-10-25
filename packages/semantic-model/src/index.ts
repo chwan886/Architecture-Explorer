@@ -32,13 +32,18 @@ function changeSet(currentNodes: SemanticNode[], currentEdges: SemanticEdge[], p
   return { unchangedNodeIds: [...nodes].filter(([id, value]) => oldNodes.get(id) === value).map(([id]) => id), changedNodeIds: [...nodes].filter(([id, value]) => oldNodes.get(id) !== value).map(([id]) => id), removedNodeIds: [...oldNodes.keys()].filter(id => !nodes.has(id)), unchangedEdgeIds: [...edges].filter(([id, value]) => oldEdges.get(id) === value).map(([id]) => id), changedEdgeIds: [...edges].filter(([id, value]) => oldEdges.get(id) !== value).map(([id]) => id), removedEdgeIds: [...oldEdges.keys()].filter(id => !edges.has(id)) };
 }
 
+export function semanticMetadata(index: ArchitectureIndex, architectureModel: ArchitectureModel, definitions: SemanticDefinitions, overlay: SemanticOverlay) {
+  const definitionRevision = semanticRevision(definitions), overlayRevision = semanticRevision(overlay), architectureRevision = modelRevision(architectureModel);
+  return { scopeId: index.metadata.scopeId, projectId: index.metadata.projectId, sourceRevision: index.metadata.revision, architectureRevision, definitionRevision, overlayRevision,
+    viewRevision: hash({ scope: index.metadata.scopeId, source: index.metadata.revision, architectureRevision, definitionRevision, overlayRevision, projection: SEMANTIC_PROJECTION_VERSION }), generatorVersion: SEMANTIC_GENERATOR_VERSION, projectionVersion: SEMANTIC_PROJECTION_VERSION };
+}
+
 export function buildSemanticProjection(index: ArchitectureIndex, architectureModel: ArchitectureModel, definitions: SemanticDefinitions, overlay: SemanticOverlay, options: SemanticBuildOptions = {}): SemanticProjection {
   validateDefinitions(definitions); validateOverlay(overlay);
   if (definitions.projectId !== index.metadata.projectId || architectureModel.projectId !== definitions.projectId) return failure('语义定义与授权项目不一致');
   if (overlay.scopeId !== index.metadata.scopeId) return failure('语义覆盖不属于当前授权 Scope', 403);
-  const definitionRevision = semanticRevision(definitions), overlayRevision = semanticRevision(overlay), architectureRevision = modelRevision(architectureModel);
-  const metadata = { scopeId: index.metadata.scopeId, projectId: index.metadata.projectId, sourceRevision: index.metadata.revision, architectureRevision, definitionRevision, overlayRevision,
-    viewRevision: hash({ scope: index.metadata.scopeId, source: index.metadata.revision, architectureRevision, definitionRevision, overlayRevision, projection: SEMANTIC_PROJECTION_VERSION }), generatorVersion: SEMANTIC_GENERATOR_VERSION, projectionVersion: SEMANTIC_PROJECTION_VERSION };
+  const metadata = semanticMetadata(index, architectureModel, definitions, overlay);
+  const { definitionRevision, architectureRevision } = metadata;
   const sourceTexts = options.sourceTexts ?? {}, nodes = new Map(index.nodes.map(node => [node.id, node])), facts = new Map(index.edges.map(edge => [edge.id, edge]));
   const evidence = new Map(index.evidence.map(item => [item.id, item])), files = new Map(index.files.map(file => [file.path, file.hash]));
   const outgoing = new Map<string, ArchitectureEdge[]>(), adjacency = new Map<string, Set<string>>(), byName = new Map<string, ArchitectureNode[]>();

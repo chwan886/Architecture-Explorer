@@ -1,5 +1,7 @@
 # 业务架构模型与投影
 
+[简体中文](README.md) | [English](README.en.md)
+
 这个包在现有事实索引上计算业务系统、模块协作和流程解释，不重新解析源码，也不改变原始节点的词法 `parentId`。
 人工模型由服务独立保存，技术扫描缓存不拥有人工决策。类型由主控维护在 `src/types.ts`；`model.schema.json` 是严格独立 JSON Schema，`validateModel` 另校验引用、唯一身份、路径与行范围。
 
@@ -40,4 +42,4 @@ SourceAnchor 必须匹配当前 `index.files` 的文件及哈希；失效锚点�
 node node_modules/tsx/dist/cli.mjs --test tests/architecture-model.test.ts tests/architecture-api.test.ts
 ```
 
-模型测试使用显式金标准。API 测试通过真实 Fastify、IndexManager 与 Python AST，在工具 `.tmp` 内建立独立工具根及两个授权分析目标；不访问或修改 GameDemo02。
+模型测试使用显式金标准。API 测试通过真实 Fastify、IndexManager 与 Python AST，在工具 `.tmp` 内建立独立工具根及两个合成授权目标，无需外部私有项目。

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const SCHEMA_VERSION = '1.0.0';
-export const ANALYZER_VERSION = '0.2.0';
+export const ANALYZER_VERSION = '0.2.1';
 export type Confidence = 'static-confirmed' | 'runtime-verified' | 'inferred';
 export type Language = 'csharp' | 'python' | 'json' | 'unity' | 'unknown';
 export type NodeKind = 'project' | 'system' | 'module' | 'file' | 'class' | 'interface' | 'struct' | 'enum' | 'method' | 'function' | 'field' | 'property' | 'event' | 'parameter' | 'resource' | 'data';

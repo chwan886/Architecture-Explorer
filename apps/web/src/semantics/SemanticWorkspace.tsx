@@ -44,6 +44,7 @@ export default function SemanticWorkspace({ scope, revision, location, onLocatio
   const bundleRef = useRef(bundle); bundleRef.current = bundle;
   const viewSequence = useRef(0), sourceSequence = useRef(0), operationSequence = useRef(0), focusToken = useRef(0), previousScope = useRef(scope);
   const notifiedLocation = useRef(locationKey(location)), restoration = useRef(false);
+  const pendingLocation = useRef(location);
   const flow = bundle?.flow, metadata = bundle?.metadata;
   const ready = !!flow && !loading && !conflict && (!flowId || flow.id === flowId);
   const selectedNode = selection?.type === 'node' ? [...flow?.summaryNodes || [], ...flow?.detailNodes || []].find(node => node.id === selection.id) : undefined;
@@ -101,11 +102,13 @@ export default function SemanticWorkspace({ scope, revision, location, onLocatio
   }, [scope, flowId]);
   useEffect(() => {
     if (previousScope.current === scope) return;
-    previousScope.current = scope; viewSequence.current++; operationSequence.current++; clearSource(); setFlowId(location?.flowId); setMode(location?.mode || 'explanation'); setLevel(location?.level || 'simple'); setExpanded([]); setSelection(locationSelection(location)); setHistory([]); setSearch(''); setRelationFilter(''); setBundle(undefined); setEvidenceId(''); setSourceOpen(false); setCandidate(undefined); setEditorOpen(false); setConflict(false); setRootPath('');
+    previousScope.current = scope; pendingLocation.current = location; viewSequence.current++; operationSequence.current++; clearSource(); setFlowId(location?.flowId); setMode(location?.mode || 'explanation'); setLevel(location?.level || 'simple'); setExpanded([]); setSelection(locationSelection(location)); setHistory([]); setSearch(''); setRelationFilter(''); setBundle(undefined); setEvidenceId(''); setSourceOpen(false); setCandidate(undefined); setEditorOpen(false); setConflict(false); setRootPath('');
   }, [scope, clearSource]);
   useEffect(() => {
     const key = locationKey(location); if (key === notifiedLocation.current) return; notifiedLocation.current = key;
     if (!location) return;
+    pendingLocation.current = location;
+    if (location.flowId !== flowId) setExpanded([]);
     clearSource(); setFlowId(location.flowId); if (location.mode) setMode(location.mode); if (location.level) setLevel(location.level); const next = locationSelection(location); setSelection(next); selectedRef.current = selectionKey(next); setEvidenceId('');
   }, [location, clearSource]);
   useEffect(() => {
@@ -122,6 +125,34 @@ export default function SemanticWorkspace({ scope, revision, location, onLocatio
     }).catch(failure => { if (!controller.signal.aborted && request === viewSequence.current && scopeRef.current === scope) fail(failure, setError); }).finally(() => { if (request === viewSequence.current && scopeRef.current === scope) setLoading(false); });
     return () => { controller.abort(); viewSequence.current++; };
   }, [scope, revision, flowId, reload, clearSource, fail]);
+  useEffect(() => {
+    const target = pendingLocation.current;
+    if (!target || !ready || !flow || target.flowId && target.flowId !== flow.id) return;
+    pendingLocation.current = undefined;
+    const edge = target.codeEdgeId ? flow.codeEdges.find(edge => edge.id === target.codeEdgeId) : undefined;
+    const semanticIds = new Set([
+      ...(target.nodeId ? [target.nodeId] : []),
+      ...(target.codeNodeId ? flow.reverseNodes[target.codeNodeId] || [] : []),
+      ...(target.codeEdgeId ? (flow.reverseEdges[target.codeEdgeId] || []).flatMap(id => {
+        const relation = [...flow.summaryEdges, ...flow.detailEdges].find(edge => edge.id === id);
+        return relation ? [relation.source, relation.target] : [];
+      }) : []),
+    ]);
+    // An explicit external target must be visible even if a remembered local
+    // filter would hide it. Subsequent manual filtering remains unchanged.
+    if (semanticIds.size) { setSearch(''); setRelationFilter(''); }
+    const nextExpanded = target.level === 'simple' ? [] : [...expanded];
+    if (target.level === 'detailed') {
+      const groups = flow.summaryNodes.filter(group => semanticIds.has(group.id) || group.childIds.some(id => semanticIds.has(id)));
+      nextExpanded.push(...(groups.length ? groups : semanticIds.size ? [] : flow.summaryNodes.slice(0, 1)).map(group => group.id));
+    }
+    setExpanded([...new Set(nextExpanded)]);
+    const visible = visibleSemanticGraph(flow, new Set(nextExpanded));
+    const ids = [...visibleSemanticMatches(flow, [...semanticIds], new Set(visible.nodes.map(node => node.id)))];
+    if (ids.length) setSemanticBatchFocus({ ids, token: ++focusToken.current });
+    const codeIds = edge ? [edge.source, edge.target] : target.codeNodeId ? [target.codeNodeId] : target.nodeId ? [...codeMapping(flow, [...flow.summaryNodes, ...flow.detailNodes].find(node => node.id === target.nodeId)).nodeIds] : [];
+    if (codeIds.length) setBatchFocus({ ids: codeIds, token: ++focusToken.current });
+  }, [ready, flow, location, expanded]);
   useEffect(() => {
     const controller = new AbortController(); const url = new URL('/api/summary', window.location.origin); url.searchParams.set('scope', scope);
     fetch(url, { signal: controller.signal }).then(response => response.ok ? response.json() : undefined).then(value => { if (!controller.signal.aborted && scopeRef.current === scope) setRootPath(value?.metadata?.rootPath || ''); }).catch(() => {});

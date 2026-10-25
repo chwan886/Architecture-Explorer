@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import type { ArchitectureEdge, ArchitectureNode } from '../../../packages/schema/src/index';
 import { applySelectionResponse, edgeForKeyboardActivation, isCurrentSelectionRequest, nodeForKeyboardActivation } from './selection';
 
-const hp: ArchitectureNode = { id: 'field:hp', kind: 'field', label: 'hp', qualifiedName: 'SectBattleActor.hp', language: 'csharp', evidenceIds: [] };
-const damage: ArchitectureNode = { id: 'function:damage', kind: 'function', label: 'damage', qualifiedName: 'Server.sect_combat.damage', language: 'python', evidenceIds: [] };
+const hp: ArchitectureNode = { id: 'field:hp', kind: 'field', label: 'hp', qualifiedName: 'SelectionFixture.Actor.hp', language: 'csharp', evidenceIds: [] };
+const damage: ArchitectureNode = { id: 'function:damage', kind: 'function', label: 'damage', qualifiedName: 'Server.rules.damage', language: 'python', evidenceIds: [] };
 
 test('programmatic selection notifications do not activate a graph node', () => {
   assert.equal(nodeForKeyboardActivation('', hp.id, [hp]), undefined);

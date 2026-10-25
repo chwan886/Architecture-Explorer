@@ -6,24 +6,44 @@ import { fileURLToPath } from 'node:url';
 import { SemanticStore } from '../apps/server/src/semantic-store.ts';
 import { mergeGroups, splitGroup, editSemanticText, generateCandidateFlow } from '../packages/semantic-content/src/index.ts';
 import { validateDefinitions, semanticRevision } from '../packages/semantic-model/src/validation.ts';
-import type { SemanticDefinitions, SemanticOverlay } from '../packages/semantic-model/src/types.ts';
+import type { SemanticDefinitions, SemanticOverlay, SemanticText } from '../packages/semantic-model/src/types.ts';
 import type { ArchitectureModel } from '../packages/architecture-model/src/types.ts';
 import type { LoadedConfig } from '../packages/indexer/src/config.ts';
 import { canonical } from '../packages/indexer/src/security.ts';
 import { contentHash } from '../packages/schema/src/index.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const seed: unknown = JSON.parse(await readFile(path.join(root, 'architecture/semantics/game-demo-02/definitions.json'), 'utf8'));
-validateDefinitions(seed);
-const definitions: SemanticDefinitions = seed;
-const architecture: ArchitectureModel = JSON.parse(await readFile(path.join(root, 'architecture/models/game-demo-02/model.json'), 'utf8'));
+// This complete authored fixture is independent of any indexed user project or
+// checked-in private model. It keeps the same editing/storage invariants small.
+const stepIds = ['receive', 'validate', 'update', 'reply'];
+const sourceContent = stepIds.map(id => `def ${id}(value):\n    return value`).join('\n');
+const text = (id: string): SemanticText => ({ title: id, summary: `Fixture ${id}`, purpose: `Explain ${id}`,
+  detail: `Synthetic ${id} step`, inputs: ['value'], processing: [`Handle ${id}`], outputs: ['value'], changes: [] });
+const architecture: ArchitectureModel = { schemaVersion: '1.0.0', projectId: 'fixture', name: 'Synthetic workflow',
+  systems: [], modules: [], memberships: [], reviews: [],
+  anchors: stepIds.map((id, position) => ({ id: `anchor-${id}`, filePath: 'src/actions.py', startLine: position * 2 + 1, endLine: position * 2 + 1,
+    expectedFileHash: contentHash(sourceContent), quote: `def ${id}(value):`, description: `Fixture ${id} declaration` })),
+  flows: [{ id: 'source-workflow', name: 'Source workflow', description: 'Synthetic source mapping', trigger: 'Fixture request', systemIds: [], lanes: [{ id: 'source', name: 'Source' }],
+    steps: stepIds.map((id, phase) => ({ id: `source-${id}`, laneId: 'source', phase, name: id, description: `Fixture ${id}`,
+      selector: { language: 'python', kinds: ['function'], qualifiedName: `src.actions.${id}`, filePath: 'src/actions.py' }, anchorIds: [`anchor-${id}`], reads: [], writes: [] })),
+    transitions: [], limitations: ['Synthetic fixture, without runtime execution claims.'] }] };
+const definitions: SemanticDefinitions = { schemaVersion: '1.0.0', projectId: 'fixture', flows: [{ id: 'workflow', sourceFlowId: 'source-workflow',
+  title: 'Synthetic workflow', description: 'Independent semantic editing and storage fixture',
+  groups: [{ ...text('input'), id: 'input', childIds: stepIds.slice(0, 2), origin: 'curated' },
+    { ...text('output'), id: 'output', childIds: stepIds.slice(2), origin: 'curated' }],
+  steps: stepIds.map(id => ({ ...text(id), id, sourceStepIds: [`source-${id}`], origin: 'curated',
+    bindings: [{ id: `binding-${id}`, sourceStepId: `source-${id}`, role: 'implementation',
+      selector: { language: 'python', kinds: ['function'], qualifiedName: `src.actions.${id}`, filePath: 'src/actions.py' },
+      anchorIds: [`anchor-${id}`], expectedDeclarationHash: contentHash(`def ${id}(value):\n    return value`) }],
+    controls: [{ kind: id === 'reply' ? 'request-boundary' : 'condition', description: `Fixture ${id} boundary`, anchorIds: [`anchor-${id}`] }] })) }] };
+validateDefinitions(definitions);
 const original = definitions.flows[0];
 const clone = <T>(value: T): T => structuredClone(value);
 
-test('reviewed flows preserve the original 35 steps and every flow retains precise implementation bindings', () => {
-  assert.deepEqual(definitions.flows.slice(0, 2).map(flow => flow.id), ['claim-reserve', 'battle-start-poll-result']);
-  assert.deepEqual(definitions.flows.slice(0, 2).map(flow => flow.groups.length), [6, 7]);
-  assert.equal(definitions.flows.slice(0, 2).flatMap(flow => flow.steps).length, 35);
+test('synthetic semantic content retains complete grouping, exact implementation bindings and controls', () => {
+  assert.deepEqual(definitions.flows.map(flow => flow.id), ['workflow']);
+  assert.deepEqual(definitions.flows.map(flow => flow.groups.length), [2]);
+  assert.equal(definitions.flows.flatMap(flow => flow.steps).length, 4);
   assert.deepEqual(definitions.flows.map(flow => flow.sourceFlowId).sort(), architecture.flows.map(flow => flow.id).sort(), 'each authored source flow has one real semantic projection');
   const anchors = new Set(architecture.anchors.map(anchor => anchor.id));
   for (const flow of definitions.flows) {
@@ -37,8 +57,7 @@ test('reviewed flows preserve the original 35 steps and every flow retains preci
     }
     for (const step of flow.steps) {
       const sourceStep = source.steps.find(item => item.id === step.sourceStepIds[0])!;
-      const contactCandidate = flow.sourceFlowId === 'sword-hit-resolution' && sourceStep.id === 'sword-contact-gate';
-      assert.equal(step.bindings.length, contactCandidate ? 3 : 1);
+      assert.equal(step.bindings.length, 1);
       const binding = step.bindings[0];
       assert.equal(binding.role, 'implementation');
       assert.equal(binding.selector?.qualifiedName, sourceStep.selector?.qualifiedName);
@@ -48,15 +67,6 @@ test('reviewed flows preserve the original 35 steps and every flow retains preci
       assert.match(binding.expectedDeclarationHash ?? '', /^[a-f0-9]{64}$/);
       assert.ok(binding.anchorIds.every(id => anchors.has(id)));
       assert.ok(step.controls.every(control => control.anchorIds.every(id => anchors.has(id))));
-      if (contactCandidate) {
-        assert.equal(binding.expectedDeclarationHash, 'dcfebbc8a8ac0748d54f5ab304f0754c1348a44e32db31c536ef53e37c7a2307', 'Keep the stale baseline instead of confirming the new declaration');
-        assert.deepEqual(binding.anchorIds, ['review-contact-gate']);
-        assert.deepEqual(step.bindings.slice(1).map(item => ({ id: item.id, role: item.role, selector: item.selector, anchors: item.anchorIds, hash: item.expectedDeclarationHash })), [
-          { id: 'sword-contact-gate-decision-implementation', role: 'implementation', selector: { language: 'python', kinds: ['function'], qualifiedName: 'Server.sect_flight_interactions.decision', filePath: 'Server/sect_flight_interactions.py' }, anchors: [], hash: undefined },
-          { id: 'sword-contact-gate-projectile-hit-context', role: 'context', selector: { language: 'python', kinds: ['function'], qualifiedName: 'Server.sect_combat.step.projectile_hit', filePath: 'Server/sect_combat.py' }, anchors: [], hash: undefined },
-        ], 'Exact candidate implementation/context bindings must not invent reviewed hashes or broad selectors');
-        assert.match(step.detail, /历史待复核/);
-      }
     }
   }
 });

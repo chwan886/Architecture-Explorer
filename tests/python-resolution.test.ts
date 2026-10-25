@@ -58,7 +58,7 @@ def step(victim):
   assert.equal(item.excerpt, 'projectile_hit');
 });
 
-test('Python retains inferred import roots for calls and parameter bindings, including GameDemo-style callbacks', () => {
+test('Python retains inferred import roots for calls and parameter bindings, including imported callbacks', () => {
   const result = analyze({
     'Server/combat.py': `import projectiles
 def step(victim):
@@ -328,4 +328,145 @@ def attribute_mutation(value):
   });
   assert.equal(edges(result, 'calls').length, 0);
   assert.equal(edges(result, 'passes').length, 0);
+});
+
+test('Python class headers resolve and evaluate in the containing scope before class members exist', () => {
+  const result = analyze({ 'headers.py': `class Base:
+    pass
+
+def create_base(value):
+    return value
+
+def create_meta(value):
+    return type
+
+def decorate(value):
+    return value
+
+@decorate(Base)
+class Derived(Base, metaclass=create_meta(Base)):
+    def Base(self):
+        return self
+
+class Factory(create_base(Base)):
+    def create_base(self):
+        return self
+
+def build(Base):
+    class Nested(Base):
+        def Base(self):
+            return self
+    return Nested
+` });
+  const inheritance = edges(result, 'inherits');
+  assert.ok(inheritance.some(edge => edge.from === 'headers.Derived' && edge.to === 'headers.Base' && edge.confidence === 'static-confirmed'));
+  assert.ok(!inheritance.some(edge => edge.to === 'headers.Derived.Base' || edge.to === 'headers.build.Nested.Base'));
+  assert.ok(!inheritance.some(edge => edge.from === 'headers.Factory'), 'a factory call does not prove the returned base type');
+  const calls = edges(result, 'calls');
+  for (const target of ['headers.decorate', 'headers.create_meta', 'headers.create_base']) {
+    assert.ok(calls.some(edge => edge.from === 'headers' && edge.to === target), `${target} executes as a class header in the file scope`);
+  }
+  assert.ok(edges(result, 'reads').some(edge => edge.from === 'headers.build' && edge.to === 'headers.build.Base'), 'a nested class header reads the enclosing parameter');
+});
+
+test('Python methods and class lambdas skip class imports while retaining module and enclosing-function imports', () => {
+  const result = analyze({
+    'worker.py': 'def run(value):\n    return value\n',
+    'other.py': 'def run(value):\n    return value\n',
+    'scopes.py': `import worker as module_alias
+from worker import run as module_run
+import other as shared
+
+class OnlyClass:
+    import worker as class_alias
+    from worker import run as class_run
+    import worker as shared
+    class_alias.run(None)
+
+    def method(value):
+        class_alias.run(value)
+        class_run(value)
+        module_alias.run(value)
+        module_run(value)
+        shared.run(value)
+
+    def rebound(value):
+        module_alias.run(value)
+        module_alias = unknown
+
+    shortcut = lambda value: class_alias.run(value)
+    def class_callable(value):
+        return value
+    callable_shortcut = lambda value: class_callable(value)
+
+def enclosing():
+    import worker as closure_alias
+    from worker import run as closure_run
+    class Nested:
+        import other as closure_alias
+        from other import run as closure_run
+        closure_alias.run(None)
+
+        def method(value):
+            closure_alias.run(value)
+            closure_run(value)
+
+    def direct(value):
+        closure_alias.run(value)
+        closure_run(value)
+    return Nested, direct
+`,
+  });
+  const calls = edges(result, 'calls');
+  assert.equal(calls.filter(edge => edge.from === 'scopes.OnlyClass.method' && edge.to === 'worker.run').length, 1, 'only the two module imports may merge into this target');
+  assert.ok(calls.some(edge => edge.from === 'scopes.OnlyClass.method' && edge.to === 'other.run'), 'class rebinding does not hide the module alias from methods');
+  assert.equal(calls.find(edge => edge.from === 'scopes.OnlyClass.method' && edge.to === 'worker.run')!.evidenceIds.length, 2, 'class-local aliases contribute no method call evidence');
+  assert.ok(!calls.some(edge => edge.from === 'scopes.OnlyClass.rebound' || edge.from.includes('.lambda(')));
+  assert.ok(calls.some(edge => edge.from === 'scopes.OnlyClass' && edge.to === 'worker.run'), 'class body imports are visible in the class body');
+  assert.ok(calls.some(edge => edge.from === 'scopes.enclosing.Nested' && edge.to === 'other.run'));
+  for (const owner of ['scopes.enclosing.Nested.method', 'scopes.enclosing.direct']) {
+    const call = calls.find(edge => edge.from === owner && edge.to === 'worker.run');
+    assert.ok(call, owner);
+    assert.equal(call.evidenceIds.length, 2);
+    assert.ok(!calls.some(edge => edge.from === owner && edge.to === 'other.run'));
+  }
+});
+
+test('Python colliding module/package names retain each file and its facts without selecting an import candidate', () => {
+  const files = {
+    'pkg.py': `def helper(value):
+    return value
+
+def same(value):
+    value['module'] = value['input']
+    return helper(value)
+`,
+    'pkg/__init__.py': `def helper(value):
+    return value
+
+def same(value):
+    value['package'] = value['input']
+    return helper(value)
+`,
+    'client.py': 'import pkg\nfrom pkg import same\ndef caller(value):\n    pkg.same(value)\n    same(value)\n',
+    'pkg/client.py': 'from . import same\ndef caller(value):\n    return same(value)\n',
+  };
+  const result = analyze(files);
+  const reversed = analyze(Object.fromEntries(Object.entries(files).reverse()));
+  assert.deepEqual(result, reversed, 'input order does not change declaration identity, facts or ambiguity');
+  assert.ok(result.diagnostics.some(diagnostic => diagnostic.code === 'PY_AMBIGUOUS_MODULE' && diagnostic.message.includes('pkg.py') && diagnostic.message.includes('pkg/__init__.py')));
+  const nodes = new Map(result.nodes.map(node => [node.id, node]));
+  for (const file of ['pkg.py', 'pkg/__init__.py']) {
+    const same = result.nodes.filter(node => node.qualifiedName === 'pkg.same' && node.filePath === file);
+    assert.equal(same.length, 1, `${file} has its own same declaration`);
+    const call = result.edges.find(edge => edge.kind === 'calls' && edge.source === same[0].id);
+    assert.ok(call, `${file} AST was visited`);
+    assert.equal(nodes.get(call.target)!.qualifiedName, 'pkg.helper');
+    assert.equal(nodes.get(call.target)!.filePath, file);
+    assert.ok(result.edges.some(edge => edge.kind === 'reads' && edge.source === same[0].id));
+    assert.ok(result.edges.some(edge => edge.kind === 'writes' && edge.source === same[0].id));
+  }
+  assert.equal(result.nodes.filter(node => node.qualifiedName === 'pkg.same').length, 2, 'colliding qualified names do not merge nodes');
+  const callers = new Set(result.nodes.filter(node => node.filePath === 'client.py' || node.filePath === 'pkg/client.py').map(node => node.id));
+  assert.ok(!result.edges.some(edge => callers.has(edge.source) && ['imports', 'calls', 'passes'].includes(edge.kind)), 'neither absolute nor relative imports choose an ambiguous module');
 });

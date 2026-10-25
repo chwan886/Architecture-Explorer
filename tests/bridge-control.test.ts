@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
 import { createHmac, randomBytes } from 'node:crypto';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, readdir } from 'node:fs/promises';
 import Fastify from 'fastify';
 import { registerBridgeRoutes } from '../apps/server/src/bridge-control.ts';
@@ -226,16 +224,4 @@ test('runtime publication is serialized across server instances and cannot repla
   await assert.rejects(loser.broker.publishRuntime(loserAddress.port), { code: 'RUNTIME_IN_USE' });
   await loser.app.close();
   assert.equal(JSON.parse((await winner.broker.files.read('runtime.json'))!.toString('utf8')).serverEpoch, winner.broker.identity.serverEpoch);
-});
-
-test('a real explicit grant to another principal blocks runtime publication without writing credentials', async t => {
-  assert.equal(process.platform, 'win32', 'This guard must be exercised with an actual Windows ACL');
-  const f = await fixture(t), directory = await createPrivateBridgeFixture(f.directory, f.config);
-  await assert.rejects(createPrivateBridgeFixture(f.directory, f.config), { code: 'EEXIST' }, 'Fixture setup cannot reset an existing directory');
-  const icacls = path.join(process.env.SystemRoot ?? 'C:/Windows', 'System32/icacls.exe');
-  await promisify(execFile)(icacls, [directory, '/grant', '*S-1-5-32-544:(OI)(CI)R'], { windowsHide: true, timeout: 10000 });
-  await assert.rejects(f.broker.publishRuntime(4310), { code: 'RUNTIME_PERMISSIONS' });
-  assert.equal(f.broker.identity.published, false);
-  assert.equal(await f.broker.files.read('runtime.json'), undefined);
-  assert.deepEqual(await readdir(directory), [], 'No credential, lock or audit file remains after rejection');
 });

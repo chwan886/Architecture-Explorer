@@ -1,8 +1,10 @@
 # 仅为待用户审查的新增配置，不会自动安装或覆盖任何现有配置。
 # 网站服务需已启动；本机令牌由固定工具缓存读取，不写进此文件。
+# Replace C:\src\Architecture-Explorer with your installation directory.
+# 替换以下通用安装路径；Replace the example path below before use.
 [mcp_servers.architecture_explorer]
-command = 'E:\Projects\Architecture-Explorer\.tools\node-v24.22.0-win-x64\node.exe'
-args = ['E:\Projects\Architecture-Explorer\node_modules\tsx\dist\cli.mjs', 'E:\Projects\Architecture-Explorer\apps\mcp\src\main.ts', '--config', 'E:\Projects\Architecture-Explorer\config\local.json']
-cwd = 'E:\Projects\Architecture-Explorer'
+command = 'C:\src\Architecture-Explorer\.tools\node-v24.22.0-win-x64\node.exe'
+args = ['C:\src\Architecture-Explorer\node_modules\tsx\dist\cli.mjs', 'C:\src\Architecture-Explorer\apps\mcp\src\main.ts', '--config', 'C:\src\Architecture-Explorer\config\local.json']
+cwd = 'C:\src\Architecture-Explorer'
 startup_timeout_sec = 20
 tool_timeout_sec = 60

@@ -7,6 +7,7 @@ import type { FastifyRequest } from 'fastify';
 import type { LoadedConfig } from '../../../packages/indexer/src/config.ts';
 import type { BridgeRuntime } from '../../../packages/control-protocol/src/types.ts';
 import { authorizedFile, ensureCacheDirectory, readAuthorized } from '../../../packages/indexer/src/security.ts';
+import { withFileLock } from '../../../packages/indexer/src/file-lock.ts';
 
 const execute = promisify(execFile);
 export const bridgeFailure = (code: string, message: string, statusCode = 400) => Object.assign(new Error(message), { code, statusCode });
@@ -60,8 +61,7 @@ export class BridgeFiles {
         await execute(path.join(system, 'icacls.exe'), [this.directory, '/save', auditPath, '/q'], { windowsHide: true, timeout: 10000, maxBuffer: 8192 });
         const audit = await readAuthorized(this.config.toolRoot, this.relative(auditName), 64 * 1024);
         const sddl = audit.toString('utf16le').replace(/^\uFEFF/, '');
-        // icacls can serialize the exact current account as LA (RID 500), not a full SID.
-        // Native expansion does not permit LA/BA in general: only the current SID and SYSTEM pass.
+        // Resolve aliases natively, then compare exact SIDs; LA and BA are not blanket exemptions.
         if (!await windowsRuntimeDaclIsPrivate(sddl, sid))
           throw bridgeFailure('RUNTIME_PERMISSIONS', '联动目录存在其他主体的显式访问权限；未发布 MCP 凭据', 503);
       } finally { await unlink(auditPath).catch(() => {}); }
@@ -94,17 +94,8 @@ export class BridgeFiles {
     });
   }
   async publication<T>(action: () => Promise<T>): Promise<T> {
-    await ensureCacheDirectory(this.directory, this.config.toolRoot);
-    const lockPath = path.join(this.directory, 'runtime.lock'), token = randomBytes(24).toString('hex');
-    let file;
-    try { file = await open(lockPath, 'wx', 0o600); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw bridgeFailure('RUNTIME_LOCKED', '另一个服务实例正在发布凭据，未覆盖现有实例', 409); throw error; }
-    try { await file.writeFile(token); await file.close(); return await action(); }
-    finally {
-      await file.close().catch(() => {});
-      const value = await readAuthorized(this.config.toolRoot, this.relative('runtime.lock'), 256).catch(() => undefined);
-      if (value?.toString('utf8') === token) await unlink(lockPath);
-    }
+    return withFileLock({ toolRoot: this.config.toolRoot, lockPath: path.join(this.directory, 'runtime.lock'),
+      locked: () => bridgeFailure('RUNTIME_LOCKED', '另一个服务实例正在发布凭据，或锁的持有者无法验证，未覆盖现有实例', 409) }, action);
   }
 }
 export class BridgeIdentity {

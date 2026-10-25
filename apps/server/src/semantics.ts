@@ -7,9 +7,9 @@ import { AccessError, createFilePolicy, ensureCacheDirectory, readAuthorized } f
 import { contentHash, type ArchitectureIndex } from '../../../packages/schema/src/index.ts';
 import { modelRevision } from '../../../packages/architecture-model/src/index.ts';
 import type { ArchitectureModel } from '../../../packages/architecture-model/src/types.ts';
-import { buildSemanticProjection, semanticBundle, semanticReverse, semanticReviewFingerprint, validateDefinitions } from '../../../packages/semantic-model/src/index.ts';
+import { buildSemanticProjection, semanticBundle, semanticMetadata, semanticReverse, semanticReviewFingerprint, validateDefinitions } from '../../../packages/semantic-model/src/index.ts';
 import { canonicalJson } from '../../../packages/architecture-model/src/validation.ts';
-import { SEMANTIC_GENERATOR_VERSION, type SemanticDefinitionEnvelope, type SemanticFlowDefinition, type SemanticProjection } from '../../../packages/semantic-model/src/types.ts';
+import { SEMANTIC_GENERATOR_VERSION, type SemanticDefinitionEnvelope, type SemanticEditorEnvelope, type SemanticFlowDefinition, type SemanticProjection } from '../../../packages/semantic-model/src/types.ts';
 import { SemanticStore } from './semantic-store.ts';
 import type { ArchitectureService } from './architecture.ts';
 import { generateCandidateFlow } from '../../../packages/semantic-content/src/index.ts';
@@ -96,7 +96,12 @@ export class SemanticService {
     await this.sourceTexts(scope, context.index, context.model, context.envelope);
     this.checkSnapshot(scope, context);
   }
-  async save(scope: ScopeRuntime, input: { expectedOverlayRevision: string; viewRevision: string; flow: SemanticFlowDefinition }) {
+  async editorModel(scope: ScopeRuntime): Promise<SemanticEditorEnvelope> {
+    const context = await this.current(scope);
+    await this.live(scope, context);
+    return { ...context.envelope, metadata: context.projection.metadata };
+  }
+  async save(scope: ScopeRuntime, input: { expectedOverlayRevision: string; viewRevision: string; flow: SemanticFlowDefinition }): Promise<SemanticEditorEnvelope> {
     const context = await this.current(scope); this.requireVersion(context, input.viewRevision);
     validateDefinitions({ schemaVersion: '1.0.0', projectId: scope.project.id, flows: [input.flow] });
     const existing = context.envelope.effectiveFlows.find(flow => flow.id === input.flow.id);
@@ -118,7 +123,7 @@ export class SemanticService {
       }
     }
     await this.live(scope, context);
-    return this.changed(scope, await this.store.save(scope.project.id, scope.id, input.expectedOverlayRevision, overlay => {
+    const result = this.changed(scope, await this.store.save(scope.project.id, scope.id, input.expectedOverlayRevision, overlay => {
       this.checkSnapshot(scope, context);
       const flow = structuredClone(input.flow);
       // Text authorship is independent of the immutable source facts.
@@ -127,6 +132,7 @@ export class SemanticService {
       overlay.flowOverrides = [...overlay.flowOverrides.filter(item => item.id !== flow.id), flow];
       return overlay;
     }, () => this.live(scope, context)));
+    return { ...result, metadata: semanticMetadata(context.index, context.model, result.definitions, result.overlay) };
   }
   private changed(scope: ScopeRuntime, result: SemanticDefinitionEnvelope) {
     for (const key of this.pending.keys()) if (key.startsWith(scope.id + '|')) this.pending.delete(key);
@@ -174,7 +180,7 @@ export function registerSemanticRoutes(app: FastifyInstance, manager: IndexManag
   const scope = (request: FastifyRequest) => manager.scope(parameter(request, 'scope'));
   const context = async (request: FastifyRequest) => { const current = await service.current(scope(request)); service.requireVersion(current, parameter(request, 'viewRevision')); return current; };
   app.get('/api/semantics', async request => semanticBundle((await context(request)).projection, parameter(request, 'flowId')));
-  app.get('/api/semantics/model', async request => service.store.read(scope(request).project.id, scope(request).id));
+  app.get('/api/semantics/model', async request => service.editorModel(scope(request)));
   app.get('/api/semantics/reverse', async request => { const current = await context(request); return semanticReverse(current.projection, { nodeId: parameter(request, 'nodeId'), edgeId: parameter(request, 'edgeId') }); });
   app.get<{ Params: { id: string } }>('/api/semantics/evidence/:id', async request => service.evidence(scope(request), request.params.id, parameter(request, 'viewRevision')));
   const revision = { type: 'string', minLength: 1, maxLength: 128 };
